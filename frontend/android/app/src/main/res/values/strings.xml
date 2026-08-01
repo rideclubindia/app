@@ -1,0 +1,8 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Laksham Ride</string>
+    <string name="title_activity_main">Laksham Ride</string>
+    <string name="package_name">com.lakshamride</string>
+    <string name="custom_url_scheme">com.lakshamride</string>
+    <string name="server_client_id">990505735182-4pienpe7ibp2o9hca3vnn0fpsijcoap0.apps.googleusercontent.com</string>
+</resources>

@@ -1,0 +1,14 @@
+{
+  "projects": {
+    "default": "laksham-ride"
+  },
+  "targets": {
+    "laksham-ride": {
+      "hosting": {
+        "lakshamride": [
+          "laksham-ride"
+        ]
+      }
+    }
+  }
+}

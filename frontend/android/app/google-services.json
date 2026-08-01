@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "990505735182",
+    "project_id": "laksham-ride",
+    "storage_bucket": "laksham-ride.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:990505735182:android:55e1fb80cf05e3744c985f",
+        "android_client_info": {
+          "package_name": "com.lakshamride"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "990505735182-4pienpe7ibp2o9hca3vnn0fpsijcoap0.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyARf0lRStGGLjUKaoBJhNdKRq9RakuWBCE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "990505735182-4pienpe7ibp2o9hca3vnn0fpsijcoap0.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

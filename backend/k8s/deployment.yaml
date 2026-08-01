@@ -1,0 +1,37 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: rie-backend
+  labels:
+    app: rie-backend
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: rie-backend
+  template:
+    metadata:
+      labels:
+        app: rie-backend
+    spec:
+      containers:
+      - name: rie-api
+        image: rideclub/rie-backend:latest
+        ports:
+        - containerPort: 8000
+        envFrom:
+        - secretRef:
+            name: rie-secrets
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "500m"
+          limits:
+            memory: "1Gi"
+            cpu: "1000m"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8000
+          initialDelaySeconds: 15
+          periodSeconds: 20

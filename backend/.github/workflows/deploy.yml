@@ -1,0 +1,64 @@
+name: RIE Backend CI/CD
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgis/postgis:15-3.3
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: rie_test_db
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+    - uses: actions/checkout@v3
+    - name: Set up Python 3.13
+      uses: actions/setup-python@v4
+      with:
+        python-version: "3.13"
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r rie_backend/requirements.txt
+        pip install pytest httpx
+        
+    - name: Run tests
+      env:
+        DATABASE_URL: postgresql://postgres:postgres@localhost:5432/rie_test_db
+        JWT_SECRET: test_secret
+      run: |
+        cd rie_backend
+        # Run pytest when tests are implemented
+        # pytest tests/
+
+  deploy:
+    needs: build-and-test
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    steps:
+    - uses: actions/checkout@v3
+    - name: Build Docker Image
+      run: |
+        cd rie_backend
+        docker build -t rideclub/rie-backend:latest .
+    
+    - name: Push and Deploy (Placeholder)
+      run: |
+        echo "Pushing to registry and deploying to Kubernetes..."
+        # docker push rideclub/rie-backend:latest
+        # kubectl apply -f k8s/

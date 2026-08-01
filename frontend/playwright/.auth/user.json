@@ -1,0 +1,25 @@
+{
+  "cookies": [
+    {
+      "name": "_ga_54ZSF3ER23",
+      "value": "GS2.1.s1782478525$o1$g0$t1782478525$j60$l0$h0",
+      "domain": "localhost",
+      "path": "/",
+      "expires": 1817038525.534183,
+      "httpOnly": false,
+      "secure": false,
+      "sameSite": "Lax"
+    },
+    {
+      "name": "_ga",
+      "value": "GA1.1.1218666515.1782478526",
+      "domain": "localhost",
+      "path": "/",
+      "expires": 1817038525.535091,
+      "httpOnly": false,
+      "secure": false,
+      "sameSite": "Lax"
+    }
+  ],
+  "origins": []
+}
