@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { createRoot } from 'react-dom/client';
-import { ArrowLeft, MapPin, Map, Search, Navigation2, Clock, AlertTriangle, Crosshair, Car, Ban, Waves, Shield, Hammer, MoreHorizontal, ArrowUp, ArrowDown, X, ChevronDown } from 'lucide-react';
+import { ArrowLeft, MapPin, Map, Search, Navigation2, Clock, AlertTriangle, Crosshair, X, ChevronDown, ArrowUp, ArrowDown } from 'lucide-react';
 import { useLocationStore } from '../store/useLocationStore';
 import { useNavigate, useLocation } from 'react-router-dom';
 import maplibregl from 'maplibre-gl';
@@ -13,6 +13,8 @@ import { getTravelModeIcon } from '../components/TravelIcons';
 import { IncidentDrawer } from '../components/IncidentDrawer';
 import { useIncidentCategories, incidentIconMap } from '../hooks/useIncidentCategories';
 import { useToast } from '../components/ToastContext';
+import { CockpitLayout } from '../components/spatial/CockpitLayout';
+import { SpatialMembrane } from '../components/spatial/SpatialMembrane';
 
 const Routes = () => {
   const navigate = useNavigate();
@@ -56,14 +58,12 @@ const Routes = () => {
 
   const TRAVEL_MODES = [
     { id: 'foot-walking', label: 'Walk', profile: 'foot-walking', speedMultiplier: 1 },
-    // Use fractional multipliers to significantly lower the base ORS free-flow speeds to realistic city speeds
     { id: 'motorcycle', label: 'Bike', profile: 'driving-car', speedMultiplier: 0.45 },
     { id: 'driving-car', label: 'Car', profile: 'driving-car', speedMultiplier: 0.35 },
-    { id: 'public-transport', label: 'Public Transport', profile: 'driving-car', speedMultiplier: 0.3 }
+    { id: 'public-transport', label: 'Public', profile: 'driving-car', speedMultiplier: 0.3 }
   ];
   const [selectedMode, setSelectedMode] = useState(TRAVEL_MODES[1]);
 
-  // Track Firebase auth state
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (u) => {
       if (u) {
@@ -81,21 +81,18 @@ const Routes = () => {
               .select('id, name')
               .in('id', groupIds);
               
-            if (groupData) {
-              setUserGroups(groupData);
-            }
+            if (groupData) setUserGroups(groupData);
           } else {
             setUserGroups([]);
           }
         } catch (e) {
-          console.error("Group fetch error:", e);
+          console.error(e);
         }
       }
     });
     return () => unsub();
   }, []);
 
-  // Auto-fetch user location on mount
   useEffect(() => {
     if (originLat && originLng) {
       setOriginCoords({ lat: originLat, lng: originLng });
@@ -111,8 +108,8 @@ const Routes = () => {
         setOriginCoords({ lat: loc.lat, lng: loc.lng });
         setOriginText(loc.locationName || 'My Location');
       }).catch(() => {
-        setOriginText('Hyderabad Center'); // Fallback display when permission denied
-        setOriginCoords({ lat: 17.3850, lng: 78.4867 }); // Fallback to Hyderabad center
+        setOriginText('Hyderabad Center');
+        setOriginCoords({ lat: 17.3850, lng: 78.4867 });
       });
     }
   }, [originLat, originLng, globalLocation]);
@@ -138,31 +135,19 @@ const Routes = () => {
         showToast('No locations found for that search', 'error');
       }
     } catch (error) {
-       console.error("Geocoding failed", error);
        showToast('Location search failed. Please try again.', 'error');
     }
   };
 
-  const [routeOptions, setRouteOptions] = useState<Array<{
-    id: number,
-    name: string,
-    eta: string,
-    distance: string,
-    traffic: string,
-    incidents: number,
-    isPrimary: boolean,
-    feature?: any
-  }>>([
-    {
-      id: 0,
-      name: 'Primary Route',
-      eta: 'Calculating...',
-      distance: '...',
-      traffic: 'Unknown',
-      incidents: 0,
-      isPrimary: true
-    }
-  ]);
+  const [routeOptions, setRouteOptions] = useState<Array<any>>([{
+    id: 0,
+    name: 'Primary Route',
+    eta: 'Calculating...',
+    distance: '...',
+    traffic: 'Unknown',
+    incidents: 0,
+    isPrimary: true
+  }]);
 
   useEffect(() => {
     if (map.current) return;
@@ -171,7 +156,7 @@ const Routes = () => {
       map.current = new maplibregl.Map({
         container: mapContainer.current,
         style: 'https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json',
-        center: [78.4867, 17.3850], // Hyderabad
+        center: [78.4867, 17.3850],
         zoom: 12
       });
 
@@ -192,7 +177,7 @@ const Routes = () => {
             'line-cap': 'round'
           },
           'paint': {
-            'line-color': '#ef4523', // primary color
+            'line-color': '#ef4523',
             'line-width': 6,
             'line-opacity': 0.8
           }
@@ -206,11 +191,9 @@ const Routes = () => {
             const lat = e.lngLat.lat;
             const lng = e.lngLat.lng;
             
-            if (target === 'origin') {
-              setOriginCoords({ lat, lng });
-            } else if (target === 'dest') {
-              setDestCoords({ lat, lng });
-            } else if (target.startsWith('stop-')) {
+            if (target === 'origin') setOriginCoords({ lat, lng });
+            else if (target === 'dest') setDestCoords({ lat, lng });
+            else if (target.startsWith('stop-')) {
               const index = parseInt(target.split('-')[1]);
               setStops(prev => {
                 const newStops = [...prev];
@@ -259,7 +242,6 @@ const Routes = () => {
     }
   }, []);
 
-
   const [openDropdownIdx, setOpenDropdownIdx] = useState<number | null>(null);
 
   const getStopInfo = (type?: string) => {
@@ -278,7 +260,6 @@ const Routes = () => {
   const fetchRoute = async () => {
     if (!map.current || !mapLoaded || !originCoords || !destCoords) return;
     try {
-      // Use TomTom API
       const { fetchTomTomRoute } = await import('../lib/routing');
       const coordinates = [
         [originCoords.lng, originCoords.lat],
@@ -289,11 +270,8 @@ const Routes = () => {
 
       if (routeFeature) {
         const summary = routeFeature.properties.summary;
-
-        // Use ORS duration directly
         const adjustedDurationSecs = summary.duration;
 
-        // Count incidents ONLY within 500m of the actual route line (not the bounding box)
         let incidentsCount = 0;
         try {
           const routeLine = turf.lineString(routeFeature.geometry.coordinates);
@@ -310,16 +288,9 @@ const Routes = () => {
         }
 
         const distanceKm = summary.distance / 1000;
-
-        // Traffic label based on ratio of ORS speed to free-flow speed
         const durationHours = adjustedDurationSecs / 3600;
         const avgSpeedKph = durationHours > 0 ? distanceKm / durationHours : 0;
-        const freeflowByMode: Record<string, number> = {
-          'foot-walking': 5,
-          'motorcycle': 40,
-          'driving-car': 50,
-          'public-transport': 30
-        };
+        const freeflowByMode: Record<string, number> = { 'foot-walking': 5, 'motorcycle': 40, 'driving-car': 50, 'public-transport': 30 };
         const freeflow = freeflowByMode[selectedMode.id] || 50;
 
         let trafficLabel = 'Unknown';
@@ -334,9 +305,7 @@ const Routes = () => {
         const formatEta = (mins: number) => {
           if (mins <= 0) return '<1 min';
           if (mins < 60) return `${mins} min`;
-          const h = Math.floor(mins / 60);
-          const m = mins % 60;
-          return `${h}h ${m}m`;
+          return `${Math.floor(mins / 60)}h ${mins % 60}m`;
         };
         const etaMins = Math.ceil(adjustedDurationSecs / 60);
 
@@ -352,94 +321,58 @@ const Routes = () => {
         }]);
         
         const source = map.current?.getSource('route') as maplibregl.GeoJSONSource;
-        if (source) {
-          source.setData(routeFeature);
-        }
+        if (source) source.setData(routeFeature);
 
-        // Remove old start/end markers
         document.querySelectorAll('.route-endpoint-marker').forEach(el => el.remove());
 
-        // Add Start marker (green dot with label)
         if (originCoords && map.current) {
           const startEl = document.createElement('div');
           startEl.className = 'route-endpoint-marker';
           startEl.innerHTML = `<div style="display:flex;flex-direction:column;align-items:center;">
             <div style="background:#34C759;width:16px;height:16px;border-radius:50%;border:3px solid white;box-shadow:0 2px 6px rgba(0,0,0,0.3);"></div>
-            <span style="font-size:11px;font-weight:700;color:#34C759;margin-top:2px;text-shadow:0 1px 2px rgba(0,0,0,0.2);white-space:nowrap;">Start</span>
           </div>`;
-          new maplibregl.Marker({ element: startEl })
-            .setLngLat([originCoords.lng, originCoords.lat])
-            .addTo(map.current);
+          new maplibregl.Marker({ element: startEl }).setLngLat([originCoords.lng, originCoords.lat]).addTo(map.current);
         }
 
-        // Add End marker (red dot with label)
         if (destCoords && map.current) {
           const endEl = document.createElement('div');
           endEl.className = 'route-endpoint-marker';
           endEl.innerHTML = `<div style="display:flex;flex-direction:column;align-items:center;">
             <div style="background:#FF3B30;width:16px;height:16px;border-radius:50%;border:3px solid white;box-shadow:0 2px 6px rgba(0,0,0,0.3);"></div>
-            <span style="font-size:11px;font-weight:700;color:#FF3B30;margin-top:2px;text-shadow:0 1px 2px rgba(0,0,0,0.2);white-space:nowrap;">End</span>
           </div>`;
-          new maplibregl.Marker({ element: endEl })
-            .setLngLat([destCoords.lng, destCoords.lat])
-            .addTo(map.current);
+          new maplibregl.Marker({ element: endEl }).setLngLat([destCoords.lng, destCoords.lat]).addTo(map.current);
         }
 
-        // Add intermediate stops markers (pill with label)
         if (stops.length > 0 && map.current) {
           stops.filter(s => s.coords).forEach((stop, index) => {
             const stopEl = document.createElement('div');
             stopEl.className = 'route-endpoint-marker';
-            
             const info = getStopInfo(stop.type);
-            const label = (stop.type && stop.type !== 'Other') ? stop.type : `Stop ${index + 1}`;
-            
             stopEl.innerHTML = `<div style="display:flex;align-items:center;background:white;padding:4px 8px;border-radius:12px;box-shadow:0 2px 8px rgba(0,0,0,0.2);border:2px solid ${info.color};font-weight:700;font-size:12px;color:#1e293b;white-space:nowrap;gap:6px;">
-              <span style="font-size:14px;">${info.emoji}</span> <span>${label}</span>
+              <span>${info.emoji}</span>
             </div>`;
-            new maplibregl.Marker({ element: stopEl })
-              .setLngLat([stop.coords!.lng, stop.coords!.lat])
-              .addTo(map.current!);
+            new maplibregl.Marker({ element: stopEl }).setLngLat([stop.coords!.lng, stop.coords!.lat]).addTo(map.current!);
           });
         }
         
         const bbox = routeFeature.bbox;
-        if (bbox) {
-          map.current?.fitBounds([
-            [bbox[0], bbox[1]],
-            [bbox[2], bbox[3]]
-          ], { padding: 50 });
-        }
+        if (bbox) map.current?.fitBounds([[bbox[0], bbox[1]], [bbox[2], bbox[3]]], { padding: 50 });
       }
     } catch (error) {
-      console.error("Failed to fetch route:", error);
-      showToast('Failed to calculate route. Please check your network or try another mode.', 'error');
-      setRouteOptions([{
-        id: 0,
-        name: 'Primary Route',
-        eta: 'Unavailable',
-        distance: 'Unavailable',
-        traffic: 'Unknown',
-        incidents: 0,
-        isPrimary: true
-      }]);
+      showToast('Failed to calculate route', 'error');
     }
   };
 
-  // Fetch route when coordinates change or travel mode changes
   useEffect(() => {
     fetchRoute();
   }, [originCoords, destCoords, stops, mapLoaded, routePins.length, selectedMode]);
 
-  // Fetch pins and render as HTML markers
   useEffect(() => {
     if (!map.current || !mapLoaded) return;
-    
     const fetchPins = async () => {
       const twoHoursAgo = new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString();
       const { data } = await supabase.from('pins').select('*').eq('status', 'active').gte('created_at', twoHoursAgo);
       if (data) {
-        // Filter out pins meant for other private groups
         const filteredData = data.filter(pin => !pin.group_id || userGroups.some(g => g.id === pin.group_id));
         setRoutePins(filteredData);
         
@@ -458,24 +391,11 @@ const Routes = () => {
             </div>
           );
 
-          const stopProp = (e: any) => e.stopPropagation();
-          el.addEventListener('mousedown', stopProp);
-          el.addEventListener('touchstart', stopProp);
-          el.addEventListener('pointerdown', stopProp);
-
-          el.addEventListener('click', (e) => {
-            e.stopPropagation();
-            setSelectedIncident(pin);
-          });
-
-          const marker = new maplibregl.Marker({ element: el })
-            .setLngLat([pin.longitude, pin.latitude])
-            .addTo(map.current!);
-            
+          el.addEventListener('click', (e) => { e.stopPropagation(); setSelectedIncident(pin); });
+          const marker = new maplibregl.Marker({ element: el }).setLngLat([pin.longitude, pin.latitude]).addTo(map.current!);
           pinMarkersRef.current[pin.id] = marker;
         });
 
-        // Cleanup removed markers
         Object.keys(pinMarkersRef.current).forEach(id => {
           if (!filteredData.some((p: any) => p.id === id)) {
             pinMarkersRef.current[id].remove();
@@ -491,169 +411,148 @@ const Routes = () => {
   }, [mapLoaded, userGroups]);
 
   return (
-    <div className="w-full h-full bg-gray-50 flex flex-col font-sans overflow-hidden">
-      
-      {/* Top Destination Card (H:120px) */}
-      <div className="bg-white px-4 pt-4 pb-4 shadow-sm z-20 flex-shrink-0">
-        <div className="flex items-center gap-3 mb-4">
-          <button onClick={() => navigate(-1)} className="w-[40px] h-[40px] flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors">
-            <ArrowLeft className="w-6 h-6 text-dark" />
-          </button>
-          <h1 className="text-[20px] font-bold text-dark">Plan Route</h1>
+    <CockpitLayout
+      mapChildren={
+        <div className="w-full h-full relative pointer-events-none">
+          <div ref={mapContainer} className="absolute inset-0 w-full h-full pointer-events-auto" />
+          
+          {/* Top gradient for readability if needed */}
+          <div className="absolute top-0 left-0 right-0 h-24 bg-gradient-to-b from-black/20 to-transparent pointer-events-none z-10" />
         </div>
-        
-        <div className="flex gap-3">
-          <div className="flex flex-col items-center justify-start pt-[17px]">
-            <div className="w-[10px] h-[10px] rounded-full border-2 border-primary flex-shrink-0"></div>
-            {stops.map((_, i) => (
-              <React.Fragment key={i}>
-                <div className="w-[2px] h-[36px] bg-gray-200 my-1 flex-shrink-0"></div>
-                <div className="w-[8px] h-[8px] rounded-full border-2 border-primary bg-white flex-shrink-0 relative z-10"></div>
-              </React.Fragment>
-            ))}
-            <div className="w-[2px] h-[36px] bg-gray-200 my-1 flex-shrink-0"></div>
-            <div className="w-[10px] h-[10px] rounded-full bg-primary flex-shrink-0"></div>
+      }
+    >
+      <Helmet>
+        <title>Route Planner | Ride Club</title>
+      </Helmet>
+
+      <SpatialMembrane position="left" className="w-[420px] p-5 flex flex-col gap-5 max-h-[100dvh]">
+        {/* Header */}
+        <div className="flex items-center gap-3 shrink-0 mb-2">
+          <button onClick={() => navigate(-1)} className="w-10 h-10 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 flex items-center justify-center transition-all active:scale-95">
+            <ArrowLeft className="w-5 h-5 text-white" />
+          </button>
+          <div>
+            <h1 className="text-[24px] font-bold text-white tracking-tight leading-none">Plan Route</h1>
           </div>
-          <div className="flex-1 flex flex-col gap-2">
-            <div className="relative flex-1">
-              <input
-                type="text"
-                value={originText}
-                onChange={e => setOriginText(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && handleGeocode(originText, 'origin')}
-                onBlur={() => originText.trim() && handleGeocode(originText, 'origin')}
-                placeholder="Start location..."
-                className="w-full h-[44px] bg-gray-50 border border-gray-200 rounded-lg pl-3 pr-[80px] text-[14px] text-dark font-medium outline-none focus:border-primary focus:bg-white transition-all"
-              />
-              <div className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center gap-1">
-                <button 
-                  onClick={() => {
-                    if (globalLocation) {
-                      setOriginCoords({ lat: globalLocation.lat, lng: globalLocation.lng });
-                      setOriginText(globalLocationName || 'My Location');
-                      return;
-                    }
-                    useLocationStore.getState().fetchLocationOnce().then(loc => {
-                      setOriginCoords({ lat: loc.lat, lng: loc.lng });
-                      setOriginText(loc.locationName || 'My Location');
-                    }).catch(() => {
-                      showToast('Unable to get location. Please allow location access.', 'error');
-                    });
-                  }}
-                  className="w-[28px] h-[28px] rounded flex items-center justify-center text-blue-500 hover:bg-blue-50 active:scale-95 transition-all"
-                  title="Use my location"
-                >
-                  <Crosshair className="w-4 h-4" />
-                </button>
-                <button 
-                  onClick={() => setSelectingLocationFor('origin')}
-                  className={`w-[28px] h-[28px] rounded flex items-center justify-center ${selectingLocationFor === 'origin' ? 'text-primary bg-primary/10' : 'text-blue-500 hover:bg-blue-50'} active:scale-95 transition-all`}
-                  title="Select on map"
-                >
-                  <Map className="w-4 h-4" />
-                </button>
-              </div>
-            </div>
-            {stops.map((stop, index) => (
-              <div key={index} className="flex gap-2 w-full items-center relative">
-                <div className="relative flex">
-                  <button 
-                    onClick={() => setOpenDropdownIdx(openDropdownIdx === index ? null : index)}
-                    className="h-[44px] flex items-center justify-between gap-1 bg-gray-50 border border-gray-200 border-r-0 rounded-l-lg px-2 text-[12px] text-[#273a5a] font-medium outline-none hover:bg-gray-100 min-w-[95px]"
-                  >
-                    <div className="flex items-center gap-1">
-                      {getStopInfo(stop.type).emoji} <span className="truncate">{!stop.type || stop.type === 'Other' ? 'Pin' : stop.type}</span>
-                    </div>
-                    <ChevronDown className="w-3 h-3 text-gray-400" />
-                  </button>
-                  {openDropdownIdx === index && (
-                    <div className="absolute top-[100%] left-0 mt-1 bg-white border border-gray-100 rounded-lg shadow-lg z-[110] w-[140px] py-1 max-h-[200px] overflow-y-auto hide-scrollbar">
-                      {['Pin', 'Food', 'Hospital', 'Mechanic', 'Tea', 'Fuel', 'Stay', 'Sightseeing'].map(t => (
-                        <div key={t} onClick={() => { 
-                          const newStops = [...stops];
-                          newStops[index].type = t === 'Pin' ? 'Other' : t;
-                          setStops(newStops);
-                          setOpenDropdownIdx(null);
-                        }} className="px-3 py-2 text-[13px] font-medium text-[#273a5a] hover:bg-gray-50 cursor-pointer flex items-center gap-2">
-                          {getStopInfo(t === 'Pin' ? 'Other' : t).emoji} {t}
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-                <div className="relative flex-1">
-                  <input
-                    type="text"
-                    value={stop.text}
-                    onChange={e => {
-                      const newStops = [...stops];
-                      newStops[index].text = e.target.value;
-                      setStops(newStops);
-                    }}
-                    onKeyDown={e => e.key === 'Enter' && handleGeocode(stop.text, `stop-${index}`)}
-                    onBlur={() => stop.text.trim() && handleGeocode(stop.text, `stop-${index}`)}
-                    placeholder={`Stop ${index + 1}...`}
-                    className="w-full h-[44px] bg-gray-50 border border-gray-200 border-l-0 rounded-r-lg pl-3 pr-[40px] text-[14px] text-dark font-medium outline-none focus:border-primary focus:bg-white transition-all"
-                  />
-                  <div className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center gap-0.5">
-                    <button 
-                      onClick={() => setSelectingLocationFor(`stop-${index}`)}
-                      className={`w-[28px] h-[28px] rounded flex items-center justify-center ${selectingLocationFor === `stop-${index}` ? 'text-primary bg-primary/10' : 'text-blue-500 hover:bg-blue-50'} active:scale-95 transition-all ml-1`}
-                      title="Select on map"
-                    >
-                      <Map className="w-4 h-4" />
-                    </button>
-                  </div>
-                </div>
-                
-                <div className="flex items-center gap-1 shrink-0">
-                  <div className="flex flex-col">
-                    <button
-                      onClick={() => {
-                        const newStops = [...stops];
-                        const temp = newStops[index - 1];
-                        newStops[index - 1] = newStops[index];
-                        newStops[index] = temp;
-                        setStops(newStops);
-                      }}
-                      disabled={index === 0}
-                      className="p-1 hover:bg-gray-200 rounded disabled:opacity-30 transition-colors"
-                      title="Move Up"
-                    >
-                      <ArrowUp className="w-3 h-3 text-gray-600" />
-                    </button>
-                    <button
-                      onClick={() => {
-                        const newStops = [...stops];
-                        const temp = newStops[index + 1];
-                        newStops[index + 1] = newStops[index];
-                        newStops[index] = temp;
-                        setStops(newStops);
-                      }}
-                      disabled={index === stops.length - 1}
-                      className="p-1 hover:bg-gray-200 rounded disabled:opacity-30 transition-colors"
-                      title="Move Down"
-                    >
-                      <ArrowDown className="w-3 h-3 text-gray-600" />
-                    </button>
-                  </div>
+        </div>
+
+        <div className="flex-1 overflow-y-auto hide-scrollbar flex flex-col gap-6 pb-4">
+          
+          {/* Location Inputs Block */}
+          <div className="bg-white/5 border border-white/10 rounded-[20px] p-4 backdrop-blur-md flex flex-col gap-3">
+            {/* Origin */}
+            <div className="flex items-center gap-3">
+              <div className="w-3 h-3 rounded-full border-2 border-green-500 shrink-0" />
+              <div className="relative flex-1">
+                <input
+                  type="text"
+                  value={originText}
+                  onChange={e => setOriginText(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && handleGeocode(originText, 'origin')}
+                  onBlur={() => originText.trim() && handleGeocode(originText, 'origin')}
+                  placeholder="Start location..."
+                  className="w-full h-11 bg-black/20 border border-white/10 rounded-xl pl-3 pr-[80px] text-[14px] text-white font-medium outline-none focus:border-primary/50 focus:bg-black/40 transition-all"
+                />
+                <div className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center gap-1">
                   <button 
                     onClick={() => {
-                      const newStops = stops.filter((_, i) => i !== index);
-                      setStops(newStops);
+                      if (globalLocation) {
+                        setOriginCoords({ lat: globalLocation.lat, lng: globalLocation.lng });
+                        setOriginText(globalLocationName || 'My Location');
+                      } else {
+                        useLocationStore.getState().fetchLocationOnce().then(loc => {
+                          setOriginCoords({ lat: loc.lat, lng: loc.lng });
+                          setOriginText(loc.locationName || 'My Location');
+                        });
+                      }
                     }}
-                    className="p-2 ml-1 bg-danger/10 text-danger hover:bg-danger/20 rounded-lg active:scale-95 transition-colors"
-                    title="Remove Stop"
+                    className="w-[30px] h-[30px] rounded-lg flex items-center justify-center text-primary hover:bg-primary/10 active:scale-95 transition-all"
                   >
-                    <X className="w-4 h-4" />
+                    <Crosshair className="w-4 h-4" />
+                  </button>
+                  <button 
+                    onClick={() => setSelectingLocationFor('origin')}
+                    className={`w-[30px] h-[30px] rounded-lg flex items-center justify-center ${selectingLocationFor === 'origin' ? 'bg-primary text-white' : 'text-blue-400 hover:bg-blue-500/10'} active:scale-95 transition-all`}
+                  >
+                    <Map className="w-4 h-4" />
                   </button>
                 </div>
               </div>
+            </div>
+
+            {/* Stops */}
+            {stops.map((stop, index) => (
+              <div key={index} className="flex items-center gap-3">
+                <div className="w-3 h-3 rounded-full border-2 border-orange-500 shrink-0" />
+                <div className="flex-1 flex gap-2">
+                  <div className="relative">
+                    <button 
+                      onClick={() => setOpenDropdownIdx(openDropdownIdx === index ? null : index)}
+                      className="h-11 flex items-center justify-between gap-1 bg-black/20 border border-white/10 rounded-xl px-3 text-[12px] text-white/80 font-medium outline-none hover:bg-black/40 min-w-[95px]"
+                    >
+                      <div className="flex items-center gap-2">
+                        {getStopInfo(stop.type).emoji}
+                      </div>
+                      <ChevronDown className="w-3 h-3 text-white/40" />
+                    </button>
+                    {openDropdownIdx === index && (
+                      <div className="absolute top-[100%] left-0 mt-1 bg-[#1a1a1a] border border-white/10 rounded-xl shadow-xl z-[110] w-[140px] py-1 max-h-[200px] overflow-y-auto hide-scrollbar">
+                        {['Pin', 'Food', 'Hospital', 'Mechanic', 'Tea', 'Fuel', 'Stay', 'Sightseeing'].map(t => (
+                          <div key={t} onClick={() => { 
+                            const newStops = [...stops];
+                            newStops[index].type = t === 'Pin' ? 'Other' : t;
+                            setStops(newStops);
+                            setOpenDropdownIdx(null);
+                          }} className="px-3 py-2 text-[13px] font-medium text-white/80 hover:bg-white/10 cursor-pointer flex items-center gap-2">
+                            {getStopInfo(t === 'Pin' ? 'Other' : t).emoji} {t}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                  <div className="relative flex-1">
+                    <input
+                      type="text"
+                      value={stop.text}
+                      onChange={e => {
+                        const newStops = [...stops];
+                        newStops[index].text = e.target.value;
+                        setStops(newStops);
+                      }}
+                      onKeyDown={e => e.key === 'Enter' && handleGeocode(stop.text, `stop-${index}`)}
+                      onBlur={() => stop.text.trim() && handleGeocode(stop.text, `stop-${index}`)}
+                      placeholder={`Stop ${index + 1}...`}
+                      className="w-full h-11 bg-black/20 border border-white/10 rounded-xl pl-3 pr-[40px] text-[14px] text-white font-medium outline-none focus:border-primary/50 focus:bg-black/40 transition-all"
+                    />
+                    <div className="absolute right-1 top-1/2 -translate-y-1/2">
+                      <button 
+                        onClick={() => setSelectingLocationFor(`stop-${index}`)}
+                        className={`w-[30px] h-[30px] rounded-lg flex items-center justify-center ${selectingLocationFor === `stop-${index}` ? 'bg-primary text-white' : 'text-blue-400 hover:bg-blue-500/10'} active:scale-95 transition-all`}
+                      >
+                        <Map className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                  <div className="flex items-center">
+                    <button 
+                      onClick={() => {
+                        const newStops = stops.filter((_, i) => i !== index);
+                        setStops(newStops);
+                      }}
+                      className="w-11 h-11 bg-red-500/10 text-red-400 hover:bg-red-500/20 border border-red-500/20 rounded-xl active:scale-95 transition-colors flex items-center justify-center"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              </div>
             ))}
-            
-            <div className="flex gap-2 w-full">
+
+            {/* Destination */}
+            <div className="flex items-center gap-3">
+              <div className="w-3 h-3 rounded-full border-2 border-red-500 shrink-0" />
               <div className="relative flex-1">
-                <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                <Search className="w-4 h-4 text-white/40 absolute left-3 top-1/2 -translate-y-1/2" />
                 <input
                   type="text"
                   value={destText}
@@ -661,129 +560,116 @@ const Routes = () => {
                   onKeyDown={e => e.key === 'Enter' && handleGeocode(destText, 'dest')}
                   onBlur={() => destText.trim() && handleGeocode(destText, 'dest')}
                   placeholder="Destination..."
-                  className="w-full h-[44px] bg-gray-50 border border-gray-200 rounded-lg pl-9 pr-[40px] text-[14px] text-dark font-medium outline-none focus:border-primary focus:bg-white transition-all"
+                  className="w-full h-11 bg-black/20 border border-white/10 rounded-xl pl-9 pr-[40px] text-[14px] text-white font-medium outline-none focus:border-primary/50 focus:bg-black/40 transition-all"
                 />
-                <div className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center gap-1">
+                <div className="absolute right-1 top-1/2 -translate-y-1/2">
                   <button 
                     onClick={() => setSelectingLocationFor('dest')}
-                    className={`w-[28px] h-[28px] rounded flex items-center justify-center ${selectingLocationFor === 'dest' ? 'text-primary bg-primary/10' : 'text-blue-500 hover:bg-blue-50'} active:scale-95 transition-all`}
-                    title="Select on map"
+                    className={`w-[30px] h-[30px] rounded-lg flex items-center justify-center ${selectingLocationFor === 'dest' ? 'bg-primary text-white' : 'text-blue-400 hover:bg-blue-500/10'} active:scale-95 transition-all`}
                   >
                     <Map className="w-4 h-4" />
                   </button>
                 </div>
               </div>
             </div>
-            
+
             {stops.length < 5 && (
-              <div className="flex justify-end -mt-1">
-                 <button onClick={() => setStops([...stops, { text: '', coords: null }])} className="text-[13px] font-semibold text-primary hover:text-primary/80 transition-colors flex items-center gap-1 py-1 px-2 rounded hover:bg-primary/5">
-                   + Add Stop
-                 </button>
-              </div>
+              <button 
+                onClick={() => setStops([...stops, { text: '', coords: null }])} 
+                className="text-[12px] font-bold text-primary hover:bg-primary/10 transition-colors w-fit px-3 py-1.5 rounded-lg border border-primary/20 mt-1 ml-6"
+              >
+                + Add Stop
+              </button>
             )}
           </div>
-        </div>
 
-        {/* Travel Mode Selector */}
-        <div className="mt-4 flex gap-2 overflow-x-auto hide-scrollbar pb-2">
-          {TRAVEL_MODES.map(mode => (
-            <button
-              key={mode.id}
-              onClick={() => setSelectedMode(mode)}
-              className={`flex flex-col items-center justify-center min-w-[64px] py-2 px-2 rounded-lg border transition-all ${
-                selectedMode.id === mode.id
-                  ? 'bg-primary/10 border-primary text-primary'
-                  : 'bg-white border-gray-200 text-gray-500 hover:bg-gray-50'
-              }`}
+          {/* Travel Modes */}
+          <div className="flex gap-2">
+            {TRAVEL_MODES.map(mode => (
+              <button
+                key={mode.id}
+                onClick={() => setSelectedMode(mode)}
+                className={`flex-1 flex flex-col items-center justify-center py-3 rounded-xl border transition-all ${
+                  selectedMode.id === mode.id
+                    ? 'bg-primary border-primary text-white shadow-lg shadow-primary/20'
+                    : 'bg-white/5 border-white/10 text-white/40 hover:bg-white/10'
+                }`}
+              >
+                <span className="mb-1">{getTravelModeIcon(mode.id, 'w-5 h-5')}</span>
+                <span className="font-bold text-[11px] uppercase tracking-wider">{mode.label}</span>
+              </button>
+            ))}
+          </div>
+
+          {/* Route Info & Start Button */}
+          <div className="mt-auto flex flex-col gap-4">
+            {routeOptions.map((route) => (
+              <div 
+                key={route.id}
+                onClick={() => setSelectedRoute(route.id)}
+                className={`rounded-2xl border-2 transition-all p-4 ${
+                  selectedRoute === route.id ? 'border-primary bg-primary/10' : 'border-white/10 bg-white/5'
+                }`}
+              >
+                <div className="flex justify-between items-start mb-4">
+                  <div>
+                    <h3 className={`text-[24px] font-black leading-none ${selectedRoute === route.id ? 'text-primary' : 'text-white'}`}>
+                      {route.eta}
+                    </h3>
+                  </div>
+                  <div className="text-right">
+                    <span className="text-[16px] font-bold text-white/80">{route.distance}</span>
+                  </div>
+                </div>
+                
+                <div className="flex gap-2">
+                  <div className="flex items-center gap-1.5 text-[11px] font-bold text-white/60 bg-black/40 px-3 py-1.5 rounded-lg uppercase tracking-wider">
+                    <Clock className="w-3.5 h-3.5" />
+                    {route.traffic} Traffic
+                  </div>
+                  {route.incidents > 0 && (
+                    <div className="flex items-center gap-1.5 text-[11px] font-bold text-red-400 bg-red-500/10 border border-red-500/20 px-3 py-1.5 rounded-lg uppercase tracking-wider">
+                      <AlertTriangle className="w-3.5 h-3.5" />
+                      {route.incidents} Incidents
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))}
+
+            <button 
+              onClick={() => {
+                const selected = routeOptions.find(r => r.id === selectedRoute);
+                if (selected && (selected as any).feature) {
+                  navigate('/navigation', { 
+                    state: { 
+                      routeFeature: (selected as any).feature,
+                      eta: selected.eta,
+                      distance: selected.distance,
+                      destName: destText,
+                      destLat: destCoords.lat,
+                      destLng: destCoords.lng,
+                      travelMode: selectedMode,
+                      isGroupMode: isGroupMode
+                    } 
+                  });
+                } else {
+                  navigate('/navigation');
+                }
+              }} 
+              className="w-full py-4 bg-primary text-white font-bold text-[16px] rounded-xl flex items-center justify-center gap-2 shadow-lg shadow-primary/30 active:scale-95 transition-all uppercase tracking-wider"
             >
-              <span className="mb-1 text-current flex items-center justify-center">{getTravelModeIcon(mode.id, 'w-6 h-6')}</span>
-              <span className="font-semibold text-[12px]">{mode.label}</span>
+              <Navigation2 className="w-5 h-5 fill-white" />
+              Start Navigation
             </button>
-          ))}
+          </div>
         </div>
-      </div>
-
-      {/* Map Area */}
-      <div className="flex-1 relative bg-gray-200 overflow-hidden">
-        <div ref={mapContainer} className="absolute inset-0 w-full h-full" />
-      </div>
-
-      {/* Bottom Route Options Container */}
-      <div className="bg-white rounded-t-lg shadow-[0_-10px_40px_rgba(0,0,0,0.08)] z-20 flex flex-col">
-        <div className="w-full flex justify-center pt-3 pb-1">
-          <div className="w-[40px] h-[4px] bg-gray-200 rounded-full"></div>
-        </div>
-        
-        <div className="px-6 py-4 flex flex-col gap-4 max-h-[350px] overflow-y-auto hide-scrollbar">
-          {routeOptions.map((route) => (
-            <div 
-              key={route.id}
-              onClick={() => setSelectedRoute(route.id)}
-              className={`h-[120px] rounded-lg border-2 transition-all cursor-pointer flex flex-col p-4 ${
-                selectedRoute === route.id ? 'border-primary bg-primary/5' : 'border-gray-100 bg-white hover:border-gray-200'
-              }`}
-            >
-              <div className="flex justify-between items-start mb-2">
-                <div>
-                  <h3 className={`text-[18px] font-bold ${selectedRoute === route.id ? 'text-primary' : 'text-dark'}`}>
-                    {route.eta}
-                  </h3>
-                  <p className="text-[13px] text-gray-500 font-medium">
-                    {route.name}{' '}
-
-                  </p>
-                </div>
-                <div className="text-right">
-                  <span className="text-[14px] font-bold text-dark">{route.distance}</span>
-                </div>
-              </div>
-              
-              <div className="mt-auto flex gap-3">
-                <div className="flex items-center gap-1.5 text-[12px] font-semibold text-gray-600 bg-white border border-gray-100 px-2 py-1 rounded-lg">
-                  <Clock className="w-3.5 h-3.5" />
-                  {route.traffic}
-                </div>
-                <div className="flex items-center gap-1.5 text-[12px] font-semibold text-danger bg-danger/10 px-2 py-1 rounded-lg">
-                  <AlertTriangle className="w-3.5 h-3.5" />
-                  {route.incidents} Incidents
-                </div>
-              </div>
-            </div>
-          ))}
-
-          <button 
-            onClick={() => {
-              const selected = routeOptions.find(r => r.id === selectedRoute);
-              if (selected && (selected as any).feature) {
-                navigate('/navigation', { 
-                  state: { 
-                    routeFeature: (selected as any).feature,
-                    eta: selected.eta,
-                    distance: selected.distance,
-                    destName: destText,
-                    destLat: destCoords.lat,
-                    destLng: destCoords.lng,
-                    travelMode: selectedMode,
-                    isGroupMode: isGroupMode
-                  } 
-                });
-              } else {
-                navigate('/navigation');
-              }
-            }} 
-            className="w-full h-[56px] mt-2 bg-primary hover:bg-[#ef4523] text-white font-bold text-[16px] rounded-lg flex items-center justify-center gap-2 shadow-lg shadow-primary/30 active:scale-95 transition-all"
-          >
-            <Navigation2 className="w-5 h-5" />
-            Start Navigation
-          </button>
-        </div>
-      </div>
+      </SpatialMembrane>
 
       {selectedIncident && (
         <IncidentDrawer incident={selectedIncident} onClose={() => setSelectedIncident(null)} />
       )}
-    </div>
+    </CockpitLayout>
   );
 };
 

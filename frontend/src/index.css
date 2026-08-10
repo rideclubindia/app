@@ -1,21 +1,58 @@
 @import "tailwindcss";
 
 @theme {
-  --color-primary: #ef4523;
+  --color-primary: #F97316;
+  --color-secondary: #FB923C;
+  --color-primary-light: #FFF7ED;
   --color-success: #22C55E;
   --color-danger: #EF4444;
-  --color-warning: #ef4523;
-  --color-background: #F0F0F5;
-  --color-dark: #273a5a;
-  --color-text-primary: #273a5a;
+  --color-warning: #F59E0B;
+  --color-background: #FAFAF9;
+  --color-surface: #FFFFFF;
+  --color-surface-sec: #FAFAF9;
+  --color-text-primary: #111827;
   --color-text-secondary: #6B7280;
   --color-border: #E5E7EB;
   
-  --font-sans: "Rubik", sans-serif;
+  --font-sans: "Inter", "Roboto", sans-serif;
   
   --font-weight-bold: 600;
-  --font-weight-extrabold: 600;
-  --font-weight-black: 600;
+  --font-weight-extrabold: 700;
+  --font-weight-black: 800;
+
+  /* Spatial Design Tokens */
+  --opacity-membrane: 0.82;
+  --radius-sm: 2px;
+  --radius-lg: 20px;
+  --blur-base: 12px;
+  --blur-lg: 24px;
+  --transition-spatial: 220ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@layer utilities {
+  .text-speed {
+    font-size: 42px;
+    font-weight: 700;
+  }
+  .text-turn {
+    font-size: 28px;
+    font-weight: 600;
+  }
+  .text-secondary-info {
+    font-size: 15px;
+    font-weight: 500;
+  }
+  .text-micro {
+    font-size: 12px;
+    font-weight: 500;
+  }
+  .bg-membrane {
+    background-color: rgba(255, 255, 255, 0.82);
+    backdrop-filter: blur(12px);
+  }
+  .transition-spatial {
+    transition: all 220ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
 }
 
 html, body {

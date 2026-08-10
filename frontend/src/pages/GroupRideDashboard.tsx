@@ -11,6 +11,11 @@ import {
     PauseCircle, PlayCircle, Flag, Map
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import { CockpitLayout } from '../components/spatial/CockpitLayout';
+import { SpatialMembrane } from '../components/spatial/SpatialMembrane';
+import { LeftGravityWell } from '../components/spatial/LeftGravityWell';
+import { Helmet } from 'react-helmet-async';
+import { motion, AnimatePresence } from 'framer-motion';
 
 export const GroupRideDashboard: React.FC = () => {
     const [searchParams] = useSearchParams();
@@ -416,339 +421,163 @@ export const GroupRideDashboard: React.FC = () => {
     }
 
     return (
-        <div className="w-full h-full bg-[#F2F4F7] flex flex-col font-sans overflow-hidden">
-            {/* Top Header */}
-            <div className="px-5 pt-4 pb-4 bg-white border-b border-gray-100 flex-shrink-0 flex justify-between items-center z-10 shadow-sm">
-                <div>
-                    <p className="text-[13px] font-bold text-[#8A8A8E] tracking-wider mb-0.5 uppercase">Dashboard</p>
-                    <div className="flex items-center gap-2">
-                        <h1 className="text-[22px] font-bold text-[#273a5a] leading-none tracking-tight">Fleet Tracker</h1>
+        <CockpitLayout
+            mapChildren={
+                <div className="w-full h-full relative pointer-events-none bg-[#FAFAF9]">
+                    <div ref={mapContainer} className="w-full h-full" />
+                </div>
+            }
+        >
+            <Helmet>
+                <title>Group Dashboard | Ride Club</title>
+            </Helmet>
+
+            <LeftGravityWell onSOSClick={() => navigate('/alerts')}>
+                <button onClick={() => navigate(-1)} className="w-10 h-10 rounded-full flex items-center justify-center hover:bg-white/20 active:scale-95 transition-all text-[#ef4523] mt-2">
+                    <ArrowLeft className="w-5 h-5" />
+                </button>
+            </LeftGravityWell>
+
+            <SpatialMembrane className="flex flex-col h-full pointer-events-auto p-4 gap-4 overflow-y-auto hide-scrollbar landscape:ml-[72px]">
+                
+                {/* Dashboard Header */}
+                <div className="bg-white/90 backdrop-blur-md rounded-[24px] p-5 shadow-[0_8px_30px_rgba(0,0,0,0.12)] border border-white/50 flex items-center justify-between gap-4 mt-2">
+                    <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                            <h1 className="text-[22px] font-black text-[#14142B] leading-tight truncate">Group Tracker</h1>
+                        </div>
+                        <div className="flex items-center gap-2 overflow-x-auto hide-scrollbar">
+                            <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider border whitespace-nowrap ${getStatusColor(dashboardData.group_status)}`}>
+                                {dashboardData.group_status}
+                            </span>
+                            <span className="text-[12px] font-bold text-gray-500 whitespace-nowrap">ID: {dashboardData.ride_id.substring(0,6).toUpperCase()}</span>
+                        </div>
+                    </div>
+                    <div className="w-12 h-12 rounded-full bg-[#FFF0E6] flex items-center justify-center shrink-0 border border-white/50">
+                        <Radio className="w-6 h-6 text-[#ef4523]" />
                     </div>
                 </div>
-                <div className="flex gap-3">
-                    <button onClick={() => navigate(-1)} className="w-[44px] h-[44px] bg-[#F2F4F7] rounded-full flex items-center justify-center text-[#273a5a] shadow-sm hover:bg-gray-100 active:scale-95 transition-all">
-                        <ArrowLeft className="w-5 h-5" />
-                    </button>
-                    <button className="w-[44px] h-[44px] bg-[#F2F4F7] rounded-full flex items-center justify-center text-[#273a5a] shadow-sm hover:bg-gray-100 active:scale-95 transition-all">
-                        <MoreVertical className="w-5 h-5" />
-                    </button>
-                </div>
-            </div>
 
-            <div className="flex-1 overflow-y-auto hide-scrollbar p-2">
-                
-                {error && (
-                    <div className="bg-red-50 border border-red-100 p-3 rounded-xl mb-4 mt-2 flex items-start gap-3 shadow-sm mx-2">
-                        <AlertTriangle className="w-5 h-5 text-red-500 shrink-0 mt-0.5" />
+                {/* Core Stats Spatial Grid */}
+                <div className="grid grid-cols-2 gap-3">
+                    <div className="bg-white/90 backdrop-blur-md rounded-[20px] p-4 shadow-[0_8px_30px_rgba(0,0,0,0.12)] border border-white/50 flex flex-col justify-center">
+                        <div className="flex items-center gap-2 mb-2">
+                            <Activity className="w-4 h-4 text-[#ef4523]" strokeWidth={3} />
+                            <span className="text-[11px] font-black text-gray-500 uppercase tracking-widest">Cohesion</span>
+                        </div>
+                        <span className="text-[28px] font-black text-[#14142B] leading-none">{dashboardData.cohesion_score}</span>
+                    </div>
+                    
+                    <div className="bg-white/90 backdrop-blur-md rounded-[20px] p-4 shadow-[0_8px_30px_rgba(0,0,0,0.12)] border border-white/50 flex flex-col justify-center">
+                        <div className="flex items-center gap-2 mb-2">
+                            <Users className="w-4 h-4 text-[#3B82F6]" strokeWidth={3} />
+                            <span className="text-[11px] font-black text-gray-500 uppercase tracking-widest">Active Fleet</span>
+                        </div>
+                        <span className="text-[28px] font-black text-[#14142B] leading-none">
+                            {dashboardData.active_count}<span className="text-[14px] text-gray-400 ml-1">/{dashboardData.riders_metrics.length}</span>
+                        </span>
+                    </div>
+                </div>
+
+                {/* System Alert Overlay */}
+                {dashboardData.recommended_regroup_action && (
+                    <div className="bg-red-50/90 backdrop-blur-md rounded-[20px] p-4 shadow-sm border border-red-100 flex items-start gap-3">
+                        <div className="bg-red-100 p-2 rounded-xl shrink-0 mt-0.5">
+                            <AlertTriangle className="w-5 h-5 text-red-500" />
+                        </div>
                         <div className="flex-1 min-w-0">
-                            <h4 className="font-bold text-[13px] text-red-700">Connection Error</h4>
-                            <p className="text-[12px] text-red-600/80 leading-tight">{error}</p>
+                            <h4 className="font-black text-[13px] text-red-600 uppercase tracking-widest mb-1">System Alert</h4>
+                            <p className="text-[13px] font-bold text-red-800 leading-tight">{dashboardData.recommended_regroup_action}</p>
                         </div>
                     </div>
                 )}
 
-                {/* Ride Info Card (Replacing Profile Card) */}
-                <div className="bg-white rounded-xl shadow-sm border border-gray-100 flex flex-col p-2 relative mb-6 mt-2">
-                    <div className="flex items-center gap-4">
-                        <div className="relative">
-                            <div className="w-[80px] h-[80px] rounded-full bg-[#F2F4F7] p-1 border border-gray-100 flex items-center justify-center">
-                                <div className="w-full h-full rounded-full bg-[#ef4523] flex items-center justify-center text-white">
-                                    <Map className="w-8 h-8" />
-                                </div>
-                            </div>
-                            <div className={`absolute bottom-0 right-0 w-6 h-6 border-2 border-white rounded-full flex items-center justify-center shadow-sm ${dashboardData.group_status === 'Critical' ? 'bg-red-500' : 'bg-[#34C759]'}`}>
-                                <Activity className="w-3 h-3 text-white" strokeWidth={3} />
-                            </div>
-                        </div>
-                        <div className="flex-1 min-w-0">
-                            <h2 className="text-[22px] font-bold text-[#273a5a] leading-tight tracking-tight truncate">Ride {dashboardData.ride_id.substring(0,6).toUpperCase()}</h2>
-                            <div className="flex items-center gap-1.5 mt-1 overflow-x-auto hide-scrollbar">
-                                <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider border whitespace-nowrap ${getStatusColor(dashboardData.group_status)}`}>
-                                    {dashboardData.group_status}
-                                </span>
-                                <span className="text-[13px] font-bold text-[#8A8A8E] ml-1 whitespace-nowrap truncate">{dashboardData.formation_type}</span>
-                            </div>
-                            <div className="flex items-center gap-1.5 mt-2">
-                                <span className="flex h-2 w-2 relative shrink-0">
-                                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-success opacity-75"></span>
-                                    <span className="relative inline-flex rounded-full h-2 w-2 bg-success"></span>
-                                </span>
-                                <span className="text-[11px] font-bold text-success uppercase tracking-wider whitespace-nowrap">Live Telemetry</span>
-                                <span className="text-[11px] font-medium text-[#8A8A8E] ml-1 whitespace-nowrap">• Active</span>
-                            </div>
+                {/* Spatial Rider Presence Field */}
+                <div className="bg-white/90 backdrop-blur-md rounded-[24px] shadow-[0_8px_30px_rgba(0,0,0,0.12)] border border-white/50 overflow-hidden flex flex-col">
+                    <div className="p-4 border-b border-gray-100/50 flex items-center justify-between">
+                        <h3 className="font-black text-[14px] text-[#14142B] uppercase tracking-widest">Spatial Presence</h3>
+                        <div className="flex gap-2">
+                            <span className="text-[10px] font-bold text-gray-400 flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-[#ef4523]"></span> Active</span>
+                            <span className="text-[10px] font-bold text-gray-400 flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-yellow-400"></span> Stopped</span>
                         </div>
                     </div>
-                </div>
+                    
+                    <div className="relative h-[220px] w-full bg-[#F8F9FA] overflow-hidden">
+                        {/* Background Grid Pattern */}
+                        <div className="absolute inset-0 opacity-[0.03]" style={{ backgroundImage: 'radial-gradient(#14142B 1px, transparent 1px)', backgroundSize: '20px 20px' }}></div>
+                        
+                        {/* Leader Marker (Center) */}
+                        <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-32 h-32 rounded-full border border-[#ef4523]/20 flex items-center justify-center">
+                            <div className="w-16 h-16 rounded-full border border-[#ef4523]/40 flex items-center justify-center">
+                                <div className="text-[10px] font-black text-[#ef4523]/50 uppercase tracking-widest">Leader</div>
+                            </div>
+                        </div>
 
-                {/* Map Card */}
-                <h3 className="text-[16px] font-bold text-[#273a5a] mb-3 px-2">Ride Map</h3>
-                <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden mb-6 relative h-[350px]">
-                    <div ref={mapContainer} className="absolute inset-0 bg-[#e5e9f0] w-full h-full" />
-                    {dashboardData.recommended_regroup_action && (
-                        <div className="absolute bottom-4 left-4 right-4 bg-white/90 backdrop-blur-md border border-red-100 text-[#273a5a] p-3 rounded-xl shadow-lg flex items-center gap-3">
-                            <div className="bg-red-50 p-2 rounded-lg shrink-0">
-                                <AlertTriangle className="w-5 h-5 text-red-500" />
-                            </div>
-                            <div className="flex-1 min-w-0">
-                                <h4 className="font-bold text-[13px] leading-tight text-[#ef4523]">System Alert</h4>
-                                <p className="text-[11px] text-[#8A8A8E] truncate">{dashboardData.recommended_regroup_action}</p>
-                            </div>
-                        </div>
-                    )}
-                </div>
-
-                {/* Core Stats Grid */}
-                <h3 className="text-[16px] font-bold text-[#273a5a] mb-3 px-2">Group Metrics</h3>
-                <div className="grid grid-cols-2 gap-3 mb-6">
-                    <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 flex flex-col justify-center">
-                        <div className="flex items-center gap-2 mb-2">
-                            <div className="w-8 h-8 rounded-lg bg-[#FFF0E6] flex items-center justify-center">
-                                <Activity className="w-4 h-4 text-[#ef4523]" />
-                            </div>
-                            <span className="text-[13px] font-bold text-[#8A8A8E]">Cohesion</span>
-                        </div>
-                        <span className="text-[24px] font-bold text-[#273a5a] leading-none">{dashboardData.cohesion_score}</span>
-                    </div>
-                    <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 flex flex-col justify-center">
-                        <div className="flex items-center gap-2 mb-2">
-                            <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center">
-                                <MapPin className="w-4 h-4 text-blue-500" />
-                            </div>
-                            <span className="text-[13px] font-bold text-[#8A8A8E]">Total Dist</span>
-                        </div>
-                        <span className="text-[24px] font-bold text-[#273a5a] leading-none">
-                            {(dashboardData.total_ride_distance / 1000).toFixed(1)} <span className="text-[14px]">km</span>
-                        </span>
-                    </div>
-                    <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 flex flex-col justify-center">
-                        <div className="flex items-center gap-2 mb-2">
-                            <div className="w-8 h-8 rounded-lg bg-purple-50 flex items-center justify-center">
-                                <Users className="w-4 h-4 text-purple-500" />
-                            </div>
-                            <span className="text-[13px] font-bold text-[#8A8A8E]">Active Fleet</span>
-                        </div>
-                        <span className="text-[24px] font-bold text-[#273a5a] leading-none">
-                            {dashboardData.active_count}<span className="text-[14px] text-gray-400">/{dashboardData.riders_metrics.length}</span>
-                        </span>
-                    </div>
-                    <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 flex flex-col justify-center">
-                        <div className="flex items-center gap-2 mb-2">
-                            <div className="w-8 h-8 rounded-lg bg-green-50 flex items-center justify-center">
-                                <Route className="w-4 h-4 text-green-500" />
-                            </div>
-                            <span className="text-[13px] font-bold text-[#8A8A8E]">Progress</span>
-                        </div>
-                        <span className="text-[24px] font-bold text-[#273a5a] leading-none">{dashboardData.progress_percentage.toFixed(0)}%</span>
-                    </div>
-                </div>
-
-                {/* Fleet Tracker Tabs */}
-                <h3 className="text-[16px] font-bold text-[#273a5a] mb-3 px-2">Rider Activity</h3>
-                <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden mb-6 flex flex-col">
-                    <div className="p-4 border-b border-gray-100 flex items-center gap-3">
-                        <div className="relative flex-1">
-                            <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
-                            <input 
-                                type="text" 
-                                placeholder="Search rider..." 
-                                value={searchQuery}
-                                onChange={(e) => setSearchQuery(e.target.value)}
-                                className="pl-9 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-lg text-[13px] font-medium focus:outline-none focus:ring-1 focus:ring-primary/20 w-full"
-                            />
-                        </div>
-                        <div className="relative shrink-0">
-                            <button 
-                                onClick={() => setDropdownOpen(!dropdownOpen)}
-                                className="py-2 px-3 bg-white border border-gray-200 rounded-lg text-[13px] font-bold text-[#273a5a] shadow-sm flex items-center justify-between gap-2 min-w-[120px] transition-all hover:bg-gray-50 focus:ring-2 focus:ring-[#ef4523]/20"
-                            >
-                                <span className="truncate">{selectedRiderFilter === 'All' ? 'All Riders' : selectedRiderFilter}</span>
-                                <svg className={`w-4 h-4 text-gray-500 transition-transform ${dropdownOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path>
-                                </svg>
-                            </button>
-
-                            {dropdownOpen && (
-                                <>
-                                    <div className="fixed inset-0 z-10" onClick={() => setDropdownOpen(false)}></div>
-                                    <div className="absolute right-0 mt-1 bg-white border border-gray-100 rounded-xl shadow-lg z-20 py-1 min-w-[160px] max-h-[250px] overflow-y-auto">
-                                        <button 
-                                            onClick={() => { setSelectedRiderFilter('All'); setDropdownOpen(false); }}
-                                            className={`w-full text-left px-4 py-2 text-[13px] hover:bg-gray-50 transition-colors ${selectedRiderFilter === 'All' ? 'font-bold text-[#ef4523] bg-red-50' : 'font-medium text-[#273a5a]'}`}
-                                        >
-                                            All Riders
-                                        </button>
-                                        {dashboardData?.riders_metrics.map(r => (
-                                            <button 
-                                                key={r.rider_id}
-                                                onClick={() => { setSelectedRiderFilter(r.rider_id); setDropdownOpen(false); }}
-                                                className={`w-full text-left px-4 py-2 text-[13px] hover:bg-gray-50 transition-colors ${selectedRiderFilter === r.rider_id ? 'font-bold text-[#ef4523] bg-red-50' : 'font-medium text-[#273a5a]'}`}
-                                            >
-                                                {r.rider_id}
-                                            </button>
-                                        ))}
-                                    </div>
-                                </>
-                            )}
-                        </div>
-                    </div>
-                    <div className="p-4 bg-gray-50/50 border-b border-gray-50 overflow-x-auto hide-scrollbar">
-                        <div className="flex gap-2 min-w-max">
-                            {[
-                                { id: 'status', label: 'Status', icon: <Activity className="w-4 h-4" /> },
-                                { id: 'performance', label: 'Performance', icon: <TrendingUp className="w-4 h-4" /> },
-                                { id: 'distance', label: 'Distance', icon: <MapPin className="w-4 h-4" /> },
-                                { id: 'eta', label: 'ETA', icon: <Clock className="w-4 h-4" /> },
-                                { id: 'risk', label: 'Risk', icon: <AlertTriangle className="w-4 h-4" /> }
-                            ].map(tab => {
-                                const isActive = activeTrackerTab === tab.id;
+                        {/* Fluid Rider Nodes */}
+                        <AnimatePresence>
+                            {dashboardData.riders_metrics.map((r, i) => {
+                                // Map distance_to_leader to radius (0-100px) and heading to angle
+                                const distFactor = Math.min(r.distance_to_leader / 500, 1); // 500m max radius
+                                const radius = distFactor * 90; // max 90px from center
+                                const angle = (i * (360 / Math.max(dashboardData.riders_metrics.length, 1))) * (Math.PI / 180);
+                                
+                                const xOffset = Math.cos(angle) * radius;
+                                const yOffset = Math.sin(angle) * radius;
+                                
                                 return (
-                                    <button
-                                        key={tab.id}
-                                        onClick={() => setActiveTrackerTab(tab.id as any)}
-                                        className={`px-4 py-2 rounded-lg flex items-center gap-2 border transition-all text-[13px] font-bold ${
-                                            isActive 
-                                            ? 'bg-[#ef4523] text-white border-[#ef4523] shadow-sm' 
-                                            : 'bg-white text-gray-500 border-gray-200'
-                                        }`}
+                                    <motion.div
+                                        key={r.rider_id}
+                                        layout
+                                        initial={{ opacity: 0, scale: 0 }}
+                                        animate={{ opacity: 1, scale: 1, x: `calc(-50% + ${xOffset}px)`, y: `calc(-50% + ${yOffset}px)` }}
+                                        exit={{ opacity: 0, scale: 0 }}
+                                        transition={{ type: "spring", stiffness: 200, damping: 20 }}
+                                        className="absolute left-1/2 top-1/2 flex flex-col items-center gap-1.5 z-10"
                                     >
-                                        {tab.icon}
-                                        <span>{tab.label}</span>
-                                    </button>
+                                        <div className={`w-11 h-11 rounded-full flex items-center justify-center text-white font-black text-[14px] shadow-[0_4px_12px_rgba(0,0,0,0.15)] border-2 border-white transition-colors duration-300 ${
+                                            r.status === 'Stopped' ? 'bg-yellow-500' :
+                                            r.separation_risk === 'High' ? 'bg-red-500 animate-pulse' :
+                                            'bg-[#ef4523]'
+                                        }`}>
+                                            {r.rider_id.substring(0,2).toUpperCase()}
+                                        </div>
+                                        <div className="bg-white/90 backdrop-blur-sm px-2 py-0.5 rounded-full shadow-sm border border-white flex flex-col items-center">
+                                            <span className="text-[10px] font-black text-[#14142B] leading-none">{r.rider_id}</span>
+                                            <span className="text-[8px] font-bold text-gray-500">{r.distance_to_leader.toFixed(0)}m</span>
+                                        </div>
+                                    </motion.div>
                                 );
                             })}
-                        </div>
-                    </div>
-                    <div className="flex flex-col divide-y divide-gray-50 max-h-[400px] overflow-y-auto">
-                        {filteredRiders.map((r, i) => (
-                            <div key={i} className="flex flex-col p-4 hover:bg-gray-50 transition-colors">
-                                <div className="flex items-center gap-3 mb-3">
-                                    <div className="w-10 h-10 rounded-lg bg-[#F2F4F7] flex items-center justify-center flex-shrink-0 font-bold text-[#273a5a]">
-                                        {r.rider_id.substring(0, 2).toUpperCase()}
-                                    </div>
-                                    <div className="flex-1 min-w-0">
-                                        <p className="text-[14px] font-bold text-[#273a5a] truncate">{r.rider_id}</p>
-                                        <p className="text-[12px] text-[#8A8A8E] truncate">{r.distance_to_leader.toFixed(0)}m from Leader</p>
-                                    </div>
-                                </div>
-                                <div className="bg-gray-50 rounded-lg p-3 border border-gray-100">
-                                    {activeTrackerTab === 'status' && (
-                                        <div className="flex items-center justify-between">
-                                            <span className="text-[12px] font-bold text-gray-500">Current State:</span>
-                                            <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[11px] font-bold border uppercase ${
-                                                r.status === 'Active' ? 'bg-green-50 text-green-600 border-green-100' :
-                                                r.status === 'Stopped' ? 'bg-yellow-50 text-yellow-600 border-yellow-100' :
-                                                'bg-gray-50 text-gray-600 border-gray-200'
-                                            }`}>
-                                                {r.status}
-                                            </span>
-                                        </div>
-                                    )}
-                                    {activeTrackerTab === 'performance' && (
-                                        <div className="flex justify-between items-center text-[13px] font-bold text-[#273a5a]">
-                                            <span>Top: {r.top_speed.toFixed(1)} km/h</span>
-                                            <span className="text-gray-500">Dev: ±{r.speed_deviation.toFixed(1)}</span>
-                                        </div>
-                                    )}
-                                    {activeTrackerTab === 'distance' && (
-                                        <div>
-                                            <div className="flex justify-between text-[12px] font-bold text-[#273a5a] mb-1">
-                                                <span>{(r.total_distance / 1000).toFixed(2)} km covered</span>
-                                                <span className="text-gray-400">{r.distance_remaining ? `${(r.distance_remaining/1000).toFixed(1)} km left` : ''}</span>
-                                            </div>
-                                            <div className="h-1.5 w-full bg-gray-200 rounded-full overflow-hidden">
-                                                <div className="h-full bg-[#ef4523] rounded-full" style={{ width: `${Math.min(100, (r.total_distance / (r.total_distance + (r.distance_remaining||1))) * 100)}%` }} />
-                                            </div>
-                                        </div>
-                                    )}
-                                    {activeTrackerTab === 'eta' && (
-                                        <div className="flex justify-between items-center">
-                                            <span className="text-[12px] font-bold text-gray-500">ETA:</span>
-                                            <span className="text-[14px] font-black text-[#273a5a]">{r.eta || '--'}</span>
-                                        </div>
-                                    )}
-                                    {activeTrackerTab === 'risk' && (
-                                        <div className="flex items-center justify-between">
-                                            <span className="text-[12px] font-bold text-gray-500">Separation Risk:</span>
-                                            <span className={`inline-flex items-center px-2 py-0.5 rounded text-[11px] font-bold uppercase border ${
-                                                r.separation_risk === 'High' ? 'bg-red-50 text-red-600 border-red-100' :
-                                                r.separation_risk === 'Medium' ? 'bg-orange-50 text-orange-600 border-orange-100' :
-                                                'bg-emerald-50 text-emerald-600 border-emerald-100'
-                                            }`}>
-                                                {r.separation_risk}
-                                            </span>
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-                        ))}
-                        {filteredRiders.length === 0 && (
-                            <div className="p-6 text-center text-[13px] text-gray-500 font-medium">
-                                No riders match your search criteria.
-                            </div>
-                        )}
+                        </AnimatePresence>
                     </div>
                 </div>
 
-                {/* Events Log */}
-                <h3 className="text-[16px] font-bold text-[#273a5a] mb-3 px-2">Live Events Log</h3>
-                <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden mb-6 flex flex-col max-h-[300px]">
-                    <div className="p-4 overflow-y-auto flex-1 space-y-4 hide-scrollbar">
+                {/* Events Log Spatial Card */}
+                <div className="bg-white/90 backdrop-blur-md rounded-[24px] shadow-[0_8px_30px_rgba(0,0,0,0.12)] border border-white/50 overflow-hidden flex flex-col mb-6">
+                    <div className="p-4 border-b border-gray-100/50">
+                        <h3 className="font-black text-[14px] text-[#14142B] uppercase tracking-widest">Telemetry Stream</h3>
+                    </div>
+                    <div className="p-4 overflow-y-auto max-h-[200px] flex flex-col gap-3 hide-scrollbar">
                         {dashboardData.events.length === 0 ? (
-                            <div className="flex flex-col items-center justify-center py-6 text-center text-gray-400 gap-2">
-                                <CheckCircle className="w-8 h-8 text-gray-300" />
-                                <p className="text-[13px] font-medium">No events recorded yet.</p>
-                            </div>
+                            <div className="text-center text-[12px] font-bold text-gray-400 py-4">Waiting for telemetry data...</div>
                         ) : (
                             dashboardData.events.slice().reverse().map((event, idx) => (
-                                <div key={idx} className="flex gap-3 items-start">
-                                    <div className={`mt-0.5 w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
-                                        event.event_type.includes('WARNING') || event.event_type.includes('RISK') ? 'bg-orange-50 text-orange-500' :
-                                        event.event_type.includes('SPLIT') || event.event_type.includes('REQUIRED') || event.event_type.includes('SOS') ? 'bg-red-50 text-red-500' :
-                                        'bg-blue-50 text-blue-500'
-                                    }`}>
-                                        {event.event_type.includes('RISK') ? <AlertTriangle className="w-4 h-4" /> :
-                                         event.event_type.includes('SOS') ? <Radio className="w-4 h-4" /> :
-                                         <Activity className="w-4 h-4" />}
-                                    </div>
+                                <div key={idx} className="flex gap-3 items-center">
+                                    <div className={`w-2 h-2 rounded-full shrink-0 ${
+                                        event.event_type.includes('RISK') ? 'bg-red-500' : 'bg-[#3B82F6]'
+                                    }`}></div>
                                     <div className="flex-1 min-w-0">
-                                        <div className="flex justify-between items-center mb-0.5">
-                                            <p className="text-[13px] font-bold text-[#273a5a] truncate">{event.event_type.replace(/_/g, ' ')}</p>
-                                            <p className="text-[10px] font-bold text-gray-400 whitespace-nowrap ml-2">
-                                                {new Date(event.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
-                                            </p>
-                                        </div>
-                                        <p className="text-[12px] text-[#8A8A8E] leading-snug">{event.details}</p>
+                                        <p className="text-[13px] font-bold text-[#14142B] truncate">{event.event_type.replace(/_/g, ' ')}</p>
+                                        <p className="text-[11px] font-bold text-gray-400 truncate">{event.details}</p>
                                     </div>
+                                    <span className="text-[10px] font-black text-gray-300">{new Date(event.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
                                 </div>
                             ))
                         )}
                     </div>
                 </div>
 
-                {/* Cohesion Chart */}
-                <h3 className="text-[16px] font-bold text-[#273a5a] mb-3 px-2">Cohesion Trend</h3>
-                <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-2 mb-6">
-                    <div className="h-24 relative w-full flex items-end gap-1 pt-4">
-                        {cohesionData.length > 0 ? cohesionData.map((d: any, i: number) => {
-                            const maxVal = Math.max(...cohesionData.map((x: any) => x.score), 10);
-                            const heightPct = (d.score / maxVal) * 100;
-                            return (
-                                <div key={i} className="flex-1 flex flex-col justify-end items-center h-full group relative">
-                                    <div className="w-full bg-[#ef4523] opacity-80 hover:opacity-100 transition-all rounded-t-sm" style={{ height: `${Math.max(5, heightPct)}%` }}></div>
-                                    <div className="absolute -top-8 bg-gray-900 text-white text-[10px] font-bold px-1.5 py-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10 pointer-events-none">
-                                        {d.score.toFixed(1)}
-                                    </div>
-                                </div>
-                            );
-                        }) : (
-                            <div className="flex items-center justify-center h-full text-[12px] text-gray-400 font-medium w-full">
-                                Collecting historical data...
-                            </div>
-                        )}
-                    </div>
-                </div>
-
-            </div>
-        </div>
+            </SpatialMembrane>
+        </CockpitLayout>
     );
 };

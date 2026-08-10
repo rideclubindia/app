@@ -1,5 +1,5 @@
 import React, { lazy, Suspense, useEffect, useState } from 'react';
-import { BrowserRouter, Routes, Route, Link, Outlet, useLocation, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Link, Outlet, useLocation, Navigate, useNavigate } from 'react-router-dom';
 import { Map as MapIcon, Bell, User, Users, Navigation2, Home as HomeIcon } from 'lucide-react';
 import { ToastProvider, useToast } from './components/ToastContext';
 import { useLocationStore } from './store/useLocationStore';
@@ -17,6 +17,7 @@ import { Capacitor } from '@capacitor/core';
 import ReactGA from 'react-ga4';
 import { MorphingNav } from './components/MorphingNav';
 import { InstallPWA } from './components/InstallPWA';
+import { LeftGravityWell } from './components/spatial/LeftGravityWell';
 
 const measurementId = import.meta.env.VITE_GA_MEASUREMENT_ID;
 if (measurementId) {
@@ -240,61 +241,43 @@ const RequireAdmin = ({ children }: { children: React.ReactNode }) => {
 
 const Layout = () => {
   const location = useLocation();
+  const navigate = useNavigate();
 
-  const NavItem = ({ to, icon: Icon, label }: { to: string, icon: any, label: string }) => {
+  const SpatialNavItem = ({ to, icon: Icon, label }: { to: string, icon: any, label: string }) => {
     const isActive = location.pathname.startsWith(to);
     return (
-      <Link to={to} className="flex flex-col items-center justify-center gap-1 w-[60px] lg:w-20 max-lg:landscape:w-14 group transition-transform active:scale-95 duration-200" aria-label={`Navigate to ${label}`}>
-        <div className="flex items-center justify-center w-8 h-8 lg:w-[56px] lg:h-[40px] max-lg:landscape:w-6 max-lg:landscape:h-6 transition-all duration-300">
-          <Icon className={`w-6 h-6 lg:w-7 lg:h-7 max-lg:landscape:w-5 max-lg:landscape:h-5 transition-colors duration-300 ${isActive ? 'text-[#ef4523]' : 'text-[#8A8A8E] group-hover:text-gray-500'}`} strokeWidth={isActive ? 2.5 : 2} />
+      <Link to={to} className="flex flex-col items-center justify-center gap-1.5 group transition-transform active:scale-95 duration-200 w-full" aria-label={`Navigate to ${label}`}>
+        <div className={`flex items-center justify-center w-10 h-10 rounded-full transition-all duration-300 ${isActive ? 'bg-[#FFF0E6]' : 'hover:bg-gray-100'}`}>
+          <Icon className={`w-5 h-5 transition-colors duration-300 ${isActive ? 'text-[#ef4523]' : 'text-gray-500 group-hover:text-gray-700'}`} strokeWidth={isActive ? 2.5 : 2} />
         </div>
-        <span className={`text-[11px] lg:text-[13px] max-lg:landscape:text-[9px] font-medium transition-colors duration-300 ${isActive ? 'text-[#ef4523]' : 'text-[#8A8A8E] group-hover:text-gray-500'}`}>
-          {label}
-        </span>
       </Link>
     );
   };
 
+  // The Live Ride screen handles its own layout entirely, so we don't render the global spatial nav there
+  const isLiveRide = location.pathname.startsWith('/ride-plus/live');
+  const isHome = location.pathname === '/' || location.pathname === '/home';
+  const hideGlobalNav = isLiveRide || isHome;
+
   return (
-    <div className="w-full h-[100dvh] bg-[#fdfdfd] lg:bg-gray-50 flex justify-center font-sans overflow-hidden">
-      <div className="w-full h-full max-w-[1440px] relative flex flex-col-reverse lg:flex-row max-lg:landscape:flex-row overflow-hidden bg-gray-50 lg:shadow-2xl lg:border-x lg:border-gray-200">
-      
-      {/* Navigation (Bottom Mobile / Left Sidebar Desktop / Left Sidebar Mobile Landscape) */}
-      {!location.pathname.startsWith('/ride-plus/live') && (
-      <div className="w-full shrink-0 bg-transparent flex justify-center items-end z-50
-                      lg:w-[100px] lg:h-full lg:border-r lg:border-[#F0F0F0] lg:flex-col lg:py-8 lg:pb-8 lg:bg-white lg:items-center relative lg:static
-                      max-lg:landscape:w-[70px] max-lg:landscape:h-full max-lg:landscape:border-r max-lg:landscape:border-gray-100 max-lg:landscape:flex-col max-lg:landscape:py-2 max-lg:landscape:bg-white max-lg:landscape:items-center max-lg:landscape:static">
+    <div className="w-full h-[100dvh] bg-[#FAFAF9] flex justify-center font-sans overflow-hidden">
+      <div className="w-full h-full relative flex overflow-hidden bg-transparent">
         
-        {/* Desktop/Landscape Sidebar (Vertical NavItems) */}
-        <div className="hidden lg:flex max-lg:landscape:flex flex-col items-center justify-start max-lg:landscape:justify-center gap-6 max-lg:landscape:gap-4 lg:gap-8 w-full h-full overflow-y-auto overflow-x-hidden no-scrollbar pb-2">
-          <NavItem to="/home" icon={HomeIcon} label="Home" />
-          <NavItem to="/map" icon={MapIcon} label="Navigation" />
-          <Link to="/ride-plus" className="flex flex-col items-center justify-center group active:scale-95 transition-transform duration-200" aria-label="Ride Plus">
-            <div className="w-[56px] h-[56px] max-lg:landscape:w-[40px] max-lg:landscape:h-[40px] bg-[#ef4523] rounded-full flex items-center justify-center shadow-[0_8px_20px_rgba(239,69,35,0.35)] text-white">
-              <Navigation2 className="w-6 h-6 max-lg:landscape:w-4 max-lg:landscape:h-4 ml-0.5" strokeWidth={2.5} />
-            </div>
-            <span className={`text-[13px] max-lg:landscape:text-[9px] font-medium mt-2 max-lg:landscape:mt-1 transition-colors duration-300 ${location.pathname.startsWith('/ride-plus') ? 'text-[#ef4523]' : 'text-[#8A8A8E] group-hover:text-gray-500'}`}>
-              Ride+
-            </span>
-          </Link>
-          <NavItem to="/groups" icon={Users} label="Groups" />
-          <NavItem to="/profile" icon={User} label="Profile" />
-          <div className="mt-auto mb-4 w-full flex justify-center max-lg:landscape:hidden">
-            <InstallPWA variant="icon" />
-          </div>
+        {!hideGlobalNav && (
+          <LeftGravityWell onSOSClick={() => navigate('/alerts')}>
+             <div className="flex flex-col items-center gap-6 py-2 w-full">
+               <SpatialNavItem to="/home" icon={HomeIcon} label="Home" />
+               <SpatialNavItem to="/map" icon={MapIcon} label="Navigation" />
+               <SpatialNavItem to="/ride-plus" icon={Navigation2} label="Ride Plus" />
+               <SpatialNavItem to="/groups" icon={Users} label="Groups" />
+               <SpatialNavItem to="/profile" icon={User} label="Profile" />
+             </div>
+          </LeftGravityWell>
+        )}
+
+        <div className="flex-grow overflow-hidden relative bg-transparent h-full w-full">
+          <Outlet />
         </div>
-
-        {/* Mobile Morphing Dock (Hidden in Landscape) */}
-        <div className="lg:hidden max-lg:landscape:hidden w-full z-50 pointer-events-auto flex justify-center pb-6">
-          <MorphingNav />
-        </div>
-
-      </div>
-      )}
-
-      <div className="flex-grow overflow-hidden relative bg-transparent h-full w-full">
-        <Outlet />
-      </div>
       </div>
     </div>
   );
@@ -426,7 +409,7 @@ function App() {
   const hostname = window.location.hostname;
   const isAdminDomain = hostname.startsWith('admin');
   const isSupportDomain = hostname.startsWith('support');
-  const isWebsiteDomain = hostname === 'rideclub.in' || hostname === 'www.rideclub.in' || window.location.port === '5174' || window.location.port === '5175';
+  const isWebsiteDomain = hostname === 'rideclub.in' || hostname === 'www.rideclub.in';
 
   return (
     <ErrorBoundary>

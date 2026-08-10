@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, Save } from 'lucide-react';
+import { ArrowLeft, Save, Loader2, User, Phone, Droplet, ShieldAlert, Bike, Hash } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { auth } from '../lib/firebase';
 import { supabase } from '../lib/supabase';
 import { getDeterministicUuid } from '../lib/user';
 import { useToast } from '../components/ToastContext';
 import { Helmet } from 'react-helmet-async';
+import { CockpitLayout } from '../components/spatial/CockpitLayout';
+import { SpatialMembrane } from '../components/spatial/SpatialMembrane';
 
 const EditProfile = () => {
   const navigate = useNavigate();
@@ -25,26 +27,23 @@ const EditProfile = () => {
 
   const resolveProfileId = async (firebaseUid: string): Promise<string | null> => {
     const deterministicUid = getDeterministicUuid(firebaseUid);
-    const { data: byIdRows, error: byIdError } = await supabase
+    const { data: byIdRows } = await supabase
       .from('profiles')
       .select('id')
       .in('id', [firebaseUid, deterministicUid])
       .limit(1);
 
-    if (!byIdError && byIdRows && byIdRows.length > 0) {
-      return String(byIdRows[0].id);
-    }
+    if (byIdRows && byIdRows.length > 0) return String(byIdRows[0].id);
 
     const email = auth.currentUser?.email;
     if (!email) return null;
 
-    const { data: byEmailRows, error: byEmailError } = await supabase
+    const { data: byEmailRows } = await supabase
       .from('profiles')
       .select('id')
       .eq('email', email)
       .limit(1);
 
-    if (byEmailError) return null;
     return byEmailRows && byEmailRows.length > 0 ? String(byEmailRows[0].id) : null;
   };
 
@@ -61,12 +60,7 @@ const EditProfile = () => {
         if (!pid) throw new Error('Profile not found');
         setProfileId(pid);
 
-        const { data, error } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', pid)
-          .single();
-
+        const { data, error } = await supabase.from('profiles').select('*').eq('id', pid).single();
         if (error) throw error;
         
         if (data) {
@@ -142,113 +136,145 @@ const EditProfile = () => {
     }
   };
 
-  if (isLoading) {
-    return (
-      <div className="w-full h-full bg-[#F7F8FA] flex justify-center items-center">
-        <div className="w-8 h-8 border-4 border-[#FF7A00] border-t-transparent rounded-full animate-spin"></div>
-      </div>
-    );
-  }
-
   return (
-    <div className="w-full h-full bg-[#F7F8FA] flex flex-col font-sans overflow-hidden">
+    <CockpitLayout 
+      mapChildren={
+        <div className="w-full h-full bg-[#0a0a0a] relative overflow-hidden flex items-center justify-center">
+          <div className="absolute inset-0 bg-gradient-to-br from-primary/10 to-transparent"></div>
+          <div className="absolute w-[800px] h-[800px] bg-primary/10 rounded-full blur-[120px] -top-[300px] -right-[200px]"></div>
+          <div className="absolute w-[600px] h-[600px] bg-blue-500/10 rounded-full blur-[120px] -bottom-[300px] -left-[100px]"></div>
+        </div>
+      }
+    >
       <Helmet>
         <title>Edit Profile | Ride Club</title>
       </Helmet>
       
-      {/* Header */}
-      <div className="px-5 pt-4 pb-4 bg-white border-b border-gray-100 flex items-center justify-between z-10 shadow-sm relative">
-        <button onClick={() => navigate('/profile')} className="w-10 h-10 -ml-2 rounded-full flex items-center justify-center hover:bg-gray-50 transition-colors z-10">
-          <ArrowLeft className="w-6 h-6 text-[#14142B]" />
-        </button>
-        <h1 className="text-[17px] font-bold text-[#14142B] absolute inset-0 flex items-center justify-center pointer-events-none">Edit Profile</h1>
-        <button 
-          onClick={handleSave} 
-          disabled={isSaving}
-          className="text-[14px] font-bold text-[#FF7A00] flex items-center gap-1 disabled:opacity-50 z-10"
-        >
-          {isSaving ? 'Saving...' : 'Save'}
-        </button>
-      </div>
-
-      <div className="flex-1 overflow-y-auto p-5 pb-32">
-        <div className="bg-white rounded-[20px] p-5 border border-[#EFF0F6] shadow-[0_2px_8px_rgba(0,0,0,0.02)] flex flex-col gap-5">
+      <SpatialMembrane position="left" className="w-[420px] p-5 flex flex-col gap-6 max-h-[100dvh]">
+        {/* Header */}
+        <div className="flex items-center justify-between shrink-0 mb-2">
+          <div className="flex items-center gap-3">
+            <button 
+              onClick={() => navigate('/profile')} 
+              className="w-10 h-10 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 flex items-center justify-center transition-all active:scale-95"
+            >
+              <ArrowLeft className="w-5 h-5 text-white" />
+            </button>
+            <div>
+              <h1 className="text-[20px] font-bold text-white tracking-tight leading-none">Edit Profile</h1>
+              <p className="text-[13px] text-white/50 mt-1">Update your details</p>
+            </div>
+          </div>
           
-          <div>
-            <label className="block text-[13px] font-semibold text-[#6E7191] mb-1.5 ml-1">Full Name</label>
-            <input 
-              type="text" 
-              name="full_name"
-              value={formData.full_name}
-              onChange={handleChange}
-              placeholder="e.g. John Doe"
-              className="w-full bg-[#F7F8FA] border border-[#EFF0F6] rounded-xl px-4 py-3 text-[15px] font-medium text-[#14142B] focus:outline-none focus:border-[#FF7A00] transition-colors"
-            />
-          </div>
-
-          <div>
-            <label className="block text-[13px] font-semibold text-[#6E7191] mb-1.5 ml-1">Phone Number</label>
-            <input 
-              type="tel" 
-              name="phone_number"
-              value={formData.phone_number}
-              onChange={handleChange}
-              placeholder="e.g. +91 9876543210"
-              className="w-full bg-[#F7F8FA] border border-[#EFF0F6] rounded-xl px-4 py-3 text-[15px] font-medium text-[#14142B] focus:outline-none focus:border-[#FF7A00] transition-colors"
-            />
-          </div>
-
-          <div>
-            <label className="block text-[13px] font-semibold text-[#6E7191] mb-1.5 ml-1">Blood Group</label>
-            <input 
-              type="text" 
-              name="blood_group"
-              value={formData.blood_group}
-              onChange={handleChange}
-              placeholder="e.g. O+ve"
-              className="w-full bg-[#F7F8FA] border border-[#EFF0F6] rounded-xl px-4 py-3 text-[15px] font-medium text-[#14142B] focus:outline-none focus:border-[#FF7A00] transition-colors"
-            />
-          </div>
-
-          <div>
-            <label className="block text-[13px] font-semibold text-[#6E7191] mb-1.5 ml-1">Emergency Contact</label>
-            <input 
-              type="tel" 
-              name="emergency_contact"
-              value={formData.emergency_contact}
-              onChange={handleChange}
-              placeholder="e.g. Mom: +91 9876543210"
-              className="w-full bg-[#F7F8FA] border border-[#EFF0F6] rounded-xl px-4 py-3 text-[15px] font-medium text-[#14142B] focus:outline-none focus:border-[#FF7A00] transition-colors"
-            />
-          </div>
-
-          <div>
-            <label className="block text-[13px] font-semibold text-[#6E7191] mb-1.5 ml-1">Bike Model</label>
-            <input 
-              type="text" 
-              name="bike_model"
-              value={formData.bike_model}
-              onChange={handleChange}
-              placeholder="e.g. Royal Enfield Classic 350"
-              className="w-full bg-[#F7F8FA] border border-[#EFF0F6] rounded-xl px-4 py-3 text-[15px] font-medium text-[#14142B] focus:outline-none focus:border-[#FF7A00] transition-colors"
-            />
-          </div>
-
-          <div>
-            <label className="block text-[13px] font-semibold text-[#6E7191] mb-1.5 ml-1">Bike Number</label>
-            <input 
-              type="text" 
-              name="bike_number"
-              value={formData.bike_number}
-              onChange={handleChange}
-              placeholder="e.g. TS 07 EU 1234"
-              className="w-full bg-[#F7F8FA] border border-[#EFF0F6] rounded-xl px-4 py-3 text-[15px] font-medium text-[#14142B] focus:outline-none focus:border-[#FF7A00] transition-colors uppercase"
-            />
-          </div>
-
+          <button 
+            onClick={handleSave} 
+            disabled={isSaving || isLoading}
+            className="h-10 px-4 rounded-full bg-primary hover:bg-primary/90 text-white text-[14px] font-bold flex items-center gap-2 shadow-lg shadow-primary/30 transition-all active:scale-95 disabled:opacity-50 disabled:active:scale-100"
+          >
+            {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+            Save
+          </button>
         </div>
-      </div>
-    </div>
+
+        <div className="flex-1 overflow-y-auto hide-scrollbar flex flex-col gap-4 pb-8">
+          
+          {isLoading ? (
+            <div className="flex justify-center p-12">
+              <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+            </div>
+          ) : (
+            <>
+              {/* Personal Details */}
+              <div className="bg-white/5 border border-white/10 rounded-[20px] p-5 backdrop-blur-md flex flex-col gap-4">
+                <h3 className="text-[14px] font-bold text-white/40 uppercase tracking-wider mb-1">Personal</h3>
+                
+                <div className="relative">
+                  <User className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-white/40" />
+                  <input 
+                    type="text" 
+                    name="full_name"
+                    value={formData.full_name}
+                    onChange={handleChange}
+                    placeholder="Full Name"
+                    className="w-full bg-black/40 border border-white/10 rounded-xl pl-10 pr-4 py-3 text-[14px] text-white placeholder-white/30 focus:outline-none focus:border-primary/50 transition-all"
+                  />
+                </div>
+
+                <div className="relative">
+                  <Phone className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-white/40" />
+                  <input 
+                    type="tel" 
+                    name="phone_number"
+                    value={formData.phone_number}
+                    onChange={handleChange}
+                    placeholder="Phone Number"
+                    className="w-full bg-black/40 border border-white/10 rounded-xl pl-10 pr-4 py-3 text-[14px] text-white placeholder-white/30 focus:outline-none focus:border-primary/50 transition-all"
+                  />
+                </div>
+              </div>
+
+              {/* Safety Details */}
+              <div className="bg-white/5 border border-white/10 rounded-[20px] p-5 backdrop-blur-md flex flex-col gap-4">
+                <h3 className="text-[14px] font-bold text-white/40 uppercase tracking-wider mb-1">Safety</h3>
+                
+                <div className="relative">
+                  <Droplet className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-red-400" />
+                  <input 
+                    type="text" 
+                    name="blood_group"
+                    value={formData.blood_group}
+                    onChange={handleChange}
+                    placeholder="Blood Group (e.g. O+)"
+                    className="w-full bg-black/40 border border-white/10 rounded-xl pl-10 pr-4 py-3 text-[14px] text-white placeholder-white/30 focus:outline-none focus:border-primary/50 transition-all uppercase"
+                  />
+                </div>
+
+                <div className="relative">
+                  <ShieldAlert className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-white/40" />
+                  <input 
+                    type="tel" 
+                    name="emergency_contact"
+                    value={formData.emergency_contact}
+                    onChange={handleChange}
+                    placeholder="Emergency Contact"
+                    className="w-full bg-black/40 border border-white/10 rounded-xl pl-10 pr-4 py-3 text-[14px] text-white placeholder-white/30 focus:outline-none focus:border-primary/50 transition-all"
+                  />
+                </div>
+              </div>
+
+              {/* Bike Details */}
+              <div className="bg-white/5 border border-white/10 rounded-[20px] p-5 backdrop-blur-md flex flex-col gap-4">
+                <h3 className="text-[14px] font-bold text-white/40 uppercase tracking-wider mb-1">Bike</h3>
+                
+                <div className="relative">
+                  <Bike className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-white/40" />
+                  <input 
+                    type="text" 
+                    name="bike_model"
+                    value={formData.bike_model}
+                    onChange={handleChange}
+                    placeholder="Bike Model (e.g. Classic 350)"
+                    className="w-full bg-black/40 border border-white/10 rounded-xl pl-10 pr-4 py-3 text-[14px] text-white placeholder-white/30 focus:outline-none focus:border-primary/50 transition-all"
+                  />
+                </div>
+
+                <div className="relative">
+                  <Hash className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-white/40" />
+                  <input 
+                    type="text" 
+                    name="bike_number"
+                    value={formData.bike_number}
+                    onChange={handleChange}
+                    placeholder="Registration Plate"
+                    className="w-full bg-black/40 border border-white/10 rounded-xl pl-10 pr-4 py-3 text-[14px] text-white placeholder-white/30 focus:outline-none focus:border-primary/50 transition-all uppercase"
+                  />
+                </div>
+              </div>
+            </>
+          )}
+        </div>
+      </SpatialMembrane>
+    </CockpitLayout>
   );
 };
 

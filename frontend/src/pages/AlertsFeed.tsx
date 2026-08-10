@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { ChevronRight, Filter, AlertTriangle } from 'lucide-react';
+import { ChevronRight, Filter, AlertTriangle, ArrowLeft } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import { supabase } from '../lib/supabase';
 import { useToast } from '../components/ToastContext';
+import { CockpitLayout } from '../components/spatial/CockpitLayout';
+import { SpatialMembrane } from '../components/spatial/SpatialMembrane';
 
 const filters = ['All', 'Traffic', 'Accidents', 'Road Closed', 'Vibe Check', 'Hazards'];
 
@@ -13,6 +15,7 @@ const AlertsFeed = () => {
   const [activeFilter, setActiveFilter] = useState('All');
   const [alerts, setAlerts] = useState<any[]>([]);
   const [viewedAlerts, setViewedAlerts] = useState<Map<string, number>>(new Map());
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchPins = async () => {
@@ -24,17 +27,11 @@ const AlertsFeed = () => {
           .limit(50);
           
         if (error) throw error;
-        
-        if (data) {
-          setAlerts(data);
-        }
+        if (data) setAlerts(data);
 
         const { data: { user } } = await supabase.auth.getUser();
         if (user) {
-          // Sync alerts_last_viewed to db
           await supabase.from('profiles').update({ alerts_last_viewed: Date.now() }).eq('id', user.id);
-          
-          // Fetch alert_views
           const { data: views } = await supabase.from('alert_views').select('*').eq('user_id', user.id);
           if (views) {
              const map = new Map<string, number>();
@@ -44,18 +41,17 @@ const AlertsFeed = () => {
         }
       } catch (error) {
         showToast('Failed to fetch alerts', 'error');
+      } finally {
+        setLoading(false);
       }
     };
     fetchPins();
   }, [showToast]);
 
   const filteredAlerts = alerts.filter(a => {
-    // Hide if viewed more than 12 hours ago
     if (viewedAlerts.has(a.id)) {
       const viewedAt = viewedAlerts.get(a.id)!;
-      if (Date.now() - viewedAt > 12 * 60 * 60 * 1000) {
-        return false;
-      }
+      if (Date.now() - viewedAt > 12 * 60 * 60 * 1000) return false;
     }
     
     if (activeFilter === 'All') return true;
@@ -65,22 +61,36 @@ const AlertsFeed = () => {
   });
 
   return (
-    <div className="w-full h-full bg-[#F2F4F7] flex flex-col font-sans overflow-hidden md:pb-0">
+    <CockpitLayout
+      mapChildren={
+        <div className="w-full h-full bg-[#0a0a0a] relative overflow-hidden flex items-center justify-center">
+          <div className="absolute inset-0 bg-gradient-to-bl from-red-500/10 to-transparent"></div>
+          <div className="absolute w-[800px] h-[800px] bg-red-500/10 rounded-full blur-[120px] -top-[300px] -right-[200px]"></div>
+          <div className="absolute w-[600px] h-[600px] bg-primary/10 rounded-full blur-[120px] -bottom-[300px] -left-[100px]"></div>
+        </div>
+      }
+    >
       <Helmet>
         <title>Live Alerts Feed | Ride Club</title>
         <meta name="description" content="Check real-time community reports for accidents, hazards, and police sightings." />
       </Helmet>
-      
-      {/* Header */}
-      <div className="px-5 pt-4 pb-4 bg-white border-b border-gray-100 flex-shrink-0 z-10 shadow-sm">
-        <p className="text-[13px] font-bold text-[#8A8A8E] tracking-wider mb-0.5 uppercase">Community</p>
-        <h1 className="text-[22px] font-bold text-[#273a5a] leading-none tracking-tight">Live Alerts</h1>
-      </div>
 
-      {/* Filter Chips */}
-      <div className="bg-[#F2F4F7] px-4 py-4 flex-shrink-0 z-0">
-        <div className="flex gap-2 overflow-x-auto hide-scrollbar pb-1">
-          <button aria-label="Filter" className="w-[36px] h-[36px] rounded-lg bg-white shadow-sm border border-gray-100 flex items-center justify-center flex-shrink-0 text-[#8A8A8E]">
+      <SpatialMembrane position="left" className="w-[420px] p-5 flex flex-col gap-6 max-h-[100dvh]">
+        
+        {/* Header */}
+        <div className="flex items-center gap-3 shrink-0 mb-2">
+          <button onClick={() => navigate('/home')} className="w-10 h-10 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 flex items-center justify-center transition-all active:scale-95">
+            <ArrowLeft className="w-5 h-5 text-white" />
+          </button>
+          <div>
+            <h1 className="text-[24px] font-bold text-white tracking-tight leading-none">Live Alerts</h1>
+            <p className="text-[13px] text-white/50 mt-1">Community reports</p>
+          </div>
+        </div>
+
+        {/* Filters */}
+        <div className="flex gap-2 overflow-x-auto hide-scrollbar shrink-0 pb-1">
+          <button aria-label="Filter" className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center flex-shrink-0 text-white/40">
             <Filter className="w-4 h-4" />
           </button>
           {filters.map(filter => (
@@ -88,60 +98,67 @@ const AlertsFeed = () => {
               key={filter}
               aria-label={`Filter by ${filter}`}
               onClick={() => setActiveFilter(filter)}
-              className={`h-[36px] px-5 rounded-lg text-[13px] font-bold whitespace-nowrap transition-all shadow-sm active:scale-95 ${
+              className={`h-10 px-4 rounded-xl text-[12px] font-bold whitespace-nowrap transition-all border ${
                 activeFilter === filter 
-                  ? 'bg-[#ef4523] text-white border border-[#ef4523]' 
-                  : 'bg-white text-[#8A8A8E] border border-gray-100 hover:bg-gray-50'
+                  ? 'bg-red-500 text-white border-red-500 shadow-lg shadow-red-500/20' 
+                  : 'bg-white/5 text-white/60 border-white/10 hover:bg-white/10'
               }`}
             >
               {filter}
             </button>
           ))}
         </div>
-      </div>
 
-      {/* Feed List */}
-      <div className="flex-1 overflow-y-auto px-4 pb-6 flex flex-col gap-1 hide-scrollbar relative">
-        <h3 className="text-[12px] font-bold text-[#8A8A8E] uppercase tracking-wider mb-1 px-1">Today</h3>
-        
-        {filteredAlerts.length === 0 ? (
-          <div className="text-center p-8 text-[#8A8A8E] font-medium mt-10">
-            No alerts found for this category.
-          </div>
-        ) : (
-          filteredAlerts.map(alert => (
-            <div 
-              key={alert.id} 
-              onClick={() => navigate(`/incident/${alert.id}`)}
-              className="bg-white rounded-lg p-4 shadow-sm border border-gray-100/50 hover:shadow-md transition-all active:scale-[0.98] cursor-pointer flex items-center"
-            >
-              {/* Left Icon */}
-              <div className="w-[48px] h-[48px] rounded-lg bg-[#FFF0E6] flex items-center justify-center flex-shrink-0 mr-[16px]">
-                <AlertTriangle className="w-6 h-6 text-[#ef4523]" />
+        {/* Feed List */}
+        <div className="flex-1 overflow-y-auto hide-scrollbar flex flex-col gap-3 pb-8">
+          {loading ? (
+            <>
+              {[1, 2, 3, 4, 5].map(i => (
+                <div key={i} className="w-full h-20 bg-white/5 rounded-2xl animate-pulse border border-white/10"></div>
+              ))}
+            </>
+          ) : filteredAlerts.length === 0 ? (
+            <div className="text-center p-8 mt-10">
+              <div className="w-16 h-16 bg-red-500/20 border border-red-500/30 rounded-full flex items-center justify-center mx-auto mb-4">
+                <AlertTriangle className="w-8 h-8 text-red-400" />
               </div>
-              
-              {/* Center Content */}
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 mb-1">
-                  <h4 className="text-[16px] font-bold text-[#273a5a] truncate leading-none">{alert.category || 'Alert'}</h4>
-                  {/* Subtle new badge logic if we wanted, but let's keep it simple */}
-                </div>
-                <div className="flex items-center text-[13px] font-medium text-[#8A8A8E] mt-1">
-                  <span className="truncate">{alert.description || 'Reported by community'}</span>
-                  <span className="mx-1.5">•</span>
-                  <span className="flex-shrink-0">{new Date(alert.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
-                </div>
-              </div>
-              
-              {/* Right Arrow */}
-              <div className="w-8 h-8 flex items-center justify-center flex-shrink-0">
-                <ChevronRight className="w-5 h-5 text-[#8A8A8E]" />
-              </div>
+              <h3 className="text-[18px] font-bold text-white mb-2">No Active Alerts</h3>
+              <p className="text-[14px] text-white/50">There are no reports for this category currently.</p>
             </div>
-          ))
-        )}
-      </div>
-    </div>
+          ) : (
+            filteredAlerts.map(alert => (
+              <div 
+                key={alert.id} 
+                onClick={() => navigate(`/incident/${alert.id}`)}
+                className="bg-white/5 border border-white/10 rounded-[20px] p-4 hover:bg-white/10 transition-all cursor-pointer flex items-center gap-4 group"
+              >
+                {/* Left Icon */}
+                <div className="w-12 h-12 rounded-full bg-red-500/20 border border-red-500/30 flex items-center justify-center flex-shrink-0 group-hover:scale-105 transition-transform">
+                  <AlertTriangle className="w-5 h-5 text-red-400" />
+                </div>
+                
+                {/* Center Content */}
+                <div className="flex-1 min-w-0">
+                  <h4 className="text-[15px] font-bold text-white truncate leading-tight mb-1">
+                    {alert.category || 'Alert'}
+                  </h4>
+                  <div className="flex items-center text-[12px] font-medium text-white/60">
+                    <span className="truncate">{alert.description || 'Reported by community'}</span>
+                    <span className="mx-2 text-white/20">•</span>
+                    <span className="flex-shrink-0">{new Date(alert.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
+                  </div>
+                </div>
+                
+                {/* Right Arrow */}
+                <div className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center flex-shrink-0 group-hover:bg-white/10 transition-colors">
+                  <ChevronRight className="w-4 h-4 text-white/40" />
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      </SpatialMembrane>
+    </CockpitLayout>
   );
 };
 

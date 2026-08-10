@@ -13,9 +13,10 @@ import { auth } from '../lib/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 import { getDeterministicUuid } from '../lib/user';
 import { useToast } from '../components/ToastContext';
-import LoadingSpinner from '../components/LoadingSpinner';
-
-const Navigation = () => {
+import { CockpitLayout } from '../components/spatial/CockpitLayout';
+import { LeftGravityWell } from '../components/spatial/LeftGravityWell';
+import { SpatialMembrane } from '../components/spatial/SpatialMembrane';
+import LoadingSpinner from '../components/LoadingSpinner';const Navigation = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { showToast } = useToast();
@@ -552,30 +553,30 @@ const Navigation = () => {
           data: currentRoute
         });
 
-        // Background glow
+        // Background glow for remaining route
         map.current.addLayer({
           id: 'route-glow',
           type: 'line',
-          source: 'route',
+          source: 'route-remaining',
           layout: { 'line-join': 'round', 'line-cap': 'round' },
           paint: {
-            'line-color': '#ef4523',
-            'line-width': 14,
+            'line-color': '#F97316',
+            'line-width': 13, /* 5px + 8px glow */
             'line-opacity': 0.3,
-            'line-blur': 10
+            'line-blur': 8
           }
         });
 
-        // Completed line
+        // Completed line (gray)
         map.current.addLayer({
           id: 'route-completed',
           type: 'line',
           source: 'route',
           layout: { 'line-join': 'round', 'line-cap': 'round' },
           paint: {
-            'line-color': '#ef4523',
-            'line-width': 8,
-            'line-opacity': 0.2
+            'line-color': '#9CA3AF',
+            'line-width': 3,
+            'line-opacity': 0.45
           }
         });
 
@@ -591,8 +592,8 @@ const Navigation = () => {
           source: 'route-remaining',
           layout: { 'line-join': 'round', 'line-cap': 'round' },
           paint: {
-            'line-color': '#ef4523',
-            'line-width': 8,
+            'line-color': '#F97316',
+            'line-width': 5,
             'line-opacity': 1
           }
         });
@@ -1044,356 +1045,121 @@ const Navigation = () => {
     return () => { map.current?.off('styledata', updateTraffic); }
   }, [mapLoaded, showTraffic]);
 
+  const isElementalMode = currentSpeed !== null && currentSpeed > 45;
+
   return (
-    <div className="w-full h-full bg-dark flex flex-col font-sans overflow-hidden relative">
-      
-      {/* Real MapLibre 3D Map */}
-      <div className="absolute inset-0 z-0 navigation-map-container">
-        <div ref={mapContainer} className="w-full h-full" />
-        {/* Gradient overlay at bottom for smooth fade into the UI card */}
-        <div className="absolute bottom-0 left-0 right-0 h-48 bg-gradient-to-t from-dark to-transparent pointer-events-none z-10"></div>
-        
-      </div>
+    <CockpitLayout
+      mapChildren={
+        <>
+          <div ref={mapContainer} className="w-full h-full" />
+          
+          {/* Map Controls */}
+          {mapLoaded && (
+            <div className={`absolute bottom-6 left-[30%] landscape:left-4 z-20 flex flex-col gap-3 transition-opacity duration-300 ${isElementalMode ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}>
+              <button 
+                onClick={() => setShowTraffic(!showTraffic)}
+                className={`w-[48px] h-[48px] rounded-full flex items-center justify-center transition-colors shadow-lg ${showTraffic ? 'bg-membrane border border-primary text-primary' : 'bg-membrane border border-white/20 text-gray-700'}`}
+              >
+                <Layers className="w-6 h-6" />
+              </button>
+              <button 
+                onClick={() => {
+                  if (!map.current) return;
+                  const next3D = !is3D;
+                  setIs3D(next3D);
+                  if (next3D) map.current.easeTo({ pitch: 60, duration: 1000 });
+                  else map.current.easeTo({ pitch: 0, duration: 1000 });
+                }}
+                className={`w-[48px] h-[48px] rounded-full flex items-center justify-center transition-colors shadow-lg ${is3D ? 'bg-membrane border border-primary text-primary' : 'bg-membrane border border-white/20 text-gray-700'}`}
+              >
+                {is3D ? <Compass className="w-6 h-6" /> : <Navigation2 className="w-6 h-6" />}
+              </button>
+              <button 
+                onClick={() => {
+                  setIsFollowingUser(true);
+                  if (userLocation && map.current) {
+                    map.current.flyTo({ center: [userLocation.lng, userLocation.lat], zoom: 17, pitch: is3D ? 60 : 0 });
+                  }
+                }}
+                className={`w-[48px] h-[48px] rounded-full flex items-center justify-center transition-colors shadow-lg ${!isFollowingUser ? 'bg-membrane border border-primary text-primary animate-pulse' : 'bg-membrane border border-white/20 text-gray-700'}`}
+              >
+                <Crosshair className="w-6 h-6" />
+              </button>
+            </div>
+          )}
+        </>
+      }
+    >
+      <LeftGravityWell onSOSClick={() => navigate('/support')}>
+        <div className="flex flex-col gap-4 mt-12 w-full px-2 items-center">
+          <button onClick={() => navigate(-1)} className="p-2 bg-gray-100/50 rounded-full w-full flex justify-center"><X className="w-5 h-5 text-gray-600" /></button>
+          {!isElementalMode && (
+             <button onClick={() => setIsDrawerExpanded(!isDrawerExpanded)} className="p-2 bg-gray-100/50 rounded-full w-full flex justify-center mt-auto"><MoreHorizontal className="w-5 h-5 text-gray-600" /></button>
+          )}
+        </div>
+      </LeftGravityWell>
 
       {!mapLoaded && <LoadingSpinner fullScreen message="Loading Map & Route..." />}
 
       {mapLoaded && (
-        <>
-      {/* Speedometer */}
-      <div className={`absolute bottom-[240px] landscape:bottom-6 right-4 landscape:right-[calc(50%+16px)] z-30 transition-all duration-300 ${isDrawerExpanded ? 'opacity-0 pointer-events-none translate-y-4' : 'opacity-100 translate-y-0'}`}>
-        <div className="w-24 h-24 bg-white border-[3px] border-[#fff] rounded-full flex flex-col items-center justify-center text-[#273a5a] shadow-[0_5px_15px_rgba(0,0,0,0.2)]">
-          <div className="text-[32px] font-black leading-none">{currentSpeed !== null ? currentSpeed : '--'}</div>
-          <div className="text-[12px] font-bold text-gray-400 mt-1">km/h</div>
-        </div>
-      </div>
-
-      {/* Map Control Buttons */}
-      <div className={`absolute bottom-[240px] landscape:bottom-6 left-4 z-30 flex flex-col gap-3 transition-all duration-300 ${isDrawerExpanded ? 'opacity-0 pointer-events-none translate-y-4' : 'opacity-100 translate-y-0'}`}>
-        <button 
-          onClick={() => setShowTraffic(!showTraffic)}
-          className={`w-[48px] h-[48px] rounded-full flex items-center justify-center transition-colors shadow-lg ${showTraffic ? 'bg-dark/90 backdrop-blur-md border border-primary text-white shadow-[0_0_15px_rgba(255,149,0,0.3)]' : 'bg-dark/90 backdrop-blur-md border border-gray-800 text-white hover:bg-gray-800'}`}
-          title="Toggle Traffic"
-        >
-          <Layers className="w-6 h-6" />
-        </button>
-        <button 
-          onClick={() => {
-            if (!map.current) return;
-            const next3D = !is3D;
-            let currentBearing = 0;
-            let targetCenter: [number, number] | null = null;
-            
-            if (userLocation) {
-              targetCenter = [userLocation.lng, userLocation.lat];
-            } else if (currentRoute) {
-              targetCenter = [currentRoute.geometry.coordinates[0][0], currentRoute.geometry.coordinates[0][1]];
-            }
-
-            if (next3D && currentRoute && targetCenter) {
-               try {
-                  const userPt = turf.point(targetCenter);
-                  const line = turf.lineString(currentRoute.geometry.coordinates);
-                  const closestPoint = turf.nearestPointOnLine(line, userPt);
-                  const routeLength = turf.length(line);
-                  const distanceAlong = (closestPoint.properties as any).location;
-                  const aheadDist = Math.min(distanceAlong + 0.05, routeLength);
-                  const aheadPoint = turf.along(line, aheadDist);
-                  currentBearing = turf.bearing(closestPoint, aheadPoint);
-               } catch(e) {}
-            }
-            if (next3D) {
-              const options: any = { pitch: 60, zoom: 20, bearing: currentBearing, duration: 1000 };
-              if (targetCenter) options.center = targetCenter;
-              map.current.easeTo(options);
-              setIsFollowingUser(true);
-            } else {
-              map.current.easeTo({ pitch: 0, bearing: 0, duration: 1000 });
-            }
-            setIs3D(next3D);
-          }}
-          className={`w-[48px] h-[48px] rounded-full flex items-center justify-center transition-colors shadow-lg ${is3D ? 'bg-dark/90 backdrop-blur-md border border-primary text-white shadow-[0_0_15px_rgba(255,149,0,0.3)]' : 'bg-dark/90 backdrop-blur-md border border-gray-800 text-white hover:bg-gray-800'}`}
-          title="Toggle 3D"
-        >
-          {is3D ? <Compass className="w-6 h-6" /> : <Navigation2 className="w-6 h-6" />}
-        </button>
-        <button 
-          onClick={() => {
-            setIsFollowingUser(true);
-            if (userLocation && map.current) {
-              map.current.flyTo({ center: [userLocation.lng, userLocation.lat], zoom: 17, pitch: is3D ? 60 : 0, duration: 1200 });
-            } else {
-              showToast('Current location unavailable. Enable location permission to re-center.', 'info');
-            }
-          }}
-          className={`w-[48px] h-[48px] rounded-full flex items-center justify-center transition-colors shadow-lg ${!isFollowingUser ? 'bg-dark/90 backdrop-blur-md border border-primary text-white shadow-[0_0_15px_rgba(255,149,0,0.3)] animate-pulse' : 'bg-dark/90 backdrop-blur-md border border-gray-800 text-white hover:bg-gray-800'}`}
-          title="My Location"
-        >
-          <Crosshair className="w-6 h-6" />
-        </button>
-      </div>
-
-      {/* Top Banner */}
-      <div className="absolute top-4 left-4 right-4 z-20 flex flex-col gap-2">
-        <div className="bg-white border-none rounded-[20px] shadow-[0_5px_20px_rgba(0,0,0,0.15)] min-h-[80px] py-3 flex items-center px-4 gap-4">
-          <div className="w-[50px] h-[50px] bg-primary/10 rounded-full flex items-center justify-center flex-shrink-0">
-            {React.cloneElement(getTurnIcon(currentInstruction.type) as React.ReactElement<{className?: string}>, { className: 'w-7 h-7 text-primary' })}
-          </div>
-          <div className="flex-1 overflow-hidden">
-            <h2 className="text-[22px] font-bold text-[#273a5a] leading-tight break-words">{currentInstruction.text}</h2>
-            <p className="text-[15px] text-gray-500 font-bold mt-1">{currentInstruction.dist || `to ${destName || 'destination'}`}</p>
-          </div>
-        </div>
-      </div>
-
-      {/* Hazard Alert */}
-      {nextHazard ? (
-        <div className="absolute top-[130px] left-1/2 -translate-x-1/2 z-20 w-[90%] max-w-sm">
-          <div className="bg-danger text-white px-6 py-4 rounded-[8px] font-bold text-[18px] flex items-center justify-center gap-2 shadow-lg shadow-danger/30 animate-pulse whitespace-nowrap">
-            <AlertTriangle className="w-6 h-6 flex-shrink-0" />
-            <span className="truncate">{Math.max(0, Math.round(nextHazard.remainingDist * 1000))}m - {nextHazard.category.split(':')[0]} Ahead</span>
-          </div>
-        </div>
-      ) : incidentsOnRoute.length > 0 && userLocation ? (
-        <div className="absolute top-[130px] left-1/2 -translate-x-1/2 z-20 w-[90%] max-w-sm">
-          <div className="bg-success text-white px-6 py-4 rounded-[8px] font-bold text-[18px] flex items-center justify-center gap-2 shadow-lg shadow-success/30 whitespace-nowrap">
-            <Shield className="w-6 h-6 flex-shrink-0" />
-            Clear Route Ahead
-          </div>
-        </div>
-      ) : null}
-
-      {/* Bottom Card / Drawer */}
-      <div 
-        className={`absolute bottom-0 left-0 right-0 z-20 flex flex-col bg-gradient-to-br from-orange-50 to-white rounded-t-[32px] border-t-[3px] border-primary transition-all duration-300 ease-in-out shadow-[0_-15px_40px_rgba(0,0,0,0.15)] landscape:h-[100dvh] landscape:w-[50%] landscape:left-auto landscape:right-0 landscape:rounded-t-none landscape:rounded-l-[32px] landscape:shadow-[-15px_0_40px_rgba(0,0,0,0.15)] landscape:border-t-0 landscape:border-l-[3px] ${isDrawerExpanded ? 'h-[75vh] pt-3 pb-[52px]' : 'pt-3 pb-[12px]'}`}
-      >
-        {/* Drawer Handle */}
-        <div 
-          className="w-12 h-1.5 bg-gray-300 hover:bg-gray-400 rounded-full mx-auto shrink-0 cursor-pointer mb-2" 
-          onClick={() => setIsDrawerExpanded(!isDrawerExpanded)}
-        />
-        
-        {/* Group Mode Navigation Tabs (inside Drawer) */}
-        {groupRideId && isDrawerExpanded && (
-           <div className="flex px-6 mb-4 mt-2">
-             <div className="flex bg-gray-100/50 p-1 rounded-full w-full max-w-[300px] mx-auto border border-gray-200">
-               <button 
-                 onClick={() => setShowParticipantList(false)}
-                 className={`flex-1 py-2 text-[13px] font-bold rounded-full transition-colors ${!showParticipantList ? 'bg-white text-primary shadow-sm' : 'text-gray-500'}`}
-               >
-                 Navigation
-               </button>
-               <button 
-                 onClick={() => setShowParticipantList(true)}
-                 className={`flex-1 py-2 text-[13px] font-bold rounded-full transition-colors ${showParticipantList ? 'bg-white text-primary shadow-sm' : 'text-gray-500'}`}
-               >
-                 Participants ({Object.keys(participants).length})
-               </button>
+        <div className="flex flex-col h-full relative pl-[80px] pr-4 py-6 justify-between pointer-events-none">
+          
+          {/* TOP SECTION: Turn instruction */}
+          <SpatialMembrane className={`p-4 flex gap-4 items-center w-full max-w-[400px] pointer-events-auto transition-all duration-300 ${isElementalMode ? 'scale-110 origin-left' : ''}`}>
+             <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center shrink-0">
+                {React.cloneElement(getTurnIcon(currentInstruction.type) as React.ReactElement<{className?: string}>, { className: 'w-7 h-7 text-primary' })}
              </div>
-           </div>
-        )}
+             <div className="flex-1">
+               <h2 className="text-turn leading-none text-primary">{currentInstruction.dist || `to ${destName || 'destination'}`}</h2>
+               <p className="text-secondary-info text-gray-600 font-bold mt-1 truncate">{currentInstruction.text}</p>
+             </div>
+          </SpatialMembrane>
 
-        <div className="flex-1 overflow-y-auto px-6 hide-scrollbar flex flex-col gap-4 pb-10">
-          {(!groupRideId || !isDrawerExpanded || !showParticipantList) ? (
-            <>
-              {/* Normal Navigation Stats */}
-              <div className="flex items-center justify-between">
-                <div>
-                  <h2 className="text-[32px] font-black text-success leading-tight tracking-tight">
-                    {currentEta}
-                  </h2>
-                  <p className="text-[15px] text-gray-500 font-bold mt-0.5">
-                    {currentDistance} remaining • {travelMode?.name || 'Driving'}
-                  </p>
+          {/* MIDDLE SECTION: Hazard Alerts */}
+          {nextHazard && !isElementalMode && (
+            <SpatialMembrane className="p-3 w-full max-w-[400px] pointer-events-auto mt-4 border-danger/50" variant="glow">
+               <div className="text-danger font-bold text-secondary-info flex items-center gap-2">
+                 <AlertTriangle className="w-5 h-5" />
+                 <span className="truncate">{Math.max(0, Math.round(nextHazard.remainingDist * 1000))}m - Hazard Ahead</span>
+               </div>
+            </SpatialMembrane>
+          )}
+
+          {/* BOTTOM SECTION: Speed & ETA */}
+          <div className="flex flex-col gap-4 mt-auto pointer-events-auto w-full max-w-[400px]">
+             
+             {/* Speed */}
+             <div className="flex justify-end pr-4">
+                <div className={`flex flex-col items-end transition-all duration-300 ${isElementalMode ? 'scale-125 origin-right mb-10' : ''}`}>
+                  <span className="text-speed text-primary leading-none drop-shadow-sm">{currentSpeed !== null ? currentSpeed : '--'}</span>
+                  <span className="text-micro text-gray-500 font-bold uppercase tracking-widest">km/h</span>
                 </div>
-                
-                <button 
-                  onClick={() => navigate(-1)}
-                  className="w-[50px] h-[50px] bg-gray-100 hover:bg-gray-200 rounded-full flex items-center justify-center transition-colors active:scale-95"
-                >
-                  <X className="w-6 h-6 text-gray-500" />
-                </button>
-              </div>
+             </div>
 
-              {/* Progress Bar */}
-              <div className="w-full h-3 bg-gray-200 rounded-full overflow-hidden mt-1">
-                <div 
-                  className="h-full bg-gradient-to-r from-[#ef4523] to-success rounded-full transition-all duration-1000 ease-linear"
-                  style={{ 
-                    width: `${Math.min(100, Math.max(0, 100 - (Number(currentDistance.split(' ')[0]) / Number(initialDistance)) * 100))}%`
-                  }}
-                />
-              </div>
-
-              {/* Step-by-Step Directions */}
-              {isDrawerExpanded && routeFeature?.properties?.segments?.[0]?.steps && (
-                <div className="mt-4 flex flex-col gap-4">
-                  {routeFeature.properties.segments[0].steps.slice(0, 10).map((step: any, idx: number) => (
-                    <div key={idx} className="flex gap-4 items-start p-3 rounded-[16px] bg-white border border-gray-100 shadow-sm">
-                      <div className="w-10 h-10 rounded-full bg-gray-50 flex items-center justify-center shrink-0 border border-gray-100">
-                        {React.cloneElement(getTurnIcon(step.type) as React.ReactElement<{className?: string}>, { className: 'w-5 h-5 text-gray-600' })}
-                      </div>
-                      <div>
-                        <p className="text-[15px] font-bold text-[#273a5a]">{formatInstruction(step.instruction)}</p>
-                        <p className="text-[13px] text-gray-500 font-medium">
-                          {step.distance < 1000 ? `${Math.round(step.distance)} m` : `${(step.distance/1000).toFixed(1)} km`}
-                        </p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </>
-          ) : (
-            // Participants List View inside Drawer
-            <div className="flex flex-col gap-3">
-              {groupRideCode && (
-                <div className="bg-[#273a5a] text-white px-5 py-3 rounded-2xl font-bold shadow-lg flex items-center justify-between mb-2">
-                   <div className="flex items-center gap-2">
-                     <Users className="w-5 h-5 text-[#ef4523]" />
-                     <span>Group Code:</span>
+             {/* Journey Stats */}
+             <SpatialMembrane className={`p-5 flex flex-col gap-2 transition-all duration-300 ${isElementalMode ? 'opacity-0 translate-y-10 absolute bottom-0' : 'opacity-100'}`}>
+                <div className="flex justify-between items-end">
+                   <div>
+                     <h3 className="text-turn text-gray-900 leading-none">{currentEta}</h3>
+                     <p className="text-secondary-info text-gray-500 font-bold">{currentDistance} remaining</p>
                    </div>
-                   <span className="text-[#ef4523] tracking-[0.2em] font-black text-lg">{groupRideCode}</span>
+                   {groupRideId && (
+                     <div className="bg-orange-50 px-3 py-1 rounded-full border border-orange-100 flex items-center gap-2" onClick={() => setShowParticipantList(!showParticipantList)}>
+                       <Users className="w-4 h-4 text-primary" />
+                       <span className="text-micro font-bold text-primary">{Object.keys(participants).length}</span>
+                     </div>
+                   )}
                 </div>
-              )}
-
-              <div className="relative mb-2">
-                <SearchIcon className="w-5 h-5 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
-                <input
-                  type="text"
-                  placeholder="Search participants..."
-                  value={participantSearch}
-                  onChange={(e) => setParticipantSearch(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2.5 bg-white border border-gray-200 rounded-xl text-[14px] font-bold text-[#273a5a] placeholder-gray-400 focus:outline-none focus:border-[#ef4523]"
-                />
-              </div>
-
-              {Object.values(participants)
-                .filter((p: any) => p.display_name?.toLowerCase().includes(participantSearch.toLowerCase()))
-                .map((p: any) => {
-                const status = getParticipantStatus(p);
-                const isMe = p.user_id === auth.currentUser?.uid;
-                return (
-                  <div
-                    key={p.user_id}
-                    onClick={() => {
-                      if (!isMe && p.lat && p.lng) {
-                        setSelectedParticipant(p);
-                        map.current?.flyTo({ center: [p.lng, p.lat], zoom: 16, pitch: 45, duration: 1200 });
-                        setIsFollowingUser(false);
-                        setIsDrawerExpanded(false); // Close drawer to show map
-                      }
-                    }}
-                    className={`flex items-center gap-3 p-3 rounded-[16px] border border-gray-100 ${isMe ? 'bg-orange-50' : 'hover:bg-gray-50 bg-white shadow-sm'} cursor-pointer transition-colors`}
-                  >
-                    <div className="w-11 h-11 rounded-full bg-gray-100 overflow-hidden flex items-center justify-center shrink-0 border-2 border-gray-200 relative">
-                      {p.avatar_url ? (
-                        <img src={p.avatar_url} className="w-full h-full object-cover rounded-full" alt="" />
-                      ) : (
-                        <span className="text-[14px] font-black text-[#273a5a]">{(p.display_name || 'U')[0].toUpperCase()}</span>
-                      )}
-                      {p.role === 'admin' && (
-                        <div className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-amber-400 rounded-full flex items-center justify-center border border-white">
-                          <Crown className="w-2.5 h-2.5 text-white" />
-                        </div>
-                      )}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-bold text-[15px] text-[#273a5a] truncate">{p.display_name} {isMe ? '(You)' : ''}</p>
-                      <div className="flex items-center gap-2 mt-0.5">
-                        <span className={`w-2 h-2 rounded-full ${getStatusColor(status)}`}></span>
-                        <span className="text-[12px] font-medium text-gray-500">{status}</span>
-                        {userLocation && p.lat && p.lng && !isMe && (
-                          <span className="text-[12px] font-bold text-[#273a5a]">• {getDistBetween(userLocation.lat, userLocation.lng, p.lat, p.lng)}</span>
-                        )}
-                      </div>
-                    </div>
-                    {!isMe && p.lat && p.lng && (
-                      <button
-                        onClick={(e) => { e.stopPropagation(); navigateToUser(p.lat, p.lng); }}
-                        className="shrink-0 w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary hover:bg-primary/20"
-                      >
-                        <Navigation2 className="w-5 h-5" />
-                      </button>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          )}
-
-          {/* Admin End / Member Exit */}
-          {groupRideId && (
-            <div className="mt-2 flex gap-2">
-              {isGroupMode && (
-                <button
-                  onClick={handleEndGroupNavigation}
-                  className="flex-1 bg-red-500 text-white font-bold py-3 rounded-2xl text-[14px] flex items-center justify-center gap-2 active:scale-95 transition-all shadow-md"
-                >
-                  <X className="w-4 h-4" /> End Group
-                </button>
-              )}
-              <button
-                onClick={handleExitGroupNavigation}
-                className="flex-1 bg-gray-100 text-[#273a5a] font-bold py-3 rounded-2xl text-[14px] flex items-center justify-center gap-2 active:scale-95 transition-all"
-              >
-                <LogOut className="w-4 h-4" /> Exit
-              </button>
-            </div>
-          )}
-        </div>
-      </div>
-      </>
-      )}
-
-      {/* Selected Participant Info Card */}
-      {selectedParticipant && selectedParticipant.lat && selectedParticipant.lng && (
-        <div className="absolute bottom-[200px] left-4 right-4 z-30 animate-in slide-in-from-bottom-4 duration-300">
-          <div className="bg-white rounded-[24px] shadow-2xl p-5 border border-gray-100">
-            <button onClick={() => setSelectedParticipant(null)} className="absolute top-3 right-3 w-7 h-7 bg-gray-100 rounded-full flex items-center justify-center">
-              <X className="w-4 h-4 text-gray-500" />
-            </button>
-            <div className="flex items-center gap-4 mb-4">
-              <div className="w-14 h-14 rounded-full bg-gray-100 overflow-hidden flex items-center justify-center shrink-0 border-2 border-gray-200">
-                {selectedParticipant.avatar_url ? (
-                  <img src={selectedParticipant.avatar_url} className="w-full h-full object-cover rounded-full" alt="" />
-                ) : (
-                  <span className="text-[18px] font-black text-[#273a5a]">{(selectedParticipant.display_name || 'U')[0].toUpperCase()}</span>
-                )}
-              </div>
-              <div className="flex-1">
-                <h3 className="text-[18px] font-black text-[#273a5a] leading-tight">{selectedParticipant.display_name}</h3>
-                <div className="flex items-center gap-2 mt-1">
-                  <span className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider text-white ${selectedParticipant.role === 'admin' ? 'bg-amber-500' : 'bg-gray-400'}`}>
-                    {selectedParticipant.role === 'admin' ? '♔ Admin' : 'Member'}
-                  </span>
-                  <span className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider text-white flex items-center gap-1 ${getStatusColor(getParticipantStatus(selectedParticipant))}`}>
-                    <span className="w-1.5 h-1.5 rounded-full bg-white/60"></span>
-                    {getParticipantStatus(selectedParticipant)}
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            <div className="flex items-center justify-between text-[13px] text-gray-500 font-medium mb-4">
-              <span>{selectedParticipant.last_updated ? `Updated ${Math.round((Date.now() - new Date(selectedParticipant.last_updated).getTime()) / 60000)} min ago` : 'No location yet'}</span>
-              {userLocation && <span className="font-bold text-[#273a5a]">{getDistBetween(userLocation.lat, userLocation.lng, selectedParticipant.lat, selectedParticipant.lng)} away</span>}
-            </div>
-
-            <button
-              onClick={() => navigateToUser(selectedParticipant.lat, selectedParticipant.lng)}
-              className="w-full bg-[#ef4523] text-white font-bold py-3.5 rounded-2xl text-[15px] flex items-center justify-center gap-2 active:scale-95 transition-all shadow-[0_8px_20px_rgba(239,69,35,0.25)]"
-            >
-              <Navigation2 className="w-5 h-5" /> Navigate to {selectedParticipant.display_name?.split(' ')[0]}
-            </button>
+             </SpatialMembrane>
           </div>
+
         </div>
       )}
 
       {selectedIncident && (
         <IncidentDrawer incident={selectedIncident} onClose={() => setSelectedIncident(null)} />
       )}
-
-    </div>
+    </CockpitLayout>
   );
 };
 
