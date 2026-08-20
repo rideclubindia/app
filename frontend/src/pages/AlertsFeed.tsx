@@ -4,8 +4,6 @@ import { useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import { supabase } from '../lib/supabase';
 import { useToast } from '../components/ToastContext';
-import { CockpitLayout } from '../components/spatial/CockpitLayout';
-import { SpatialMembrane } from '../components/spatial/SpatialMembrane';
 
 const filters = ['All', 'Traffic', 'Accidents', 'Road Closed', 'Vibe Check', 'Hazards'];
 
@@ -61,47 +59,38 @@ const AlertsFeed = () => {
   });
 
   return (
-    <CockpitLayout
-      mapChildren={
-        <div className="w-full h-full bg-[#0a0a0a] relative overflow-hidden flex items-center justify-center">
-          <div className="absolute inset-0 bg-gradient-to-bl from-red-500/10 to-transparent"></div>
-          <div className="absolute w-[800px] h-[800px] bg-red-500/10 rounded-full blur-[120px] -top-[300px] -right-[200px]"></div>
-          <div className="absolute w-[600px] h-[600px] bg-primary/10 rounded-full blur-[120px] -bottom-[300px] -left-[100px]"></div>
-        </div>
-      }
-    >
+    <>
       <Helmet>
         <title>Live Alerts Feed | Ride Club</title>
         <meta name="description" content="Check real-time community reports for accidents, hazards, and police sightings." />
       </Helmet>
 
-      <SpatialMembrane position="left" className="w-[420px] p-5 flex flex-col gap-6 max-h-[100dvh]">
-        
+      <div className="flex flex-col gap-4 h-full">
         {/* Header */}
-        <div className="flex items-center gap-3 shrink-0 mb-2">
-          <button onClick={() => navigate('/home')} className="w-10 h-10 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 flex items-center justify-center transition-all active:scale-95">
-            <ArrowLeft className="w-5 h-5 text-white" />
+        <div className="flex items-center gap-3 shrink-0">
+          <button onClick={() => navigate('/home')} className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 flex items-center justify-center transition-all active:scale-95">
+            <ArrowLeft className="w-4 h-4 text-white" />
           </button>
           <div>
-            <h1 className="text-[24px] font-bold text-white tracking-tight leading-none">Live Alerts</h1>
-            <p className="text-[13px] text-white/50 mt-1">Community reports</p>
+            <h1 className="text-[18px] font-bold text-white tracking-tight leading-none">Live Alerts</h1>
+            <p className="text-[11px] text-white/50 mt-0.5">Community reports</p>
           </div>
         </div>
 
         {/* Filters */}
-        <div className="flex gap-2 overflow-x-auto hide-scrollbar shrink-0 pb-1">
-          <button aria-label="Filter" className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center flex-shrink-0 text-white/40">
-            <Filter className="w-4 h-4" />
+        <div className="flex gap-1.5 overflow-x-auto hide-scrollbar shrink-0 pb-1">
+          <button aria-label="Filter" className="w-8 h-8 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center flex-shrink-0 text-white/40">
+            <Filter className="w-3.5 h-3.5" />
           </button>
           {filters.map(filter => (
             <button
               key={filter}
               aria-label={`Filter by ${filter}`}
               onClick={() => setActiveFilter(filter)}
-              className={`h-10 px-4 rounded-xl text-[12px] font-bold whitespace-nowrap transition-all border ${
-                activeFilter === filter 
-                  ? 'bg-red-500 text-white border-red-500 shadow-lg shadow-red-500/20' 
-                  : 'bg-white/5 text-white/60 border-white/10 hover:bg-white/10'
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all ${
+                activeFilter === filter
+                  ? 'bg-[#F97316] text-white shadow-md'
+                  : 'bg-white/5 hover:bg-white/10 text-white/60 border border-white/10'
               }`}
             >
               {filter}
@@ -109,56 +98,49 @@ const AlertsFeed = () => {
           ))}
         </div>
 
-        {/* Feed List */}
-        <div className="flex-1 overflow-y-auto hide-scrollbar flex flex-col gap-3 pb-8">
+        {/* Alerts List */}
+        <div className="flex-1 overflow-y-auto hide-scrollbar flex flex-col gap-2.5 pr-1">
           {loading ? (
-            <>
-              {[1, 2, 3, 4, 5].map(i => (
-                <div key={i} className="w-full h-20 bg-white/5 rounded-2xl animate-pulse border border-white/10"></div>
-              ))}
-            </>
+            <div className="flex items-center justify-center h-32 text-white/40 text-xs">
+              Loading alerts...
+            </div>
           ) : filteredAlerts.length === 0 ? (
-            <div className="text-center p-8 mt-10">
-              <div className="w-16 h-16 bg-red-500/20 border border-red-500/30 rounded-full flex items-center justify-center mx-auto mb-4">
-                <AlertTriangle className="w-8 h-8 text-red-400" />
-              </div>
-              <h3 className="text-[18px] font-bold text-white mb-2">No Active Alerts</h3>
-              <p className="text-[14px] text-white/50">There are no reports for this category currently.</p>
+            <div className="flex flex-col items-center justify-center h-32 text-center text-white/40 border border-dashed border-white/10 rounded-xl p-4">
+              <AlertTriangle className="w-6 h-6 mb-2 opacity-50 text-[#F97316]" />
+              <p className="text-xs font-medium">No alerts found</p>
             </div>
           ) : (
             filteredAlerts.map(alert => (
               <div 
                 key={alert.id} 
                 onClick={() => navigate(`/incident/${alert.id}`)}
-                className="bg-white/5 border border-white/10 rounded-[20px] p-4 hover:bg-white/10 transition-all cursor-pointer flex items-center gap-4 group"
+                className="bg-[#161C28] border border-[#2A3040] hover:border-[#F97316]/40 rounded-xl p-3 flex items-center gap-3 transition-all cursor-pointer group"
               >
                 {/* Left Icon */}
-                <div className="w-12 h-12 rounded-full bg-red-500/20 border border-red-500/30 flex items-center justify-center flex-shrink-0 group-hover:scale-105 transition-transform">
-                  <AlertTriangle className="w-5 h-5 text-red-400" />
+                <div className="w-9 h-9 rounded-full bg-[#EF4444]/20 border border-[#EF4444]/30 flex items-center justify-center flex-shrink-0">
+                  <AlertTriangle className="w-4 h-4 text-[#EF4444]" />
                 </div>
                 
                 {/* Center Content */}
                 <div className="flex-1 min-w-0">
-                  <h4 className="text-[15px] font-bold text-white truncate leading-tight mb-1">
+                  <h4 className="text-xs font-bold text-white truncate leading-tight mb-0.5">
                     {alert.category || 'Alert'}
                   </h4>
-                  <div className="flex items-center text-[12px] font-medium text-white/60">
+                  <div className="flex items-center text-[10px] font-medium text-white/60">
                     <span className="truncate">{alert.description || 'Reported by community'}</span>
-                    <span className="mx-2 text-white/20">•</span>
-                    <span className="flex-shrink-0">{new Date(alert.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
                   </div>
                 </div>
                 
                 {/* Right Arrow */}
-                <div className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center flex-shrink-0 group-hover:bg-white/10 transition-colors">
-                  <ChevronRight className="w-4 h-4 text-white/40" />
+                <div className="w-6 h-6 rounded-full bg-white/5 flex items-center justify-center flex-shrink-0">
+                  <ChevronRight className="w-3.5 h-3.5 text-white/40" />
                 </div>
               </div>
             ))
           )}
         </div>
-      </SpatialMembrane>
-    </CockpitLayout>
+      </div>
+    </>
   );
 };
 

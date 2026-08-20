@@ -6,7 +6,7 @@ const BannedScreen = () => {
   const navigate = useNavigate();
   return (
     <div className="w-full h-full bg-[#FFF5F5] flex items-center justify-center p-6">
-      <div className="max-w-md w-full bg-white rounded-3xl border border-[#FFE3E3] shadow-lg p-8 text-center">
+      <div className="max-w-md w-full bg-white rounded-xl border border-[#FFE3E3] shadow-lg p-8 text-center">
         <div className="mx-auto mb-5 w-16 h-16 rounded-full bg-[#FFF0F0] flex items-center justify-center text-[#D92D20]">
           <ShieldAlert className="w-8 h-8" />
         </div>

@@ -175,7 +175,7 @@ const LoginScreen = () => {
           <div className="grid grid-cols-3 gap-3">
             {/* Find Rides */}
             <div className="flex flex-col items-center text-center gap-2.5 py-3">
-              <div className="w-14 h-14 rounded-2xl bg-white/5 backdrop-blur-xl border border-white/10 flex items-center justify-center">
+              <div className="w-14 h-14 rounded-xl bg-white/5 backdrop-blur-xl border border-white/10 flex items-center justify-center">
                 <svg className="w-7 h-7 text-[#ef4523]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
                   <circle cx="7" cy="17" r="3"/>
                   <circle cx="17" cy="17" r="3"/>
@@ -192,7 +192,7 @@ const LoginScreen = () => {
             </div>
             {/* Ride Together */}
             <div className="flex flex-col items-center text-center gap-2.5 py-3">
-              <div className="w-14 h-14 rounded-2xl bg-white/5 backdrop-blur-xl border border-white/10 flex items-center justify-center">
+              <div className="w-14 h-14 rounded-xl bg-white/5 backdrop-blur-xl border border-white/10 flex items-center justify-center">
                 <svg className="w-7 h-7 text-[#ef4523]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
                   <circle cx="9" cy="7" r="4"/>
@@ -207,7 +207,7 @@ const LoginScreen = () => {
             </div>
             {/* Explore More */}
             <div className="flex flex-col items-center text-center gap-2.5 py-3">
-              <div className="w-14 h-14 rounded-2xl bg-white/5 backdrop-blur-xl border border-white/10 flex items-center justify-center">
+              <div className="w-14 h-14 rounded-xl bg-white/5 backdrop-blur-xl border border-white/10 flex items-center justify-center">
                 <svg className="w-7 h-7 text-[#ef4523]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
                   <circle cx="12" cy="10" r="3"/>

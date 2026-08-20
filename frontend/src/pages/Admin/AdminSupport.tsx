@@ -293,7 +293,7 @@ const AdminSupport = () => {
                         const isAdmin = message.is_admin;
                         return (
                           <div key={message.id} className={`flex ${isAdmin ? 'justify-end' : 'justify-start'}`}>
-                            <div className={`max-w-[70%] rounded-2xl px-4 py-3 shadow-sm ${
+                            <div className={`max-w-[70%] rounded-xl px-4 py-3 shadow-sm ${
                               isAdmin ? 'bg-blue-500 text-white rounded-tr-sm' : 'bg-white border border-[#E5E5EA] text-[#273a5a] rounded-tl-sm'
                             }`}>
                               {!isAdmin && (

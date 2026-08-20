@@ -13,8 +13,11 @@ import { getTravelModeIcon } from '../components/TravelIcons';
 import { IncidentDrawer } from '../components/IncidentDrawer';
 import { useIncidentCategories, incidentIconMap } from '../hooks/useIncidentCategories';
 import { useToast } from '../components/ToastContext';
-import { CockpitLayout } from '../components/spatial/CockpitLayout';
+import { RiderCockpitLayout } from '../components/spatial/RiderCockpitLayout';
+import { EdgeRail } from '../components/spatial/EdgeRail';
+import { CommandDock } from '../components/spatial/CommandDock';
 import { SpatialMembrane } from '../components/spatial/SpatialMembrane';
+import { Helmet } from 'react-helmet-async';
 
 const Routes = () => {
   const navigate = useNavigate();
@@ -411,30 +414,30 @@ const Routes = () => {
   }, [mapLoaded, userGroups]);
 
   return (
-    <CockpitLayout
+    <React.Fragment>
+    <Helmet>
+      <title>Route Planner | Ride Club</title>
+    </Helmet>
+
+    <RiderCockpitLayout
+      topRail={<EdgeRail />}
       mapChildren={
         <div className="w-full h-full relative pointer-events-none">
           <div ref={mapContainer} className="absolute inset-0 w-full h-full pointer-events-auto" />
-          
-          {/* Top gradient for readability if needed */}
-          <div className="absolute top-0 left-0 right-0 h-24 bg-gradient-to-b from-black/20 to-transparent pointer-events-none z-10" />
+          <div className="absolute top-0 left-0 right-0 h-24 bg-gradient-to-b from-[var(--color-hmi-bg)] to-transparent pointer-events-none z-10" />
         </div>
       }
-    >
-      <Helmet>
-        <title>Route Planner | Ride Club</title>
-      </Helmet>
-
-      <SpatialMembrane position="left" className="w-[420px] p-5 flex flex-col gap-5 max-h-[100dvh]">
-        {/* Header */}
-        <div className="flex items-center gap-3 shrink-0 mb-2">
-          <button onClick={() => navigate(-1)} className="w-10 h-10 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 flex items-center justify-center transition-all active:scale-95">
-            <ArrowLeft className="w-5 h-5 text-white" />
-          </button>
-          <div>
-            <h1 className="text-[24px] font-bold text-white tracking-tight leading-none">Plan Route</h1>
+      leftPanel={
+        <div className="flex flex-col gap-5 w-full h-full pointer-events-auto">
+          {/* Header */}
+          <div className="flex items-center gap-3 shrink-0 mb-2">
+            <button onClick={() => navigate(-1)} className="w-10 h-10 rounded-full bg-[var(--color-hmi-elevated)] hover:bg-[var(--color-hmi-text-muted)]/20 border border-[var(--color-hmi-text-muted)]/30 flex items-center justify-center transition-all active:scale-95">
+              <ArrowLeft className="w-5 h-5 text-[var(--color-hmi-text-primary)]" />
+            </button>
+            <div>
+              <h1 className="text-[24px] font-black text-[var(--color-hmi-text-primary)] tracking-tight leading-none uppercase">Plan Route</h1>
+            </div>
           </div>
-        </div>
 
         <div className="flex-1 overflow-y-auto hide-scrollbar flex flex-col gap-6 pb-4">
           
@@ -607,7 +610,7 @@ const Routes = () => {
               <div 
                 key={route.id}
                 onClick={() => setSelectedRoute(route.id)}
-                className={`rounded-2xl border-2 transition-all p-4 ${
+                className={`rounded-xl border-2 transition-all p-4 ${
                   selectedRoute === route.id ? 'border-primary bg-primary/10' : 'border-white/10 bg-white/5'
                 }`}
               >
@@ -664,12 +667,14 @@ const Routes = () => {
             </button>
           </div>
         </div>
-      </SpatialMembrane>
+        </div>
+      }
+    />
 
       {selectedIncident && (
         <IncidentDrawer incident={selectedIncident} onClose={() => setSelectedIncident(null)} />
       )}
-    </CockpitLayout>
+    </React.Fragment>
   );
 };
 

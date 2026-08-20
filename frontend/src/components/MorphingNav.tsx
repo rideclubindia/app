@@ -23,7 +23,7 @@ export const MorphingNav = () => {
 
   return (
     <div className="w-full max-w-[400px] px-4 pb-4">
-      <div className="flex items-center justify-between px-2 py-3 bg-white/80 backdrop-blur-xl border border-white/40 shadow-lg rounded-3xl">
+      <div className="flex items-center justify-between px-2 py-3 bg-white/80 backdrop-blur-xl border border-white/40 shadow-lg rounded-xl">
         {TABS.map((tab) => {
           const isActive = getIsActive(tab);
           const Icon = tab.icon;

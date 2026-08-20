@@ -207,7 +207,7 @@ const SupportChat = () => {
           const isMe = !msg.is_admin;
           return (
             <div key={msg.id} className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}>
-              <div className={`max-w-[80%] rounded-2xl px-4 py-3 shadow-sm ${
+              <div className={`max-w-[80%] rounded-xl px-4 py-3 shadow-sm ${
                 isMe ? 'bg-[#ef4523] text-white rounded-tr-sm' : 'bg-white border border-[#E5E5EA] text-[#273a5a] rounded-tl-sm'
               }`}>
                 {!isMe && (
@@ -271,7 +271,7 @@ const SupportChat = () => {
             >
               <ImageIcon className="w-6 h-6" />
             </button>
-            <div className="flex-1 bg-[#F2F4F7] rounded-2xl px-4 py-2 border border-transparent focus-within:border-[#ef4523] focus-within:bg-white transition-all">
+            <div className="flex-1 bg-[#F2F4F7] rounded-xl px-4 py-2 border border-transparent focus-within:border-[#ef4523] focus-within:bg-white transition-all">
               <textarea
                 value={newMessage}
                 onChange={(e) => setNewMessage(e.target.value)}

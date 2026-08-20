@@ -4,6 +4,7 @@ interface SpatialMembraneProps extends React.HTMLAttributes<HTMLDivElement> {
   children: React.ReactNode;
   variant?: 'solid' | 'glow';
   radius?: 'sm' | 'lg';
+  position?: string;
 }
 
 export const SpatialMembrane: React.FC<SpatialMembraneProps> = ({ 

@@ -8,7 +8,8 @@ import { useToast } from '../components/ToastContext';
 import { SearchInput } from '../components/ui/SearchInput';
 import { useConfirm } from '../components/ConfirmDialog';
 import { getDeterministicUuid } from '../lib/user';
-import { CockpitLayout } from '../components/spatial/CockpitLayout';
+import { RiderCockpitLayout } from '../components/spatial/RiderCockpitLayout';
+import { EdgeRail } from '../components/spatial/EdgeRail';
 import { SpatialMembrane } from '../components/spatial/SpatialMembrane';
 
 const Groups = () => {
@@ -387,18 +388,13 @@ const Groups = () => {
   }
 
   return (
-    <CockpitLayout
-      mapChildren={
-        <div className="w-full h-full bg-[#0a0a0a] relative overflow-hidden flex items-center justify-center">
-          <div className="absolute inset-0 bg-gradient-to-br from-primary/10 to-transparent"></div>
-          <div className="absolute w-[800px] h-[800px] bg-primary/10 rounded-full blur-[120px] -top-[300px] -right-[200px]"></div>
-          <div className="absolute w-[600px] h-[600px] bg-blue-500/10 rounded-full blur-[120px] -bottom-[300px] -left-[100px]"></div>
-        </div>
-      }
-    >
-      {!activeGroup ? (
-        // Groups List View
-        <SpatialMembrane position="left" className="w-[420px] p-5 flex flex-col gap-6 max-h-[100dvh]">
+    <React.Fragment>
+    <RiderCockpitLayout
+      topRail={<EdgeRail />}
+      leftPanelWidth="100%"
+      leftPanel={
+        !activeGroup ? (
+          <div className="flex flex-col gap-6 w-full h-full pointer-events-auto bg-[var(--color-hmi-bg)] landscape:bg-transparent rounded-[24px] landscape:rounded-none p-5 landscape:p-0 overflow-hidden shadow-2xl landscape:shadow-none">
           <div className="flex items-center justify-between shrink-0 mb-2">
             <div>
               <h1 className="text-[28px] font-bold text-white tracking-tight leading-none">Groups</h1>
@@ -451,10 +447,10 @@ const Groups = () => {
               })
             )}
           </div>
-        </SpatialMembrane>
-      ) : showMembers ? (
-        // Group Members & Settings View
-        <SpatialMembrane position="left" className="w-[420px] p-5 flex flex-col gap-6 max-h-[100dvh]">
+          </div>
+        ) : showMembers ? (
+          // Group Members & Settings View
+          <div className="flex flex-col gap-6 w-full h-full pointer-events-auto bg-[var(--color-hmi-bg)] landscape:bg-transparent rounded-[24px] landscape:rounded-none p-5 landscape:p-0 overflow-hidden shadow-2xl landscape:shadow-none">
           <div className="flex items-center justify-between shrink-0 mb-2">
             <button onClick={() => setShowMembers(false)} className="w-10 h-10 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 flex items-center justify-center transition-all active:scale-95">
               <ArrowLeft className="w-5 h-5 text-white/80" strokeWidth={1.5} />
@@ -534,16 +530,16 @@ const Groups = () => {
 
             {isAdmin && (
               <div className="mt-4">
-                <button onClick={deleteGroup} className="w-full py-4 bg-red-500/10 hover:bg-red-500/20 rounded-xl font-bold text-red-400 transition-colors">
-                  Delete Group
+                <button onClick={deleteGroup} className="w-full py-4 bg-red-500/10 hover:bg-red-500/20 rounded-xl font-bold text-red-400 transition-colors uppercase">
+                  DELETE
                 </button>
               </div>
             )}
           </div>
-        </SpatialMembrane>
-      ) : (
-        // Chat View
-        <SpatialMembrane position="left" className="w-full max-w-[500px] sm:w-[500px] h-full flex flex-col border-r border-white/10">
+          </div>
+        ) : (
+          // Chat View
+          <div className="flex flex-col w-full h-full pointer-events-auto overflow-hidden bg-[var(--color-hmi-bg)] landscape:bg-transparent rounded-[24px] landscape:rounded-none shadow-2xl landscape:shadow-none">
           {/* Chat Header */}
           <div className="h-[76px] shrink-0 border-b border-white/10 flex items-center justify-between px-5 backdrop-blur-md bg-black/40">
             <div className="flex items-center gap-3">
@@ -583,8 +579,8 @@ const Groups = () => {
                     </div>
                     <h3 className="text-[22px] font-bold text-white mb-2">Join {activeGroup.name}</h3>
                     <p className="text-[15px] text-white/50 mb-6">Join to see the chat.</p>
-                    <button disabled={isJoining} onClick={joinGroup} className="w-full py-4 bg-primary text-white font-bold text-[16px] rounded-xl hover:bg-primary/90 transition-colors disabled:opacity-50">
-                      {isJoining ? <Loader2 className="w-5 h-5 animate-spin mx-auto" /> : "Request to Join"}
+                    <button disabled={isJoining} onClick={joinGroup} className="w-full py-4 bg-primary text-white font-bold text-[16px] rounded-xl hover:bg-primary/90 transition-colors disabled:opacity-50 uppercase">
+                      {isJoining ? <Loader2 className="w-5 h-5 animate-spin mx-auto" /> : "JOIN"}
                     </button>
                   </>
                 )}
@@ -620,7 +616,7 @@ const Groups = () => {
           {/* Chat Input */}
           {(memberStatus === 'accepted' || isAdmin) && (
             <div className="absolute bottom-4 left-4 right-4">
-              <form onSubmit={sendMessage} className="bg-black/60 backdrop-blur-xl border border-white/10 rounded-2xl p-2 flex items-center gap-2">
+              <form onSubmit={sendMessage} className="bg-black/60 backdrop-blur-xl border border-white/10 rounded-xl p-2 flex items-center gap-2">
                 <input 
                   type="text" 
                   value={newMessage}
@@ -634,8 +630,10 @@ const Groups = () => {
               </form>
             </div>
           )}
-        </SpatialMembrane>
-      )}
+          </div>
+        )
+      }
+    />
 
       {/* Create Modal */}
       {showCreateModal && (
@@ -713,7 +711,7 @@ const Groups = () => {
           </div>
         </div>
       )}
-    </CockpitLayout>
+    </React.Fragment>
   );
 };
 

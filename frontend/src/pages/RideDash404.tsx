@@ -302,8 +302,8 @@ export default function RideDash404() {
       {/* Start Screen */}
       {gameState === 'START' && (
         <div className="absolute inset-0 flex flex-col items-center justify-center bg-[#273a5a]/40 backdrop-blur-sm">
-          <div className="bg-white p-8 rounded-2xl shadow-2xl max-w-sm w-full text-center border border-gray-100">
-            <div className="w-16 h-16 bg-[#FFF0E6] rounded-2xl flex items-center justify-center mx-auto mb-4">
+          <div className="bg-white p-8 rounded-xl shadow-2xl max-w-sm w-full text-center border border-gray-100">
+            <div className="w-16 h-16 bg-[#FFF0E6] rounded-xl flex items-center justify-center mx-auto mb-4">
               <Play className="w-8 h-8 text-[#ef4523] ml-1" />
             </div>
             <h2 className="text-2xl font-bold text-gray-900 mb-2">RideDash</h2>
@@ -329,7 +329,7 @@ export default function RideDash404() {
       {/* Game Over Screen */}
       {gameState === 'GAMEOVER' && (
         <div className="absolute inset-0 flex flex-col items-center justify-center bg-red-900/40 backdrop-blur-md animate-in fade-in zoom-in duration-300">
-          <div className="bg-white p-8 rounded-2xl shadow-2xl max-w-sm w-full text-center border-t-4 border-red-500">
+          <div className="bg-white p-8 rounded-xl shadow-2xl max-w-sm w-full text-center border-t-4 border-red-500">
             <h2 className="text-3xl font-black text-gray-900 mb-2">CRASH!</h2>
             <p className="text-gray-500 mb-6 font-medium">You survived for {score} seconds.</p>
             
@@ -356,7 +356,7 @@ export default function RideDash404() {
       {/* Victory Screen */}
       {gameState === 'VICTORY' && (
         <div className="absolute inset-0 flex flex-col items-center justify-center bg-emerald-900/40 backdrop-blur-md animate-in fade-in zoom-in duration-300">
-          <div className="bg-white p-8 rounded-2xl shadow-2xl max-w-sm w-full text-center border-t-4 border-[#34C759]">
+          <div className="bg-white p-8 rounded-xl shadow-2xl max-w-sm w-full text-center border-t-4 border-[#34C759]">
             <h2 className="text-3xl font-black text-gray-900 mb-2">You Made It!</h2>
             <p className="text-gray-500 mb-6 font-medium">You survived {score} seconds and found your way back.</p>
             

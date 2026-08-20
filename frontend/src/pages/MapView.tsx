@@ -4,7 +4,7 @@ import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { ArrowLeft, Bell, Users, Search, Navigation, AlertTriangle, Cloud, CloudRain, Sun, Zap, Info, Crosshair, HelpCircle, AlertOctagon, X, Star, Calendar, MessageCircle, ChevronDown, Flag, User, MapPin, SearchIcon, Plus, Menu, Layers, Activity, Car, ChevronRight, Camera, Globe, Check } from 'lucide-react';
 import { useLocationStore } from '../store/useLocationStore';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation, useOutletContext } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { apiClient, API_BASE_URL } from '../lib/apiClient';
 import { io } from 'socket.io-client';
@@ -21,6 +21,7 @@ const MapView = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { showToast } = useToast();
+  const { map: contextMap } = (useOutletContext<{ map: maplibregl.Map | null }>() || {}) as { map: maplibregl.Map | null };
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<maplibregl.Map | null>(null);
   const markerRef = useRef<maplibregl.Marker | null>(null);
@@ -57,6 +58,12 @@ const MapView = () => {
   const [showDrawer, setShowDrawer] = useState(false);
   const [reportType, setReportType] = useState('Accident');
   const [description, setDescription] = useState('');
+  
+  const { setIsMapReporting } = useLocationStore();
+  useEffect(() => {
+    setIsMapReporting(showDrawer);
+    return () => setIsMapReporting(false);
+  }, [showDrawer, setIsMapReporting]);
   
   // File upload state
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
@@ -136,19 +143,212 @@ const MapView = () => {
         }
       }
     });
-    return (
-    <React.Fragment>
-      <CockpitLayout
-        mapChildren={
-          <div className="w-full h-full relative">
-            <div ref={mapContainer} className="absolute inset-0 w-full h-full" />
-          </div>
+    return () => unsub();
+  }, []);
+
+  useEffect(() => {
+    if (contextMap) {
+      map.current = contextMap;
+      const handleMapClick = (e: maplibregl.MapMouseEvent) => {
+        const { lng, lat } = e.lngLat;
+        setClickLocation({ lat, lng });
+        if (markerRef.current) markerRef.current.remove();
+        markerRef.current = new maplibregl.Marker({ color: '#ef4523' })
+          .setLngLat([lng, lat])
+          .addTo(contextMap);
+        setShowDrawer(true);
+      };
+      
+      contextMap.on('click', handleMapClick);
+      return () => {
+        contextMap.off('click', handleMapClick);
+      };
+    }
+  }, [contextMap]);
+
+  // Fetch alerts
+  useEffect(() => {
+    const fetchPins = async () => {
+      try {
+        const { data, error } = await supabase.from('pins')
+          .select('*')
+          .eq('status', 'active')
+          .order('created_at', { ascending: false })
+          .limit(50);
+        if (!error && data) {
+          setAlerts(data);
         }
-      >
-        <SpatialMembrane>
-          {showDrawer ? (
+      } catch (err) {
+        console.error('Error fetching pins:', err);
+      } finally {
+        setIsLoadingUpdates(false);
+      }
+    };
+    fetchPins();
+
+    // Optional: Realtime subscription for pins
+    const channel = supabase.channel('public:pins')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'pins' }, payload => {
+        fetchPins();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
+
+  const { categories: reportTypes } = useIncidentCategories();
+
+  // Render Alert Markers on Map
+  useEffect(() => {
+    if (!map.current || !alerts || alerts.length === 0) return;
+
+    // Remove existing markers that are no longer in alerts
+    const currentAlertIds = new Set(alerts.map(a => a.id));
+    Object.keys(pinMarkersRef.current).forEach(id => {
+      if (!currentAlertIds.has(id)) {
+        pinMarkersRef.current[id].remove();
+        delete pinMarkersRef.current[id];
+      }
+    });
+
+    // Add new markers
+    alerts.forEach(alert => {
+      if (!pinMarkersRef.current[alert.id] && alert.location && alert.location.coordinates) {
+        const [lng, lat] = alert.location.coordinates;
+        
+        // Find category styling
+        const cat = reportTypes?.find(t => t.id === alert.category);
+        const color = cat?.color || '#ef4523';
+        
+        // Create custom element
+        const el = document.createElement('div');
+        el.className = 'w-10 h-10 rounded-full flex items-center justify-center shadow-lg border-2 border-white transition-transform hover:scale-110 cursor-pointer';
+        el.style.backgroundColor = color;
+        
+        // Use a simple dot if icon isn't immediately available, or just the color
+        el.innerHTML = `<div class="w-3 h-3 bg-white rounded-full"></div>`;
+
+        const marker = new maplibregl.Marker({ element: el })
+          .setLngLat([lng, lat])
+          .addTo(map.current!);
+          
+        marker.getElement().addEventListener('click', () => {
+          navigate(`/incident/${alert.id}`);
+        });
+
+        pinMarkersRef.current[alert.id] = marker;
+      }
+    });
+  }, [alerts, map.current, reportTypes]);
+
+  const nearbyAlerts = alerts; // Temporary mock or mapping if alerts is populated elsewhere
+
+  const formatTimeAgo = (dateString: string) => {
+    if (!dateString) return '';
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
+    if (diffInSeconds < 60) return 'Just now';
+    const diffInMinutes = Math.floor(diffInSeconds / 60);
+    if (diffInMinutes < 60) return `${diffInMinutes}m ago`;
+    const diffInHours = Math.floor(diffInMinutes / 60);
+    if (diffInHours < 24) return `${diffInHours}h ago`;
+    const diffInDays = Math.floor(diffInHours / 24);
+    return `${diffInDays}d ago`;
+  };
+
+  const submitReport = async () => {
+    if (!clickLocation) {
+      showToast('Please select a location on the map first.', 'error');
+      return;
+    }
+    setIsSubmitting(true);
+    try {
+      let finalCategory = reportType === 'Other' && customCategory.trim() !== '' 
+        ? `Other: ${customCategory.trim()}` 
+        : reportType;
+
+      const { data, error } = await supabase.from('pins').insert([{
+        category: finalCategory,
+        description: description,
+        severity: reportType === 'Accident' ? 3 : 1,
+        latitude: clickLocation.lat,
+        longitude: clickLocation.lng,
+        status: 'active',
+        reporter_name: 'Rider', // Default name, ideally fetch from profiles
+        group_id: selectedGroupForReport
+      }]).select();
+      
+      if (error) throw error;
+      
+      showToast('Report submitted successfully!', 'success');
+      setShowDrawer(false);
+      setClickLocation(null);
+      setDescription('');
+      setSelectedFiles([]);
+      setReportType('Accident');
+      markerRef.current?.remove();
+      
+      // Add the new pin directly to state so it appears instantly
+      if (data && data.length > 0) {
+        setAlerts(prev => [data[0], ...prev]);
+      }
+    } catch (e) {
+      console.error(e);
+      showToast('Failed to submit report', 'error');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleSearch = async (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter' && searchQuery.trim()) {
+      setIsSearching(true);
+      try {
+        const res = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(searchQuery)}&limit=5`);
+        const data = await res.json();
+        const formatted = data.features.map((f: any) => ({
+          name: f.properties.name,
+          display_name: [f.properties.name, f.properties.city, f.properties.state].filter(Boolean).join(', '),
+          lat: f.geometry.coordinates[1],
+          lon: f.geometry.coordinates[0],
+          isSavedLocation: false
+        }));
+        setSearchResults(formatted);
+      } catch (err) {
+        showToast('Search failed', 'error');
+      } finally {
+        setIsSearching(false);
+      }
+    }
+  };
+
+  const selectSearchResult = (item: any) => {
+    const lat = parseFloat(item.lat);
+    const lng = parseFloat(item.lon);
+    
+    map.current?.flyTo({ center: [lng, lat], zoom: 16 });
+    setSearchResults([]);
+    setSearchQuery(item.name || item.display_name);
+    
+    // Add temporary marker for searched location
+    if (markerRef.current) markerRef.current.remove();
+    markerRef.current = new maplibregl.Marker({ color: '#ef4523' })
+      .setLngLat([lng, lat])
+      .addTo(map.current!);
+  };
+
+  const saveSearchResult = (item: any) => {
+    showToast(`Saved ${item.name} to locations`, 'success');
+  };
+
+  return (
+    <div className="flex flex-col h-full w-full overflow-hidden">
+      {showDrawer ? (
             <div className="flex flex-col h-full overflow-hidden animate-in slide-in-from-left duration-300">
-              <div className="flex items-center justify-between px-6 py-4 border-b border-white/10 shrink-0">
+              <div className="flex items-center justify-between px-2 py-2 border-b border-white/10 shrink-0">
                 <button onClick={() => { setShowDrawer(false); setClickLocation(null); markerRef.current?.remove(); popupRef.current?.remove(); }} className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-white/10 transition-colors">
                   <ArrowLeft className="w-6 h-6 text-white" />
                 </button>
@@ -156,26 +356,26 @@ const MapView = () => {
                 <div className="w-10" />
               </div>
               
-              <div className="flex-1 overflow-y-auto px-6 py-6 flex flex-col gap-8 custom-scrollbar">
+              <div className="flex-1 overflow-y-auto px-2 py-2 flex flex-col gap-2 custom-scrollbar">
                 {/* Location Confirmed Text */}
-                <div className="w-full bg-green-500/10 text-green-400 font-bold p-4 rounded-xl flex items-center gap-3 border border-green-500/20">
-                  <MapPin className="w-5 h-5" />
+                <div className="w-full bg-green-500/10 text-green-400 font-bold p-2 rounded-xl flex items-center gap-3 border border-green-500/20 text-[14px]">
+                  <MapPin className="w-4 h-4" />
                   Location Confirmed on Map
                 </div>
                 
                 {/* Select Type Grid */}
                 <div className="flex-shrink-0">
-                  <h3 className="font-bold text-[14px] text-white/50 uppercase tracking-wider mb-4">Select Type</h3>
-                  <div className="grid grid-cols-4 gap-y-6 gap-x-2">
+                  <h3 className="font-bold text-[13px] text-white/50 uppercase tracking-wider mb-3">Select Type</h3>
+                  <div className="grid grid-cols-4 gap-y-4 gap-x-4">
                     {reportTypes.map((type) => {
                       const IconComp = incidentIconMap[type.iconName as keyof typeof incidentIconMap];
                       const isSelected = reportType === type.id;
                       return (
-                        <div key={type.id} onClick={() => setReportType(type.id)} className="flex flex-col items-center gap-2 cursor-pointer group">
-                          <div className={`w-[60px] h-[60px] rounded-full flex items-center justify-center transition-all ${isSelected ? 'ring-2 ring-[#ef4523] ring-offset-2 ring-offset-[#0B0F19] shadow-[0_0_20px_rgba(239,69,35,0.3)] bg-white/10' : 'bg-white/5 group-hover:bg-white/10'}`}>
-                            <IconComp className={`w-7 h-7 ${isSelected ? 'text-[#ef4523]' : 'text-white/70'}`} />
+                        <div key={type.id} onClick={() => setReportType(type.id)} className="flex flex-col items-center gap-1.5 cursor-pointer group">
+                          <div className={`w-[48px] h-[48px] rounded-full flex items-center justify-center transition-all ${isSelected ? 'ring-2 ring-[#ef4523] ring-offset-2 ring-offset-[#0B0F19] shadow-[0_0_20px_rgba(239,69,35,0.3)] bg-white/10' : 'bg-white/5 group-hover:bg-white/10'}`}>
+                            <IconComp className={`w-5 h-5 ${isSelected ? 'text-[#ef4523]' : 'text-white/70'}`} />
                           </div>
-                          <span className={`text-[12px] font-semibold text-center leading-tight ${isSelected ? 'text-[#ef4523]' : 'text-white/50'}`}>
+                          <span className={`text-[11px] font-semibold text-center leading-tight ${isSelected ? 'text-[#ef4523]' : 'text-white/50'}`}>
                             {type.id}
                           </span>
                         </div>
@@ -330,20 +530,20 @@ const MapView = () => {
               </div>
             </div>
           ) : (
-            <div className="flex flex-col h-full overflow-hidden p-6 gap-8 animate-in slide-in-from-right duration-300">
+            <div className="flex flex-col h-full overflow-hidden p-1 gap-2 animate-in slide-in-from-right duration-300">
               
               {/* Search Bar */}
               <div className="relative z-30 shrink-0">
-                <div className="bg-white/5 rounded-2xl border border-white/10 h-[52px] flex items-center px-4 gap-3 focus-within:border-[#ef4523] focus-within:bg-white/10 transition-colors">
-                  <Search className="w-5 h-5 text-[#ef4523]" strokeWidth={3} />
+                <div className="bg-white/5 rounded-xl border border-white/10 h-[52px] flex items-center px-4 gap-3 focus-within:border-[#ef4523] focus-within:bg-white/10 transition-colors">
+                  <Search className="w-5 h-5 shrink-0 text-[#ef4523]" strokeWidth={3} />
                   <input 
                     type="text" 
-                    placeholder={isSearching ? "Searching..." : "Search location for incident..."}
+                    placeholder={isSearching ? "Searching..." : "Search location..."}
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     onKeyDown={handleSearch}
                     disabled={isSearching}
-                    className="flex-1 text-[15px] font-bold outline-none bg-transparent placeholder-white/30 text-white"
+                    className="flex-1 min-w-0 text-[14px] font-bold outline-none bg-transparent placeholder-white/30 text-white truncate"
                   />
                   <button 
                     aria-label="Navigate to Location"
@@ -430,8 +630,8 @@ const MapView = () => {
                           }} 
                           className="px-5 py-3 hover:bg-white/5 cursor-pointer flex items-center gap-3 text-[#ef4523] transition-colors"
                         >
-                          <MapPin className="w-5 h-5" />
-                          <p className="text-[15px] font-bold">Select on Map</p>
+                          <MapPin className="w-5 h-5 shrink-0" />
+                          <p className="text-[14px] font-bold truncate">Select on Map</p>
                         </div>
                      )}
                      {(searchResults.length > 0 || searchQuery.length > 0) && (
@@ -445,120 +645,44 @@ const MapView = () => {
                           }} 
                           className="px-5 py-3 hover:bg-white/5 cursor-pointer flex items-center gap-3 text-blue-400 transition-colors"
                         >
-                          <MapPin className="w-5 h-5" />
-                          <p className="text-[15px] font-bold">Select on Map & Save</p>
+                          <MapPin className="w-5 h-5 shrink-0" />
+                          <p className="text-[14px] font-bold truncate">Select on Map & Save</p>
                         </div>
                      )}
                    </div>
                 )}
               </div>
 
-              {/* Quick Actions (Replaces Floating Layers & Location Buttons) */}
-              <div className="flex gap-3 shrink-0">
-                <button onClick={() => setMapStyle(mapStyle === 'default' ? 'dark' : 'default')} className="flex-1 bg-white/5 border border-white/10 rounded-2xl p-3 flex flex-col items-center justify-center gap-2 hover:bg-white/10 active:scale-95 transition-all group">
-                  <div className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center group-hover:bg-white/10 transition-colors">
-                    <Layers className="w-5 h-5 text-white/80" />
-                  </div>
-                  <span className="text-[12px] font-bold text-white/80">Toggle Map</span>
-                </button>
-                <button onClick={() => setShowTraffic(!showTraffic)} className={`flex-1 border rounded-2xl p-3 flex flex-col items-center justify-center gap-2 active:scale-95 transition-all group ${showTraffic ? 'bg-[#ef4523]/10 border-[#ef4523]/30 hover:bg-[#ef4523]/20' : 'bg-white/5 border-white/10 hover:bg-white/10'}`}>
-                  <div className={`w-10 h-10 rounded-full flex items-center justify-center transition-colors ${showTraffic ? 'bg-[#ef4523]/20' : 'bg-white/5 group-hover:bg-white/10'}`}>
-                    <Activity className={`w-5 h-5 ${showTraffic ? 'text-[#ef4523]' : 'text-white/80'}`} />
-                  </div>
-                  <span className={`text-[12px] font-bold ${showTraffic ? 'text-[#ef4523]' : 'text-white/80'}`}>Traffic</span>
-                </button>
-                <button 
-                  onClick={() => {
-                    useLocationStore.getState().fetchLocationOnce().then((loc) => {
-                      const lat = loc.lat;
-                      const lng = loc.lng;
-                      setUserLocation({ lat, lng });
-
-                      userMarkerRef.current?.remove();
-
-                      const el = document.createElement('div');
-                      el.style.width = '24px';
-                      el.style.height = '24px';
-                      el.style.borderRadius = '50%';
-                      el.style.backgroundColor = '#FFFFFF';
-                      el.style.border = '6px solid #ef4523';
-                      el.style.boxShadow = '0 0 0 6px rgba(255,102,0,0.2)';
-
-                      userMarkerRef.current = new maplibregl.Marker(el)
-                        .setLngLat([lng, lat])
-                        .addTo(map.current!);
-
-                      map.current?.flyTo({ center: [lng, lat], zoom: 15, pitch: 0, bearing: 0, speed: 1.2 });
-                    }, () => {
-                      showToast('Unable to get your location. Please allow location access.', 'error');
-                    });
-                  }}
-                  className="flex-1 bg-white/5 border border-white/10 rounded-2xl p-3 flex flex-col items-center justify-center gap-2 hover:bg-white/10 active:scale-95 transition-all group"
-                >
-                  <div className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center group-hover:bg-white/10 transition-colors">
-                    <Crosshair className="w-5 h-5 text-white/80" />
-                  </div>
-                  <span className="text-[12px] font-bold text-white/80">Locate Me</span>
-                </button>
-              </div>
-              
-              {/* Incident Filters */}
-              <div className="shrink-0">
-                <h3 className="text-[13px] font-bold text-white/40 mb-3 uppercase tracking-wider flex items-center gap-2">
-                  <Menu className="w-4 h-4" /> Filters
-                </h3>
-                <div className="flex flex-wrap gap-2">
-                  {reportTypes.map(cat => {
-                     const isHidden = hiddenCategories.includes(cat.id);
-                     return (
-                       <button 
-                         key={cat.id} 
-                         onClick={() => {
-                           if (isHidden) {
-                             setHiddenCategories(hiddenCategories.filter(c => c !== cat.id));
-                           } else {
-                             setHiddenCategories([...hiddenCategories, cat.id]);
-                           }
-                         }}
-                         className={`px-3 py-1.5 rounded-full text-[12px] font-bold border transition-colors ${isHidden ? 'bg-transparent text-white/30 border-white/10 hover:bg-white/5' : 'bg-white/10 text-white border-white/20 hover:bg-white/20 shadow-sm'}`}
-                       >
-                         {cat.id}
-                       </button>
-                     );
-                   })}
-                </div>
-              </div>
-              
               {/* Live Updates */}
-              <div className="flex-1 flex flex-col min-h-0 bg-white/5 rounded-3xl border border-white/10 p-5 overflow-hidden">
-                <div className="flex justify-between items-center mb-5 shrink-0">
-                  <h3 className="text-[18px] font-bold text-white flex items-center gap-2">
+              <div className="flex-1 flex flex-col min-h-0 bg-white/5 rounded-xl border border-white/10 p-2 overflow-hidden">
+                <div className="flex justify-between items-center mb-4 shrink-0">
+                  <h3 className="text-[16px] font-bold text-white flex items-center gap-2">
                     Live Updates
                   </h3>
-                  <span className="bg-[#ef4523]/20 text-[#ef4523] px-3 py-1 rounded-full text-[12px] font-bold">
+                  <span className="bg-[#ef4523]/20 text-[#ef4523] px-2 py-1 rounded-full text-[11px] font-bold shrink-0">
                     {nearbyAlerts.length} Active
                   </span>
                 </div>
 
-                <div className="flex gap-2 shrink-0 mb-4 p-1 bg-black/20 rounded-xl">
-                  <button onClick={() => setActiveTab('All')} className={`flex-1 py-2 rounded-lg text-[12px] font-bold flex items-center justify-center gap-1.5 transition-colors ${activeTab === 'All' ? 'bg-white/10 text-white shadow-sm' : 'text-white/50 hover:text-white'}`}>
-                    <Layers className="w-3.5 h-3.5" /> All
+                <div className="flex gap-1 shrink-0 mb-2 p-1 bg-black/20 rounded-xl overflow-x-auto custom-scrollbar whitespace-nowrap">
+                  <button onClick={() => setActiveTab('All')} className={`flex-1 min-w-0 px-3 py-1.5 rounded-lg text-[11px] font-bold flex items-center justify-center gap-1.5 transition-colors ${activeTab === 'All' ? 'bg-white/10 text-white shadow-sm' : 'text-white/50 hover:text-white'}`}>
+                    <Layers className="w-3 h-3 shrink-0" /> All
                   </button>
-                  <button onClick={() => setActiveTab('Rides')} className={`flex-1 py-2 rounded-lg text-[12px] font-bold flex items-center justify-center gap-1.5 transition-colors ${activeTab === 'Rides' ? 'bg-white/10 text-white shadow-sm' : 'text-white/50 hover:text-white'}`}>
-                    <Car className="w-3.5 h-3.5" /> Rides
+                  <button onClick={() => setActiveTab('Rides')} className={`flex-1 min-w-0 px-3 py-1.5 rounded-lg text-[11px] font-bold flex items-center justify-center gap-1.5 transition-colors ${activeTab === 'Rides' ? 'bg-white/10 text-white shadow-sm' : 'text-white/50 hover:text-white'}`}>
+                    <Car className="w-3 h-3 shrink-0" /> Rides
                   </button>
-                  <button onClick={() => setActiveTab('Events')} className={`flex-1 py-2 rounded-lg text-[12px] font-bold flex items-center justify-center gap-1.5 transition-colors ${activeTab === 'Events' ? 'bg-white/10 text-white shadow-sm' : 'text-white/50 hover:text-white'}`}>
-                    <Calendar className="w-3.5 h-3.5" /> Events
+                  <button onClick={() => setActiveTab('Events')} className={`flex-1 min-w-0 px-3 py-1.5 rounded-lg text-[11px] font-bold flex items-center justify-center gap-1.5 transition-colors ${activeTab === 'Events' ? 'bg-white/10 text-white shadow-sm' : 'text-white/50 hover:text-white'}`}>
+                    <Calendar className="w-3 h-3 shrink-0" /> Events
                   </button>
-                  <button onClick={() => setActiveTab('Alerts')} className={`flex-1 py-2 rounded-lg text-[12px] font-bold flex items-center justify-center gap-1.5 transition-colors ${activeTab === 'Alerts' ? 'bg-white/10 text-white shadow-sm' : 'text-white/50 hover:text-white'}`}>
-                    <AlertTriangle className="w-3.5 h-3.5" /> Alerts
+                  <button onClick={() => setActiveTab('Alerts')} className={`flex-1 min-w-0 px-3 py-1.5 rounded-lg text-[11px] font-bold flex items-center justify-center gap-1.5 transition-colors ${activeTab === 'Alerts' ? 'bg-white/10 text-white shadow-sm' : 'text-white/50 hover:text-white'}`}>
+                    <AlertTriangle className="w-3 h-3 shrink-0" /> Alerts
                   </button>
                 </div>
 
-                <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar flex flex-col gap-3">
+                <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar flex flex-col gap-1">
                   {isLoadingUpdates ? (
                     Array(3).fill(0).map((_, i) => (
-                      <div key={i} className="w-full bg-white/5 rounded-2xl p-4 flex items-center gap-4 shrink-0 animate-pulse">
+                      <div key={i} className="w-full bg-white/5 rounded-xl p-4 flex items-center gap-4 shrink-0 animate-pulse">
                         <div className="w-[48px] h-[48px] rounded-full bg-white/10 flex-shrink-0"></div>
                         <div className="flex-1">
                           <div className="h-4 bg-white/10 rounded w-1/2 mb-2"></div>
@@ -581,7 +705,7 @@ const MapView = () => {
                       const typeObj = reportTypes.find(t => t.id === alert.category) || reportTypes.find(t => t.id === 'Other');
                       const IconComp = typeObj ? incidentIconMap[typeObj.iconName as keyof typeof incidentIconMap] : AlertTriangle;
                       return (
-                        <div key={alert.id} onClick={() => navigate(`/incident/${alert.id}`)} className="w-full bg-black/20 rounded-2xl p-4 flex items-center justify-between border border-white/5 cursor-pointer hover:bg-white/10 hover:border-white/20 transition-all shrink-0 group">
+                        <div key={alert.id} onClick={() => navigate(`/incident/${alert.id}`)} className="w-full bg-black/20 rounded-xl p-2 flex items-center justify-between border border-white/5 cursor-pointer hover:bg-white/10 hover:border-white/20 transition-all shrink-0 group">
                           <div className="flex items-center gap-4">
                             <div className={`w-[48px] h-[48px] rounded-full flex items-center justify-center flex-shrink-0 bg-white/10 border border-white/10 group-hover:scale-110 transition-transform`}>
                               <IconComp className={`w-5 h-5 text-white`} />
@@ -610,15 +734,12 @@ const MapView = () => {
               </div>
             </div>
           )}
-        </SpatialMembrane>
-      </CockpitLayout>
 
       {selectedIncident && (
         <IncidentDrawer incident={selectedIncident} onClose={() => setSelectedIncident(null)} />
       )}
-    </React.Fragment>
+    </div>
   );
 };
 
 export default MapView;
-\n\nexport default MapView;

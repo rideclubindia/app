@@ -189,7 +189,7 @@ const PolicyAcceptance: React.FC<PolicyAcceptanceProps> = ({ onAccept }) => {
             <div className="absolute -top-20 -right-20 w-40 h-40 bg-[#ef4523]/10 rounded-full blur-3xl pointer-events-none"></div>
             
             <div className="flex items-start gap-4 relative">
-              <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-[#ef4523] to-[#ef4523] flex items-center justify-center shrink-0 shadow-[0_4px_16px_rgba(255,106,0,0.3)]">
+              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[#ef4523] to-[#ef4523] flex items-center justify-center shrink-0 shadow-[0_4px_16px_rgba(255,106,0,0.3)]">
                 <ShieldCheck className="w-6 h-6 text-white" />
               </div>
               <div className="flex-1 min-w-0">

@@ -13,8 +13,10 @@ import { auth } from '../lib/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 import { getDeterministicUuid } from '../lib/user';
 import { useToast } from '../components/ToastContext';
-import { CockpitLayout } from '../components/spatial/CockpitLayout';
-import { LeftGravityWell } from '../components/spatial/LeftGravityWell';
+import { RiderCockpitLayout } from '../components/spatial/RiderCockpitLayout';
+import { EdgeRail } from '../components/spatial/EdgeRail';
+import { CommandDock } from '../components/spatial/CommandDock';
+import { Telemetry } from '../components/spatial/Telemetry';
 import { SpatialMembrane } from '../components/spatial/SpatialMembrane';
 import LoadingSpinner from '../components/LoadingSpinner';const Navigation = () => {
   const navigate = useNavigate();
@@ -1048,17 +1050,19 @@ import LoadingSpinner from '../components/LoadingSpinner';const Navigation = () 
   const isElementalMode = currentSpeed !== null && currentSpeed > 45;
 
   return (
-    <CockpitLayout
+    <React.Fragment>
+    <RiderCockpitLayout
+      topRail={<EdgeRail />}
       mapChildren={
         <>
           <div ref={mapContainer} className="w-full h-full" />
           
           {/* Map Controls */}
           {mapLoaded && (
-            <div className={`absolute bottom-6 left-[30%] landscape:left-4 z-20 flex flex-col gap-3 transition-opacity duration-300 ${isElementalMode ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}>
+            <div className={`absolute bottom-[100px] right-6 z-20 flex flex-col gap-3 transition-opacity duration-300`}>
               <button 
                 onClick={() => setShowTraffic(!showTraffic)}
-                className={`w-[48px] h-[48px] rounded-full flex items-center justify-center transition-colors shadow-lg ${showTraffic ? 'bg-membrane border border-primary text-primary' : 'bg-membrane border border-white/20 text-gray-700'}`}
+                className={`w-[48px] h-[48px] rounded-full flex items-center justify-center transition-colors shadow-lg ${showTraffic ? 'bg-[var(--color-hmi-surface)] border border-[var(--color-hmi-accent)] text-[var(--color-hmi-accent)]' : 'bg-[var(--color-hmi-surface)] border border-[var(--color-hmi-text-muted)] text-[var(--color-hmi-text-primary)]'}`}
               >
                 <Layers className="w-6 h-6" />
               </button>
@@ -1070,7 +1074,7 @@ import LoadingSpinner from '../components/LoadingSpinner';const Navigation = () 
                   if (next3D) map.current.easeTo({ pitch: 60, duration: 1000 });
                   else map.current.easeTo({ pitch: 0, duration: 1000 });
                 }}
-                className={`w-[48px] h-[48px] rounded-full flex items-center justify-center transition-colors shadow-lg ${is3D ? 'bg-membrane border border-primary text-primary' : 'bg-membrane border border-white/20 text-gray-700'}`}
+                className={`w-[48px] h-[48px] rounded-full flex items-center justify-center transition-colors shadow-lg ${is3D ? 'bg-[var(--color-hmi-surface)] border border-[var(--color-hmi-accent)] text-[var(--color-hmi-accent)]' : 'bg-[var(--color-hmi-surface)] border border-[var(--color-hmi-text-muted)] text-[var(--color-hmi-text-primary)]'}`}
               >
                 {is3D ? <Compass className="w-6 h-6" /> : <Navigation2 className="w-6 h-6" />}
               </button>
@@ -1081,7 +1085,7 @@ import LoadingSpinner from '../components/LoadingSpinner';const Navigation = () 
                     map.current.flyTo({ center: [userLocation.lng, userLocation.lat], zoom: 17, pitch: is3D ? 60 : 0 });
                   }
                 }}
-                className={`w-[48px] h-[48px] rounded-full flex items-center justify-center transition-colors shadow-lg ${!isFollowingUser ? 'bg-membrane border border-primary text-primary animate-pulse' : 'bg-membrane border border-white/20 text-gray-700'}`}
+                className={`w-[48px] h-[48px] rounded-full flex items-center justify-center transition-colors shadow-lg ${!isFollowingUser ? 'bg-[var(--color-hmi-surface)] border border-[var(--color-hmi-accent)] text-[var(--color-hmi-accent)] animate-pulse' : 'bg-[var(--color-hmi-surface)] border border-[var(--color-hmi-text-muted)] text-[var(--color-hmi-text-primary)]'}`}
               >
                 <Crosshair className="w-6 h-6" />
               </button>
@@ -1089,77 +1093,69 @@ import LoadingSpinner from '../components/LoadingSpinner';const Navigation = () 
           )}
         </>
       }
-    >
-      <LeftGravityWell onSOSClick={() => navigate('/support')}>
-        <div className="flex flex-col gap-4 mt-12 w-full px-2 items-center">
-          <button onClick={() => navigate(-1)} className="p-2 bg-gray-100/50 rounded-full w-full flex justify-center"><X className="w-5 h-5 text-gray-600" /></button>
-          {!isElementalMode && (
-             <button onClick={() => setIsDrawerExpanded(!isDrawerExpanded)} className="p-2 bg-gray-100/50 rounded-full w-full flex justify-center mt-auto"><MoreHorizontal className="w-5 h-5 text-gray-600" /></button>
-          )}
-        </div>
-      </LeftGravityWell>
+      leftPanel={
+        <div className="flex flex-col gap-6 p-6 h-full justify-start mt-6">
+          {!mapLoaded ? (
+            <LoadingSpinner fullScreen={false} message="Loading Map & Route..." />
+          ) : (
+            <>
+              {/* TOP SECTION: Turn instruction */}
+              <div className={`p-6 bg-[var(--color-hmi-surface)]/80 backdrop-blur-xl rounded-[32px] border border-[var(--color-hmi-accent)]/20 shadow-[0_10px_40px_rgba(0,0,0,0.5)] flex flex-col gap-4 items-center justify-center w-full max-w-[400px] pointer-events-auto transition-all duration-300`}>
+                 <div className="w-20 h-20 bg-[var(--color-hmi-accent)]/10 rounded-full flex items-center justify-center shrink-0 border border-[var(--color-hmi-accent)]/30">
+                    {React.cloneElement(getTurnIcon(currentInstruction.type) as React.ReactElement<{className?: string}>, { className: 'w-10 h-10 text-[var(--color-hmi-accent)]' })}
+                 </div>
+                 <div className="flex flex-col items-center text-center">
+                   <h2 className="text-[32px] font-black leading-none text-[var(--color-hmi-text-primary)] mb-2">{currentInstruction.dist || `to ${destName || 'destination'}`}</h2>
+                   <p className="text-[18px] text-[var(--color-hmi-text-secondary)] font-bold">{currentInstruction.text}</p>
+                 </div>
+              </div>
 
-      {!mapLoaded && <LoadingSpinner fullScreen message="Loading Map & Route..." />}
-
-      {mapLoaded && (
-        <div className="flex flex-col h-full relative pl-[80px] pr-4 py-6 justify-between pointer-events-none">
-          
-          {/* TOP SECTION: Turn instruction */}
-          <SpatialMembrane className={`p-4 flex gap-4 items-center w-full max-w-[400px] pointer-events-auto transition-all duration-300 ${isElementalMode ? 'scale-110 origin-left' : ''}`}>
-             <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center shrink-0">
-                {React.cloneElement(getTurnIcon(currentInstruction.type) as React.ReactElement<{className?: string}>, { className: 'w-7 h-7 text-primary' })}
-             </div>
-             <div className="flex-1">
-               <h2 className="text-turn leading-none text-primary">{currentInstruction.dist || `to ${destName || 'destination'}`}</h2>
-               <p className="text-secondary-info text-gray-600 font-bold mt-1 truncate">{currentInstruction.text}</p>
-             </div>
-          </SpatialMembrane>
-
-          {/* MIDDLE SECTION: Hazard Alerts */}
-          {nextHazard && !isElementalMode && (
-            <SpatialMembrane className="p-3 w-full max-w-[400px] pointer-events-auto mt-4 border-danger/50" variant="glow">
-               <div className="text-danger font-bold text-secondary-info flex items-center gap-2">
-                 <AlertTriangle className="w-5 h-5" />
-                 <span className="truncate">{Math.max(0, Math.round(nextHazard.remainingDist * 1000))}m - Hazard Ahead</span>
-               </div>
-            </SpatialMembrane>
-          )}
-
-          {/* BOTTOM SECTION: Speed & ETA */}
-          <div className="flex flex-col gap-4 mt-auto pointer-events-auto w-full max-w-[400px]">
-             
-             {/* Speed */}
-             <div className="flex justify-end pr-4">
-                <div className={`flex flex-col items-end transition-all duration-300 ${isElementalMode ? 'scale-125 origin-right mb-10' : ''}`}>
-                  <span className="text-speed text-primary leading-none drop-shadow-sm">{currentSpeed !== null ? currentSpeed : '--'}</span>
-                  <span className="text-micro text-gray-500 font-bold uppercase tracking-widest">km/h</span>
-                </div>
-             </div>
-
-             {/* Journey Stats */}
-             <SpatialMembrane className={`p-5 flex flex-col gap-2 transition-all duration-300 ${isElementalMode ? 'opacity-0 translate-y-10 absolute bottom-0' : 'opacity-100'}`}>
-                <div className="flex justify-between items-end">
-                   <div>
-                     <h3 className="text-turn text-gray-900 leading-none">{currentEta}</h3>
-                     <p className="text-secondary-info text-gray-500 font-bold">{currentDistance} remaining</p>
+              {/* MIDDLE SECTION: Hazard Alerts */}
+              {nextHazard && (
+                <div className="p-4 bg-[var(--color-hmi-critical)]/10 rounded-[20px] border border-[var(--color-hmi-critical)]/50 w-full max-w-[400px] pointer-events-auto mt-2">
+                   <div className="text-[var(--color-hmi-critical)] font-black text-[16px] flex items-center justify-center gap-3">
+                     <AlertTriangle className="w-6 h-6" />
+                     <span className="truncate uppercase">{Math.max(0, Math.round(nextHazard.remainingDist * 1000))}m - Hazard Ahead</span>
                    </div>
-                   {groupRideId && (
-                     <div className="bg-orange-50 px-3 py-1 rounded-full border border-orange-100 flex items-center gap-2" onClick={() => setShowParticipantList(!showParticipantList)}>
-                       <Users className="w-4 h-4 text-primary" />
-                       <span className="text-micro font-bold text-primary">{Object.keys(participants).length}</span>
-                     </div>
-                   )}
                 </div>
-             </SpatialMembrane>
-          </div>
+              )}
 
+              {/* BOTTOM SECTION: Speed & ETA */}
+              <div className="flex flex-col gap-4 mt-auto pointer-events-auto w-full max-w-[400px]">
+                 <div className="flex gap-4 p-6 bg-[var(--color-hmi-surface)]/80 backdrop-blur-xl rounded-[32px] border border-[var(--color-hmi-text-muted)]/20 shadow-[0_10px_40px_rgba(0,0,0,0.5)] justify-between items-center">
+                   <Telemetry label="Speed" value={currentSpeed !== null ? currentSpeed : '--'} unit="KM/H" size="lg" color="live" />
+                   <div className="w-[1px] h-16 bg-[var(--color-hmi-text-muted)]/30" />
+                   <div className="flex flex-col">
+                     <Telemetry label="ETA" value={currentEta} size="md" color="primary" />
+                     <span className="text-[14px] text-[var(--color-hmi-text-muted)] font-bold mt-1">{currentDistance} left</span>
+                   </div>
+                 </div>
+              </div>
+            </>
+          )}
         </div>
-      )}
-
-      {selectedIncident && (
-        <IncidentDrawer incident={selectedIncident} onClose={() => setSelectedIncident(null)} />
-      )}
-    </CockpitLayout>
+      }
+      bottomDock={
+        <CommandDock 
+          primaryAction={{
+            id: 'end',
+            label: 'END RIDE',
+            icon: X,
+            onClick: groupRideId ? handleEndGroupNavigation : () => navigate(-1),
+            variant: 'danger'
+          }}
+          secondaryActions={[
+            { id: 'sos', label: 'SOS', icon: AlertTriangle, onClick: () => navigate('/support'), variant: 'danger' },
+            { id: 'group', label: 'Group', icon: Users, onClick: () => setShowParticipantList(!showParticipantList), isActive: showParticipantList }
+          ]}
+        />
+      }
+    />
+    
+    {selectedIncident && (
+      <IncidentDrawer incident={selectedIncident} onClose={() => setSelectedIncident(null)} />
+    )}
+    </React.Fragment>
   );
 };
 

@@ -59,7 +59,7 @@ export const ConfirmProvider: React.FC<{ children: ReactNode }> = ({ children })
           <div className="absolute inset-0 bg-black/30 backdrop-blur-[2px]" />
 
           {/* Panel */}
-          <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-[380px] overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+          <div className="relative bg-white rounded-xl shadow-2xl w-full max-w-[380px] overflow-hidden animate-in fade-in zoom-in-95 duration-200">
             {/* Top accent bar */}
             <div className={`h-1 w-full ${
               dialog.variant === 'danger' ? 'bg-[#FF3B30]' :

@@ -4,8 +4,12 @@ import { persist } from 'zustand/middleware';
 export interface LocationState {
   coordinates: { lat: number; lng: number } | null;
   locationName: string | null;
+  speed: number; // km/h
+  heading: number | null;
   error: string | null;
   isTracking: boolean;
+  isMapReporting: boolean;
+  setIsMapReporting: (val: boolean) => void;
   startTracking: () => void;
   stopTracking: () => void;
   fetchLocationOnce: () => Promise<{lat: number, lng: number, locationName: string | null}>;
@@ -36,8 +40,12 @@ export const useLocationStore = create<LocationState>()(
   return {
     coordinates: null,
     locationName: null,
+    speed: 0,
+    heading: null,
     error: null,
     isTracking: false,
+    isMapReporting: false,
+    setIsMapReporting: (val: boolean) => set({ isMapReporting: val }),
 
     startTracking: () => {
       if (get().isTracking) return;
@@ -50,11 +58,22 @@ export const useLocationStore = create<LocationState>()(
       
       watchId = navigator.geolocation.watchPosition(
         (pos) => {
-          const { latitude, longitude } = pos.coords;
+          const { latitude, longitude, speed: rawSpeed, heading } = pos.coords;
           const prevCoords = get().coordinates;
           
+          // Speed from GPS in m/s, convert to km/h
+          const speedKmh = (rawSpeed !== null && !isNaN(rawSpeed) && rawSpeed >= 0) 
+            ? Math.round(rawSpeed * 3.6) 
+            : get().speed;
+
           if (!prevCoords || prevCoords.lat !== latitude || prevCoords.lng !== longitude) {
-            set({ coordinates: { lat: latitude, lng: longitude } });
+            set({ 
+              coordinates: { lat: latitude, lng: longitude },
+              speed: speedKmh,
+              heading: heading !== null ? heading : get().heading
+            });
+          } else {
+            set({ speed: speedKmh, heading: heading !== null ? heading : get().heading });
           }
 
           // Only reverse geocode if we haven't yet, or if we've moved significantly

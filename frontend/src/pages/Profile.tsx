@@ -8,7 +8,8 @@ import { useToast } from '../components/ToastContext';
 import { Helmet } from 'react-helmet-async';
 import { getDeterministicUuid } from '../lib/user';
 import { useLocationStore } from '../store/useLocationStore';
-import { CockpitLayout } from '../components/spatial/CockpitLayout';
+import { RiderCockpitLayout } from '../components/spatial/RiderCockpitLayout';
+import { EdgeRail } from '../components/spatial/EdgeRail';
 import { SpatialMembrane } from '../components/spatial/SpatialMembrane';
 
 const getDistanceKm = (lat1: number, lon1: number, lat2: number, lon2: number) => {
@@ -186,20 +187,16 @@ const Profile = () => {
   }
 
   return (
-    <CockpitLayout 
-      mapChildren={
-        <div className="w-full h-full bg-[#0a0a0a] relative overflow-hidden flex items-center justify-center">
-          <div className="absolute inset-0 bg-gradient-to-br from-primary/10 to-transparent"></div>
-          <div className="absolute w-[800px] h-[800px] bg-primary/10 rounded-full blur-[120px] -top-[300px] -right-[200px]"></div>
-          <div className="absolute w-[600px] h-[600px] bg-blue-500/10 rounded-full blur-[120px] -bottom-[300px] -left-[100px]"></div>
-        </div>
-      }
-    >
-      <Helmet>
-        <title>Your Profile | Ride Club</title>
-      </Helmet>
-      
-      <SpatialMembrane position="left" className="w-[420px] p-5 flex flex-col gap-6 max-h-[100dvh]">
+    <React.Fragment>
+    <Helmet>
+      <title>Your Profile | Ride Club</title>
+    </Helmet>
+
+    <RiderCockpitLayout 
+      topRail={<EdgeRail />}
+      leftPanelWidth="100%"
+      leftPanel={
+        <div className="flex flex-col gap-6 w-full h-full pointer-events-auto bg-[var(--color-hmi-bg)] landscape:bg-transparent rounded-[24px] landscape:rounded-none p-5 landscape:p-0 overflow-hidden shadow-2xl landscape:shadow-none">
         {/* Header */}
         <div className="flex items-center justify-between shrink-0 mb-2">
           <div>
@@ -345,8 +342,10 @@ const Profile = () => {
           </div>
 
         </div>
-      </SpatialMembrane>
-    </CockpitLayout>
+        </div>
+      }
+    />
+    </React.Fragment>
   );
 };
 

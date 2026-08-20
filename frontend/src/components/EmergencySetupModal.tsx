@@ -41,7 +41,7 @@ export const EmergencySetupModal: React.FC<Props> = ({ userId, onComplete, onClo
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-dark/80 backdrop-blur-sm p-4">
-      <div className="bg-[#1c1c1e] w-full max-w-md rounded-3xl p-6 relative shadow-2xl border border-gray-800">
+      <div className="bg-[#1c1c1e] w-full max-w-md rounded-xl p-6 relative shadow-2xl border border-gray-800">
         <button 
           onClick={onClose}
           className="absolute top-4 right-4 w-8 h-8 rounded-full bg-white flex items-center justify-center text-dark hover:bg-gray-200 transition-colors"

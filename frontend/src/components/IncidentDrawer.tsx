@@ -247,7 +247,7 @@ export const IncidentDrawer: React.FC<IncidentDrawerProps> = ({ incident, onClos
 
             <div className="space-y-3">
               {comments.slice(0, 4).map(comment => (
-                <div key={comment.id} className="bg-[#F9FAFB] rounded-2xl p-3">
+                <div key={comment.id} className="bg-[#F9FAFB] rounded-xl p-3">
                   <div className="flex items-center justify-between gap-3 mb-2">
                     <span className="text-[12px] font-bold text-dark">{comment.user_id ? comment.user_id.substring(0, 8) : 'Anonymous'}</span>
                     <span className="text-[11px] text-[#8A8A8E]">{formatRelativeTime(comment.created_at)}</span>
@@ -263,13 +263,13 @@ export const IncidentDrawer: React.FC<IncidentDrawerProps> = ({ incident, onClos
                 value={commentText}
                 onChange={e => setCommentText(e.target.value)}
                 placeholder="Add a comment..."
-                className="w-full rounded-2xl border border-gray-200 p-3 text-[14px] resize-none focus:border-[#ef4523] focus:outline-none"
+                className="w-full rounded-xl border border-gray-200 p-3 text-[14px] resize-none focus:border-[#ef4523] focus:outline-none"
               />
               <button
                 type="button"
                 onClick={handleAddComment}
                 disabled={!currentUserId || !commentText.trim()}
-                className="w-full py-3 rounded-2xl bg-[#ef4523] text-white font-bold hover:bg-[#ef4523] transition-colors disabled:opacity-50"
+                className="w-full py-3 rounded-xl bg-[#ef4523] text-white font-bold hover:bg-[#ef4523] transition-colors disabled:opacity-50"
               >
                 Post Comment
               </button>

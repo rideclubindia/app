@@ -20,6 +20,21 @@
   --font-weight-extrabold: 700;
   --font-weight-black: 800;
 
+  /* HMI Design Tokens (Rider Scope) */
+  --color-hmi-bg: #050607;
+  --color-hmi-surface: #0D1118;
+  --color-hmi-elevated: #131823;
+  --color-hmi-navy: #151A28;
+  --color-hmi-text-primary: #F4F7FA;
+  --color-hmi-text-secondary: #AAB1BD;
+  --color-hmi-text-muted: #66707D;
+  --color-hmi-accent: #FF4D21;
+  --color-hmi-live: #00FFFF;
+  --color-hmi-success: #00FF00;
+  --color-hmi-warning: #FFBF00;
+  --color-hmi-critical: #FF0000;
+
+
   /* Spatial Design Tokens */
   --opacity-membrane: 0.82;
   --radius-sm: 2px;
@@ -55,6 +70,12 @@
   }
 }
 
+.rider-theme {
+  background-color: var(--color-hmi-bg);
+  color: var(--color-hmi-text-primary);
+  font-family: var(--font-sans), sans-serif;
+}
+
 html, body {
   font-family: var(--font-sans), sans-serif;
   background-color: var(--color-background);
@@ -66,6 +87,14 @@ html, body {
   overflow: hidden;
   height: 100%;
   width: 100%;
+}
+
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.hide-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }
 
 #root {

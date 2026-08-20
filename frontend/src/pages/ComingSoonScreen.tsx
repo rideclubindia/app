@@ -94,7 +94,7 @@ const ComingSoonScreen: React.FC<ComingSoonProps> = ({
               { label: 'Seconds', value: timeLeft.seconds },
             ].map((item, index) => (
               <div key={index} className="flex flex-col items-center">
-                <div className="w-16 h-16 md:w-20 md:h-20 bg-white dark:bg-[#1E1E1E] rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800 flex items-center justify-center mb-2">
+                <div className="w-16 h-16 md:w-20 md:h-20 bg-white dark:bg-[#1E1E1E] rounded-xl shadow-sm border border-gray-100 dark:border-gray-800 flex items-center justify-center mb-2">
                   <span className="text-2xl md:text-3xl font-bold text-[#273a5a] dark:text-white">
                     {item.value.toString().padStart(2, '0')}
                   </span>

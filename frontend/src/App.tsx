@@ -1,4 +1,4 @@
-import React, { lazy, Suspense, useEffect, useState } from 'react';
+import React, { lazy, Suspense, useEffect, useState, useRef } from 'react';
 import { BrowserRouter, Routes, Route, Link, Outlet, useLocation, Navigate, useNavigate } from 'react-router-dom';
 import { Map as MapIcon, Bell, User, Users, Navigation2, Home as HomeIcon } from 'lucide-react';
 import { ToastProvider, useToast } from './components/ToastContext';
@@ -14,11 +14,20 @@ import type { User as FirebaseUser } from 'firebase/auth';
 import BannedScreen from './pages/BannedScreen';
 import { CookieConsent } from './components/CookieConsent';
 import { Capacitor } from '@capacitor/core';
+import { SoloRide } from './pages/SoloRide';
 import ReactGA from 'react-ga4';
 import { MorphingNav } from './components/MorphingNav';
 import { InstallPWA } from './components/InstallPWA';
 import { LeftGravityWell } from './components/spatial/LeftGravityWell';
-
+import { CommandDock } from './components/spatial/CommandDock';
+import type { CommandAction } from './components/spatial/CommandDock';
+import maplibregl from 'maplibre-gl';
+import { RiderCockpitLayout } from './components/spatial/RiderCockpitLayout';
+import { NavigationOverlay } from './components/home/NavigationOverlay';
+import { MapControls } from './components/home/MapControls';
+import { LowerMapControl } from './components/home/LowerMapControl';
+import { HomeMap } from './components/home/HomeMap';
+import { renderRiderMarker } from './components/home/RiderMarker';
 const measurementId = import.meta.env.VITE_GA_MEASUREMENT_ID;
 if (measurementId) {
   ReactGA.initialize(measurementId);
@@ -242,44 +251,91 @@ const RequireAdmin = ({ children }: { children: React.ReactNode }) => {
 const Layout = () => {
   const location = useLocation();
   const navigate = useNavigate();
+  const { coordinates: userLocation, locationName, isMapReporting } = useLocationStore();
+  const [mapInstance, setMapInstance] = useState<maplibregl.Map | null>(null);
+  const riderMarkerRef = useRef<maplibregl.Marker | null>(null);
+  const [currentRide, setCurrentRide] = useState<any>(null);
+  const [activeNavigation, setActiveNavigation] = useState<any>(null);
+  const [nearbyRiderCount, setNearbyRiderCount] = useState(0);
 
-  const SpatialNavItem = ({ to, icon: Icon, label }: { to: string, icon: any, label: string }) => {
-    const isActive = location.pathname.startsWith(to);
-    return (
-      <Link to={to} className="flex flex-col items-center justify-center gap-1.5 group transition-transform active:scale-95 duration-200 w-full" aria-label={`Navigate to ${label}`}>
-        <div className={`flex items-center justify-center w-10 h-10 rounded-full transition-all duration-300 ${isActive ? 'bg-[#FFF0E6]' : 'hover:bg-gray-100'}`}>
-          <Icon className={`w-5 h-5 transition-colors duration-300 ${isActive ? 'text-[#ef4523]' : 'text-gray-500 group-hover:text-gray-700'}`} strokeWidth={isActive ? 2.5 : 2} />
-        </div>
-      </Link>
-    );
-  };
+  // Fetch Current Ride & Active Nav
+  useEffect(() => {
+    const fetchRide = async () => {
+      const u = auth.currentUser;
+      if (!u) return;
+      const userId = getDeterministicUuid(u.uid);
 
-  // The Live Ride screen handles its own layout entirely, so we don't render the global spatial nav there
-  const isLiveRide = location.pathname.startsWith('/ride-plus/live');
-  const isHome = location.pathname === '/' || location.pathname === '/home';
-  const hideGlobalNav = isLiveRide || isHome;
+      const { data: ownedRides } = await supabase
+        .from('rides')
+        .select('*')
+        .eq('owner_id', userId)
+        .neq('status', 'ended')
+        .order('created_at', { ascending: false });
+
+      if (ownedRides && ownedRides.length > 0) {
+        setCurrentRide(ownedRides[0]);
+      } else {
+        setCurrentRide(null);
+      }
+
+      const { data: navData } = await supabase
+        .from('navigations')
+        .select('*')
+        .eq('user_id', userId)
+        .eq('status', 'active')
+        .order('created_at', { ascending: false })
+        .limit(1);
+
+      if (navData && navData.length > 0) {
+        setActiveNavigation(navData[0]);
+      }
+    };
+    fetchRide();
+  }, []);
+
+  // Update Rider Marker on map
+  useEffect(() => {
+    if (mapInstance && userLocation) {
+      if (!riderMarkerRef.current) {
+        riderMarkerRef.current = renderRiderMarker(mapInstance, userLocation.lng, userLocation.lat);
+      } else {
+        riderMarkerRef.current.setLngLat([userLocation.lng, userLocation.lat]);
+      }
+    }
+  }, [mapInstance, userLocation]);
+
+  const now = new Date();
+  const etaStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
+
+  const isCreateRideRoute = location.pathname.startsWith('/ride-plus/create');
+  const isHomeRoute = location.pathname === '/home';
 
   return (
-    <div className="w-full h-[100dvh] bg-[#FAFAF9] flex justify-center font-sans overflow-hidden">
-      <div className="w-full h-full relative flex overflow-hidden bg-transparent">
-        
-        {!hideGlobalNav && (
-          <LeftGravityWell onSOSClick={() => navigate('/alerts')}>
-             <div className="flex flex-col items-center gap-6 py-2 w-full">
-               <SpatialNavItem to="/home" icon={HomeIcon} label="Home" />
-               <SpatialNavItem to="/map" icon={MapIcon} label="Navigation" />
-               <SpatialNavItem to="/ride-plus" icon={Navigation2} label="Ride Plus" />
-               <SpatialNavItem to="/groups" icon={Users} label="Groups" />
-               <SpatialNavItem to="/profile" icon={User} label="Profile" />
-             </div>
-          </LeftGravityWell>
-        )}
-
-        <div className="flex-grow overflow-hidden relative bg-transparent h-full w-full">
-          <Outlet />
+    <RiderCockpitLayout
+      leftPanelWidth={isHomeRoute ? '100%' : (isCreateRideRoute ? '60%' : (isMapReporting ? '50%' : '32%'))}
+      mapChildren={
+        <div className="relative w-full h-full">
+          {(activeNavigation || currentRide) && (
+            <NavigationOverlay 
+              distanceToTurn={activeNavigation?.next_turn_distance || '--'}
+              streetName={activeNavigation?.next_street || locationName || 'Acquiring location...'}
+              turnDirection={activeNavigation?.next_turn_direction || 'straight'}
+              totalDistanceRemaining={activeNavigation?.remaining_distance || (currentRide ? `${currentRide.total_distance || '--'} km` : '--')}
+              timeRemaining={activeNavigation?.remaining_time || currentRide?.estimated_duration || '--'}
+              ridersNearby={nearbyRiderCount}
+              eta={etaStr}
+            />
+          )}
+          <MapControls map={mapInstance} />
+          <LowerMapControl />
+          <HomeMap 
+            userLocation={userLocation} 
+            onMapLoad={(map) => setMapInstance(map)} 
+          />
         </div>
-      </div>
-    </div>
+      }
+      leftPanel={<Outlet context={{ map: mapInstance }} />}
+    />
   );
 };
 
@@ -543,6 +599,7 @@ function App() {
                 <Route path="/incident/:id" element={<RequireAuth><IncidentDetail /></RequireAuth>} />
                 <Route path="/route-planner" element={<RequireAuth><RoutesScreen /></RequireAuth>} />
                 <Route path="/navigation" element={<RequireAuth><Navigation /></RequireAuth>} />
+                <Route path="/solo-ride" element={<RequireAuth><SoloRide /></RequireAuth>} />
                 <Route path="/saved-locations" element={<RequireAuth><SavedLocationsList /></RequireAuth>} />
                 <Route path="/my-incidents" element={<RequireAuth><MyIncidents /></RequireAuth>} />
                 <Route path="/edit-profile" element={<RequireAuth><EditProfile /></RequireAuth>} />

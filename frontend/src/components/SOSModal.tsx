@@ -126,14 +126,14 @@ export const SOSModal: React.FC<Props> = ({
               <button
                 onClick={handleTrigger}
                 disabled={sending || isSent}
-                className={`w-full ${isSent ? 'bg-green-500 hover:bg-green-600' : 'bg-danger hover:bg-danger/90'} text-white font-black text-lg py-4 rounded-2xl mb-3 transition-colors disabled:opacity-50`}
+                className={`w-full ${isSent ? 'bg-green-500 hover:bg-green-600' : 'bg-danger hover:bg-danger/90'} text-white font-black text-lg py-4 rounded-xl mb-3 transition-colors disabled:opacity-50`}
               >
                 {sending ? 'Sending...' : isSent ? 'SOS Alert Sent!' : 'Trigger emergency alert'}
               </button>
 
               {/* Error + retry — shown when the trigger call failed */}
               {sendError && !isSent && (
-                <div className="w-full bg-danger/10 border border-danger/20 rounded-2xl p-4 mb-3 flex flex-col gap-2">
+                <div className="w-full bg-danger/10 border border-danger/20 rounded-xl p-4 mb-3 flex flex-col gap-2">
                   <p className="text-danger text-sm font-bold">{sendError}</p>
                   <button
                     onClick={handleTrigger}
@@ -150,7 +150,7 @@ export const SOSModal: React.FC<Props> = ({
                 <button 
                   onClick={handleRevoke}
                   disabled={isRevoking}
-                  className="w-full bg-amber-500 hover:bg-amber-600 text-white font-bold py-4 rounded-2xl mb-3 transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+                  className="w-full bg-amber-500 hover:bg-amber-600 text-white font-bold py-4 rounded-xl mb-3 transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
                 >
                   <Undo2 className="w-5 h-5" />
                   {isRevoking ? 'Revoking...' : 'Revoke SOS — False alarm'}
@@ -159,7 +159,7 @@ export const SOSModal: React.FC<Props> = ({
 
               <button 
                 onClick={onToggleCrashDetection}
-                className="w-full bg-gray-100 hover:bg-gray-200 text-dark font-bold py-4 rounded-2xl transition-colors"
+                className="w-full bg-gray-100 hover:bg-gray-200 text-dark font-bold py-4 rounded-xl transition-colors"
               >
                 {isCrashDetectionActive ? 'Crash detection monitoring is active' : 'Enable Crash Detection'}
               </button>
@@ -168,7 +168,7 @@ export const SOSModal: React.FC<Props> = ({
           {isReceiving && (
             <button 
               onClick={onClose}
-              className="w-full bg-danger hover:bg-danger/90 text-white font-black text-lg py-4 rounded-2xl mb-4 transition-colors"
+              className="w-full bg-danger hover:bg-danger/90 text-white font-black text-lg py-4 rounded-xl mb-4 transition-colors"
             >
               Acknowledge & Stop Alarm
             </button>

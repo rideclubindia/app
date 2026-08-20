@@ -1590,7 +1590,7 @@ const LiveRide = () => {
               
               {/* Pending Approvals Section (Admin Only) */}
               {isAdmin && pendingRiders.length > 0 && (
-                <div className="bg-orange-50 border border-orange-100 rounded-2xl p-4 shadow-sm">
+                <div className="bg-orange-50 border border-orange-100 rounded-xl p-4 shadow-sm">
                   <div className="flex items-center justify-between mb-3">
                     <h3 className="text-orange-800 font-bold flex items-center gap-2">
                       <Shield className="w-4 h-4" /> Pending Approvals ({pendingRiders.length})
@@ -1646,7 +1646,7 @@ const LiveRide = () => {
 
 
               {/* Map Settings Section */}
-              <div className="bg-gray-50 border border-gray-100 rounded-2xl p-4 shadow-sm flex flex-col gap-5">
+              <div className="bg-gray-50 border border-gray-100 rounded-xl p-4 shadow-sm flex flex-col gap-5">
                 <h3 className="text-[#273a5a] font-bold">Map Settings</h3>
                 
                 <div className="flex items-center justify-between">
@@ -1692,7 +1692,7 @@ const LiveRide = () => {
 
               {/* Group Intelligence ML Inference (Phase 4) */}
               {(
-                <div className="bg-blue-50 border border-blue-100 rounded-2xl p-4 shadow-sm flex flex-col gap-3">
+                <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 shadow-sm flex flex-col gap-3">
                   <h3 className="text-blue-900 font-bold flex items-center gap-2">
                     <Layers className="w-5 h-5 text-blue-500" /> Group Intelligence Inference
                   </h3>
@@ -1796,7 +1796,7 @@ const LiveRide = () => {
 
       {/* Edit Ride Modal */}
       {showEditModal && id && (
-        <Suspense fallback={<div className="fixed inset-0 z-[200] bg-dark/60 backdrop-blur-sm flex items-center justify-center"><div className="bg-white rounded-3xl p-8 shadow-2xl"><div className="w-8 h-8 border-4 border-[#ef4523] border-t-transparent rounded-full animate-spin" /></div></div>}>
+        <Suspense fallback={<div className="fixed inset-0 z-[200] bg-dark/60 backdrop-blur-sm flex items-center justify-center"><div className="bg-white rounded-xl p-8 shadow-2xl"><div className="w-8 h-8 border-4 border-[#ef4523] border-t-transparent rounded-full animate-spin" /></div></div>}>
           <EditRideModal
             rideId={id}
             onClose={() => setShowEditModal(false)}
@@ -1808,7 +1808,7 @@ const LiveRide = () => {
       {/* Users Modal */}
       {showUsersModal && (
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-dark/60 backdrop-blur-sm p-4">
-          <div className="bg-white w-full max-w-md rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[80vh]">
+          <div className="bg-white w-full max-w-md rounded-xl shadow-2xl overflow-hidden flex flex-col max-h-[80vh]">
             <div className="p-5 border-b border-gray-100 flex items-center justify-between">
               <h3 className="text-xl font-bold text-[#273a5a] flex items-center gap-2">
                 <Users className="w-6 h-6 text-primary" /> Ride Members
@@ -1830,7 +1830,7 @@ const LiveRide = () => {
                 .map((r: any, idx) => {
                   const isMe = r.user_id === auth.currentUser?.uid;
                   return (
-                    <div key={r.user_id} className={`flex items-center justify-between p-4 rounded-2xl ${isMe ? 'bg-primary/5 border border-primary/20' : 'bg-gray-50'}`}>
+                    <div key={r.user_id} className={`flex items-center justify-between p-4 rounded-xl ${isMe ? 'bg-primary/5 border border-primary/20' : 'bg-gray-50'}`}>
                       <div className="flex items-center gap-3">
                         <div className="relative">
                           <img src={r.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${r.user_id}`} alt="avatar" className="w-12 h-12 rounded-full border-2 border-white shadow-md object-cover bg-white" />

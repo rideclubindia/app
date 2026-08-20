@@ -290,7 +290,7 @@ const RideDashboard = () => {
                       {/* Start/Join Ride */}
                       <button 
                         onClick={() => navigate(`/ride-plus/live/${ride.id}`)}
-                        className="bg-[#1c2331] hover:bg-black text-white py-3 rounded-2xl flex items-center justify-center gap-2 font-bold text-[13px] shadow-[0_4px_12px_rgba(28,35,49,0.2)] active:scale-95 transition-all"
+                        className="bg-[#1c2331] hover:bg-black text-white py-3 rounded-xl flex items-center justify-center gap-2 font-bold text-[13px] shadow-[0_4px_12px_rgba(28,35,49,0.2)] active:scale-95 transition-all"
                       >
                         <Play className="w-4 h-4 text-[#ef4523]" /> 
                         {ride.status === 'live' ? 'Join Live' : 'Start'}
@@ -299,7 +299,7 @@ const RideDashboard = () => {
                       {/* Dashboard */}
                       <button 
                         onClick={() => navigate(`/group-ride-dashboard?ride_id=${ride.id}`)}
-                        className="bg-gray-50 hover:bg-gray-100 text-[#273a5a] py-3 rounded-2xl flex items-center justify-center gap-2 font-bold text-[13px] border border-gray-200 active:scale-95 transition-all"
+                        className="bg-gray-50 hover:bg-gray-100 text-[#273a5a] py-3 rounded-xl flex items-center justify-center gap-2 font-bold text-[13px] border border-gray-200 active:scale-95 transition-all"
                       >
                         <Activity className="w-4 h-4 text-indigo-500" /> 
                         Dashboard
@@ -309,7 +309,7 @@ const RideDashboard = () => {
                       {ride.myRole === 'admin' && (
                         <button 
                           onClick={() => setEditRideId(ride.id)}
-                          className="bg-blue-50/50 hover:bg-blue-50 text-blue-600 py-3 rounded-2xl flex items-center justify-center gap-2 font-bold text-[13px] active:scale-95 transition-all"
+                          className="bg-blue-50/50 hover:bg-blue-50 text-blue-600 py-3 rounded-xl flex items-center justify-center gap-2 font-bold text-[13px] active:scale-95 transition-all"
                         >
                           <Edit2 className="w-4 h-4" /> 
                           Edit
@@ -319,7 +319,7 @@ const RideDashboard = () => {
                       {/* End / Leave */}
                       <button 
                         onClick={() => handleEndOrLeave(ride)}
-                        className="bg-red-50/50 hover:bg-red-50 text-red-500 py-3 rounded-2xl flex items-center justify-center gap-2 font-bold text-[13px] active:scale-95 transition-all"
+                        className="bg-red-50/50 hover:bg-red-50 text-red-500 py-3 rounded-xl flex items-center justify-center gap-2 font-bold text-[13px] active:scale-95 transition-all"
                       >
                         <LogOut className="w-4 h-4" /> 
                         {ride.myRole === 'admin' ? 'End Ride' : 'Leave'}
@@ -335,7 +335,7 @@ const RideDashboard = () => {
 
       {/* Edit Ride Modal */}
       {editRideId && (
-        <Suspense fallback={<div className="fixed inset-0 z-[200] bg-dark/60 backdrop-blur-sm flex items-center justify-center"><div className="bg-white rounded-3xl p-8 shadow-2xl"><div className="w-8 h-8 border-4 border-[#ef4523] border-t-transparent rounded-full animate-spin" /></div></div>}>
+        <Suspense fallback={<div className="fixed inset-0 z-[200] bg-dark/60 backdrop-blur-sm flex items-center justify-center"><div className="bg-white rounded-xl p-8 shadow-2xl"><div className="w-8 h-8 border-4 border-[#ef4523] border-t-transparent rounded-full animate-spin" /></div></div>}>
           <EditRideModal
             rideId={editRideId}
             onClose={() => setEditRideId(null)}
@@ -347,7 +347,7 @@ const RideDashboard = () => {
 
       {selectedDashboardRide && (
         <div className="fixed inset-0 z-[100] bg-dark/60 backdrop-blur-sm flex justify-center items-end sm:items-center p-4">
-          <div className="bg-[#F2F4F7] w-full max-w-lg rounded-3xl overflow-hidden shadow-2xl flex flex-col max-h-[85vh]">
+          <div className="bg-[#F2F4F7] w-full max-w-lg rounded-xl overflow-hidden shadow-2xl flex flex-col max-h-[85vh]">
             <div className="bg-white p-5 border-b border-gray-100 flex justify-between items-center shrink-0">
               <h2 className="text-xl font-bold text-[#273a5a] flex items-center gap-2">
                 <Activity className="w-6 h-6 text-primary" /> Ride Analytics
@@ -364,21 +364,21 @@ const RideDashboard = () => {
                 <div className="flex flex-col gap-6">
                   {/* Stats Grid */}
                   <div className="grid grid-cols-2 gap-4">
-                    <div className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 flex flex-col items-center text-center">
+                    <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex flex-col items-center text-center">
                       <div className="w-12 h-12 rounded-full bg-success/10 flex items-center justify-center mb-2">
                         <ShieldCheck className="w-6 h-6 text-success" />
                       </div>
                       <span className="text-sm font-bold text-gray-500 uppercase tracking-wider">Safety Score</span>
                       <span className="text-3xl font-black text-[#273a5a]">{dashboardData.safety_score || 0}<span className="text-lg text-gray-400">/100</span></span>
                     </div>
-                    <div className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 flex flex-col items-center text-center">
+                    <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex flex-col items-center text-center">
                       <div className="w-12 h-12 rounded-full bg-blue-50 flex items-center justify-center mb-2">
                         <Activity className="w-6 h-6 text-blue-500" />
                       </div>
                       <span className="text-sm font-bold text-gray-500 uppercase tracking-wider">Avg Speed</span>
                       <span className="text-3xl font-black text-[#273a5a]">{Math.round(dashboardData.average_speed_kmh || 0)} <span className="text-lg text-gray-400">km/h</span></span>
                     </div>
-                    <div className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 flex flex-col items-center text-center col-span-2">
+                    <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex flex-col items-center text-center col-span-2">
                       <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mb-2">
                         <Clock className="w-6 h-6 text-primary" />
                       </div>
@@ -388,7 +388,7 @@ const RideDashboard = () => {
                   </div>
 
                   {/* Timeline */}
-                  <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
+                  <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
                     <h3 className="text-lg font-bold text-[#273a5a] mb-4">Ride Timeline</h3>
                     <div className="relative border-l-2 border-gray-100 ml-3 pl-5 flex flex-col gap-6">
                       {(dashboardData.timeline || []).length === 0 ? (

@@ -572,7 +572,7 @@ const EditRideModal: React.FC<EditRideModalProps> = ({ rideId, onClose, onSaved 
   if (loading) {
     return (
       <div className="fixed inset-0 z-[200] bg-dark/60 backdrop-blur-sm flex items-center justify-center">
-        <div className="bg-white rounded-3xl p-8 flex flex-col items-center gap-4 shadow-2xl">
+        <div className="bg-white rounded-xl p-8 flex flex-col items-center gap-4 shadow-2xl">
           <Loader2 className="w-8 h-8 text-primary animate-spin" />
           <p className="text-[#273a5a] font-bold">Loading ride data...</p>
         </div>
@@ -582,7 +582,7 @@ const EditRideModal: React.FC<EditRideModalProps> = ({ rideId, onClose, onSaved 
 
   return (
     <div className="fixed inset-0 z-[200] bg-dark/60 backdrop-blur-sm flex items-end sm:items-center justify-center">
-      <div className="bg-white w-full max-w-lg max-h-[95vh] rounded-t-3xl sm:rounded-3xl shadow-2xl overflow-hidden flex flex-col">
+      <div className="bg-white w-full max-w-lg max-h-[95vh] rounded-t-3xl sm:rounded-xl shadow-2xl overflow-hidden flex flex-col">
         {/* Header */}
         <div className="px-5 pt-5 pb-3 border-b border-gray-100 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-3">
@@ -680,7 +680,7 @@ const EditRideModal: React.FC<EditRideModalProps> = ({ rideId, onClose, onSaved 
               {/* 2-column grid */}
               <div className="grid grid-cols-2 gap-3">
                 {/* Max Riders */}
-                <div className="p-4 rounded-2xl bg-gray-50 border border-gray-100 flex flex-col gap-2">
+                <div className="p-4 rounded-xl bg-gray-50 border border-gray-100 flex flex-col gap-2">
                   <div className="flex items-center gap-2">
                     <Users className="w-4 h-4 text-[#273a5a]" />
                     <span className="text-[#273a5a] font-bold text-[13px]">
@@ -701,7 +701,7 @@ const EditRideModal: React.FC<EditRideModalProps> = ({ rideId, onClose, onSaved 
 
                 {/* Vehicle Type */}
                 <div
-                  className="p-4 rounded-2xl bg-gray-50 border border-gray-100 flex flex-col gap-1 relative cursor-pointer"
+                  className="p-4 rounded-xl bg-gray-50 border border-gray-100 flex flex-col gap-1 relative cursor-pointer"
                   onClick={() =>
                     setOpenDropdown(openDropdown === 'vehicle' ? null : 'vehicle')
                   }
@@ -742,7 +742,7 @@ const EditRideModal: React.FC<EditRideModalProps> = ({ rideId, onClose, onSaved 
 
                 {/* Visibility */}
                 <div
-                  className="p-4 rounded-2xl bg-gray-50 border border-gray-100 flex flex-col gap-1 relative cursor-pointer col-span-2"
+                  className="p-4 rounded-xl bg-gray-50 border border-gray-100 flex flex-col gap-1 relative cursor-pointer col-span-2"
                   onClick={() =>
                     setOpenDropdown(openDropdown === 'visibility' ? null : 'visibility')
                   }
@@ -1020,7 +1020,7 @@ const EditRideModal: React.FC<EditRideModalProps> = ({ rideId, onClose, onSaved 
               </div>
 
               {/* Map */}
-              <div className="relative h-[250px] rounded-2xl overflow-hidden border border-gray-200 shadow-sm">
+              <div className="relative h-[250px] rounded-xl overflow-hidden border border-gray-200 shadow-sm">
                 <div ref={mapContainer} className="absolute inset-0 w-full h-full" />
                 {selectingLocationFor && (
                   <div className="absolute top-3 left-1/2 -translate-x-1/2 bg-[#273a5a] text-white px-3 py-1.5 rounded-full font-bold text-[11px] shadow-xl z-30 animate-pulse">

@@ -1,26 +1,59 @@
-import React from 'react';
-import { Compass, Layers, Volume2, Crosshair } from 'lucide-react';
+import React, { useState } from 'react';
+import { Compass, Focus, Layers, Volume2, VolumeX } from 'lucide-react';
+import maplibregl from 'maplibre-gl';
+import { useLocationStore } from '../../store/useLocationStore';
+import { useToast } from '../ToastContext';
 
-export const MapControls: React.FC = () => {
-  const controls = [
-    { icon: Compass, onClick: () => {} },
-    { icon: Layers, onClick: () => {} },
-    { icon: Volume2, onClick: () => {} },
-    { icon: Crosshair, onClick: () => {} },
-  ];
+export const MapControls: React.FC<{ map?: maplibregl.Map | null }> = ({ map }) => {
+  const [isDarkMode, setIsDarkMode] = useState(false);
+  const [isMuted, setIsMuted] = useState(false);
+  const { showToast } = useToast();
+
+  const handleCompass = () => {
+    if (map) {
+      map.resetNorthPitch({ duration: 1000 });
+    }
+  };
+
+  const handleRecenter = () => {
+    useLocationStore.getState().fetchLocationOnce().then((loc) => {
+      if (map) {
+        map.flyTo({ center: [loc.lng, loc.lat], zoom: 15, duration: 1200 });
+      }
+    }).catch(() => {
+      showToast('Unable to get your location', 'error');
+    });
+  };
+
+  const handleLayers = () => {
+    if (map) {
+      const newStyle = isDarkMode 
+        ? 'https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json'
+        : 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json';
+      map.setStyle(newStyle);
+      setIsDarkMode(!isDarkMode);
+    }
+  };
+
+  const handleSound = () => {
+    setIsMuted(!isMuted);
+    showToast(isMuted ? 'Navigation audio enabled' : 'Navigation audio muted', 'info');
+  };
 
   return (
-    <div className="absolute right-[24px] top-1/2 -translate-y-1/2 z-40 flex flex-col gap-3 pointer-events-auto">
-      {controls.map((ctrl, idx) => (
-        <button 
-          key={idx}
-          onClick={ctrl.onClick}
-          className="w-[48px] h-[48px] rounded-full bg-white/82 backdrop-blur-[16px] shadow-[0_4px_12px_rgba(0,0,0,0.08)] border border-white/60 flex items-center justify-center active:scale-95 transition-transform"
-          style={{ backgroundColor: 'rgba(255,255,255,0.82)' }}
-        >
-          <ctrl.icon className="w-6 h-6 text-[#111827]" />
-        </button>
-      ))}
+    <div className="absolute top-3 right-3 z-20 flex flex-col gap-1.5">
+      <button onClick={handleCompass} className="w-9 h-9 bg-[#161C28]/80 backdrop-blur-md rounded-[10px] flex items-center justify-center text-[#C0C6D0] hover:text-white hover:bg-[#1E2536] transition-colors border border-[#2A3040]/40" aria-label="Compass">
+        <Compass size={16} />
+      </button>
+      <button onClick={handleRecenter} className="w-9 h-9 bg-[#161C28]/80 backdrop-blur-md rounded-[10px] flex items-center justify-center text-[#C0C6D0] hover:text-white hover:bg-[#1E2536] transition-colors border border-[#2A3040]/40" aria-label="Recenter">
+        <Focus size={16} />
+      </button>
+      <button onClick={handleLayers} className="w-9 h-9 bg-[#161C28]/80 backdrop-blur-md rounded-[10px] flex items-center justify-center text-[#C0C6D0] hover:text-white hover:bg-[#1E2536] transition-colors border border-[#2A3040]/40" aria-label="Layers">
+        <Layers size={16} />
+      </button>
+      <button onClick={handleSound} className="w-9 h-9 bg-[#161C28]/80 backdrop-blur-md rounded-[10px] flex items-center justify-center text-[#C0C6D0] hover:text-white hover:bg-[#1E2536] transition-colors border border-[#2A3040]/40" aria-label="Sound">
+        {isMuted ? <VolumeX size={16} /> : <Volume2 size={16} />}
+      </button>
     </div>
   );
 };

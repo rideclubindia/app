@@ -10,6 +10,9 @@ import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import * as turf from '@turf/turf';
 import { getDeterministicUuid } from '../../lib/user';
+import { RiderCockpitLayout } from '../../components/spatial/RiderCockpitLayout';
+import { EdgeRail } from '../../components/spatial/EdgeRail';
+import { SpatialMembrane } from '../../components/spatial/SpatialMembrane';
 
 const CreateRide = () => {
   const navigate = useNavigate();
@@ -147,7 +150,7 @@ const CreateRide = () => {
       });
     }
 
-    if (text.length < 3) {
+    if (text.length < 2) {
       setSuggestions([]);
       setActiveInput(null);
       return;
@@ -155,9 +158,22 @@ const CreateRide = () => {
 
     setActiveInput(target);
     try {
-      const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(text)}`);
+      // Fast, Google Maps-style global places search (Photon by Komoot API)
+      const lat = globalLocation?.lat || 17.3850;
+      const lng = globalLocation?.lng || 78.4867;
+      const res = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(text)}&lat=${lat}&lon=${lng}&limit=6`);
       const data = await res.json();
-      setSuggestions(data || []);
+      
+      if (data && data.features) {
+        const mapped = data.features.map((f: any) => ({
+          display_name: [f.properties.name, f.properties.street, f.properties.city, f.properties.state, f.properties.country].filter(Boolean).join(', '),
+          lat: f.geometry.coordinates[1],
+          lon: f.geometry.coordinates[0]
+        }));
+        setSuggestions(mapped);
+      } else {
+        setSuggestions([]);
+      }
     } catch (e) {
       setSuggestions([]);
     }
@@ -165,7 +181,7 @@ const CreateRide = () => {
 
   const handleSelectSuggestion = (suggestion: any, target: string) => {
     const coords = { lat: parseFloat(suggestion.lat), lng: parseFloat(suggestion.lon) };
-    const text = suggestion.display_name?.split(',').slice(0, 3).join(',');
+    const text = suggestion.display_name;
 
     if (target === 'origin') {
       setOriginCoords(coords);
@@ -188,13 +204,15 @@ const CreateRide = () => {
     setSuggestions([]);
     setActiveInput(null);
   };
-const handleGeocode = async (text: string, target: string) => {
+
+  const handleGeocode = async (text: string, target: string) => {
     try {
-      const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(text)}`);
+      const res = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(text)}&limit=1`);
       if (!res.ok) throw new Error('Search failed');
       const data = await res.json();
-      if (data && data.length > 0) {
-         const coords = { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) };
+      if (data && data.features && data.features.length > 0) {
+         const f = data.features[0];
+         const coords = { lat: f.geometry.coordinates[1], lng: f.geometry.coordinates[0] };
          if (target === 'origin') setOriginCoords(coords);
          else if (target === 'dest') setDestCoords(coords);
          else if (target.startsWith('stop-')) {
@@ -510,10 +528,10 @@ const handleGeocode = async (text: string, target: string) => {
   };
 
   return (
-    <div className="w-full h-full bg-[#273a5a] flex flex-col font-sans relative overflow-hidden text-white">
+    <div className="w-full h-full bg-[var(--color-hmi-bg)] flex flex-col font-sans relative overflow-hidden text-[var(--color-hmi-text-primary)]">
       {step === 1 && (
         <>
-        <div className="flex-1 overflow-y-auto pb-32 hide-scrollbar bg-white">
+        <div className="flex-1 overflow-y-auto pb-32 hide-scrollbar bg-[var(--color-hmi-bg)]">
           <input type="file" accept="image/*" className="hidden" ref={coverInputRef} onChange={handleCoverSelect} />
           {/* ====== IMMERSIVE HERO IMAGE ====== */}
           <div className="relative h-[45dvh] w-full shrink-0 rounded-b-[32px] overflow-hidden shadow-sm">
@@ -522,7 +540,7 @@ const handleGeocode = async (text: string, target: string) => {
               alt="Ride Cover" 
               className="w-full h-full object-cover"
             />
-            <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/30 to-black/80"></div>
+            <div className="absolute inset-0 bg-gradient-to-b from-[var(--color-hmi-bg)]/80 via-transparent to-[var(--color-hmi-bg)]"></div>
             
             {/* Top Bar */}
             <div className="absolute top-6 left-4 right-4 flex justify-between items-center z-10">
@@ -541,27 +559,27 @@ const handleGeocode = async (text: string, target: string) => {
           </div>
 
           {/* ====== MAIN CONTENT BELOW HERO ====== */}
-          <div className="px-5 pt-6 pb-6 space-y-8 bg-white relative z-20">
+          <div className="px-5 pt-6 pb-6 space-y-8 bg-[var(--color-hmi-bg)] relative z-20">
 
             {/* ---- Ride Identity ---- */}
             <div className="space-y-3">
-              <div className="bg-white border border-gray-100 rounded-2xl p-4 relative shadow-sm">
+              <div className="bg-[var(--color-hmi-surface)] border border-[var(--color-hmi-accent)]/20 rounded-[20px] p-4 relative shadow-[0_10px_40px_rgba(0,0,0,0.5)] backdrop-blur-xl">
                 <input 
                   type="text" 
                   value={formData.name}
                   onChange={(e) => setFormData({...formData, name: e.target.value})}
                   placeholder="e.g. Sunday Morning Cruise"
-                  className="w-full bg-transparent text-[16px] font-bold text-[#273a5a] placeholder-gray-400 focus:outline-none"
+                  className="w-full bg-transparent text-[20px] font-black text-[var(--color-hmi-text-primary)] placeholder-[var(--color-hmi-text-muted)] focus:outline-none uppercase"
                 />
               </div>
             </div>
 
             {/* ---- Settings Stack ---- */}
-            <div className="bg-white rounded-[24px] border border-gray-100 shadow-[0_8px_30px_rgba(0,0,0,0.04)] overflow-visible flex flex-col">
+            <div className="bg-[var(--color-hmi-surface)]/80 backdrop-blur-xl rounded-[24px] border border-[var(--color-hmi-accent)]/20 shadow-[0_10px_40px_rgba(0,0,0,0.5)] overflow-visible flex flex-col">
               
               {/* Timing Switch */}
               <div 
-                className={`p-4 flex items-center justify-between border-b border-gray-50 transition-colors rounded-t-[24px] ${restrictInstant ? 'opacity-50 cursor-not-allowed bg-gray-50' : 'hover:bg-gray-50/50 cursor-pointer'}`}
+                className={`p-4 flex items-center justify-between border-b border-[var(--color-hmi-accent)]/10 transition-colors rounded-t-[24px] ${restrictInstant ? 'opacity-50 cursor-not-allowed bg-[var(--color-hmi-surface)]' : 'hover:bg-[var(--color-hmi-elevated)] cursor-pointer'}`}
                 onClick={() => {
                   if (restrictInstant) {
                     showToast('You already have an active ride. Leave or end it to create an instant ride.', 'error');
@@ -728,7 +746,7 @@ const handleGeocode = async (text: string, target: string) => {
               </h3>
               
               <div className="space-y-3">
-                <div className="bg-white border border-gray-100 rounded-2xl p-4 relative shadow-sm">
+                <div className="bg-white border border-gray-100 rounded-xl p-4 relative shadow-sm">
                   <textarea
                     value={formData.description}
                     onChange={(e) => setFormData({...formData, description: e.target.value})}
@@ -748,12 +766,12 @@ const handleGeocode = async (text: string, target: string) => {
         </div>
 
         {/* ====== FLOATING BOTTOM CTA ====== */}
-        <div className="absolute bottom-0 left-0 right-0 px-5 pb-6 pt-10 bg-gradient-to-t from-white via-white/90 to-transparent pointer-events-none z-30">
+        <div className="absolute bottom-0 left-0 right-0 px-5 pb-6 pt-10 bg-gradient-to-t from-[var(--color-hmi-bg)] via-[var(--color-hmi-bg)]/90 to-transparent pointer-events-none z-30">
           <button 
             onClick={handleNextStep}
-            className="w-full pointer-events-auto bg-[#ff5a2c] text-white font-bold text-[16px] py-4 rounded-xl shadow-[0_8px_24px_rgba(255,90,44,0.35)] active:scale-[0.97] transition-all flex items-center justify-center gap-2"
+            className="w-full pointer-events-auto bg-[var(--color-hmi-accent)] text-black font-black text-[16px] py-4 rounded-[12px] shadow-[0_8px_24px_rgba(255,77,33,0.35)] active:scale-[0.97] transition-all flex items-center justify-center gap-2 uppercase"
           >
-            Next: Select Route <ArrowRight className="w-5 h-5" />
+            ROUTE <ArrowRight className="w-5 h-5" />
           </button>
         </div>
         </>
@@ -761,17 +779,15 @@ const handleGeocode = async (text: string, target: string) => {
 
       {/* ====== STEP 2: ROUTE BUILDER ====== */}
       {step === 2 && (
-        <div className="flex-1 flex flex-col bg-gray-50 h-[100dvh] w-full relative z-50">
-          {/* Top Destination Card */}
-          <div className="bg-white px-4 pt-4 pb-4 shadow-sm z-20 flex-shrink-0">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-3">
-                <button onClick={() => setStep(1)} className="w-[40px] h-[40px] flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors">
-                  <ChevronLeft className="w-6 h-6 text-[#273a5a]" />
-                </button>
-                <h1 className="text-[20px] font-bold text-[#273a5a]">Plan Route</h1>
-              </div>
+        <div className="flex flex-col gap-6 w-full h-full bg-[#111827] p-2 overflow-y-auto hide-scrollbar">
+          <div className="flex items-center justify-between shrink-0">
+            <div className="flex items-center gap-3">
+              <button onClick={() => setStep(1)} className="w-[36px] h-[36px] flex items-center justify-center rounded-full bg-white/10 hover:bg-white/20 transition-colors">
+                <ChevronLeft className="w-5 h-5 text-white" />
+              </button>
+              <h1 className="text-[18px] font-bold text-white uppercase">Plan Route</h1>
             </div>
+          </div>
             
             <div className="flex gap-3">
               <div className="flex flex-col items-center justify-start pt-[17px]">
@@ -974,38 +990,13 @@ const handleGeocode = async (text: string, target: string) => {
                 
                 {stops.length < 5 && (
                   <div className="flex justify-end -mt-1">
-                     <button onClick={() => setStops([...stops, { text: '', coords: null, type: 'Other' }])} className="text-[13px] font-semibold text-[#ff5a2c] hover:text-[#ff5a2c]/80 transition-colors flex items-center gap-1 py-1 px-2 rounded hover:bg-orange-50">
-                       + Add Stop
+                     <button onClick={() => setStops([...stops, { text: '', coords: null, type: 'Other' }])} className="text-[13px] font-semibold text-[#ff5a2c] hover:text-[#ff5a2c]/80 transition-colors flex items-center gap-1 py-1 px-2 rounded hover:bg-orange-50 uppercase">
+                       + STOP
                      </button>
                   </div>
                 )}
               </div>
             </div>
-          </div>
-
-          {/* Map Area */}
-          <div className="flex-1 relative bg-gray-200 overflow-hidden">
-            <div ref={mapContainer} className="absolute inset-0 w-full h-full" />
-            
-            {/* Overlay if selecting location */}
-            {selectingLocationFor && (
-              <div className="absolute top-4 left-1/2 -translate-x-1/2 bg-[#273a5a] text-white px-4 py-2 rounded-full font-bold text-sm shadow-xl z-30 animate-pulse">
-                Tap map to select location
-              </div>
-            )}
-          </div>
-
-          {/* Bottom Container CTA */}
-          <div className="bg-white px-5 py-6 shadow-[0_-10px_40px_rgba(0,0,0,0.08)] z-20 flex flex-col mt-auto relative border-t border-gray-100">
-            <button 
-              onClick={handleFinalCreate}
-              disabled={loading || !originCoords || !destCoords}
-              className="w-full bg-[#ff5a2c] hover:bg-[#e0481c] text-white font-bold text-[16px] py-4 rounded-xl shadow-[0_8px_24px_rgba(255,90,44,0.35)] active:scale-[0.97] transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:active:scale-100"
-            >
-              {loading ? 'Creating Ride...' : 'Create Ride & Publish'} ✨
-            </button>
-          </div>
-
         </div>
       )}
     </div>

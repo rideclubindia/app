@@ -26,7 +26,7 @@ export const CookieConsent: React.FC = () => {
 
   return (
     <div className="fixed bottom-0 left-0 right-0 z-50 p-4 md:p-6 pb-20 md:pb-6 pointer-events-none">
-      <div className="max-w-4xl mx-auto bg-gray-900 border border-gray-800 rounded-2xl shadow-2xl p-6 pointer-events-auto flex flex-col md:flex-row items-center justify-between gap-6">
+      <div className="max-w-4xl mx-auto bg-gray-900 border border-gray-800 rounded-xl shadow-2xl p-6 pointer-events-auto flex flex-col md:flex-row items-center justify-between gap-6">
         <div className="flex items-start md:items-center gap-4">
           <div className="p-3 bg-indigo-500/10 rounded-xl flex-shrink-0">
             <Cookie className="w-6 h-6 text-indigo-400" />

@@ -321,7 +321,7 @@ Directions: `to-t | to-tr | to-r | to-br | to-b | to-bl | to-l | to-tl`
 <div class="rounded-md">0.375rem</div>
 <div class="rounded-lg">0.5rem</div>
 <div class="rounded-xl">0.75rem</div>
-<div class="rounded-2xl">1rem</div>
+<div class="rounded-xl">1rem</div>
 <div class="rounded-full">9999px</div>
 
 <!-- Individual corners -->

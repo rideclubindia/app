@@ -35,7 +35,7 @@ No,Category,Guideline,Description,Do,Don't,Code Good,Code Bad,Severity,Docs URL
 34,Buttons,Touch targets,Minimum 44px touch target on mobile,min-h-[44px] on mobile,Small buttons on mobile,min-h-[44px] min-w-[44px],h-8 w-8 on mobile,High,
 35,Buttons,Loading states,Show loading feedback,disabled + spinner icon,Clickable during loading,<Button disabled><Spinner/></Button>,Button without loading state,High,
 36,Buttons,Icon buttons,Accessible icon-only buttons,aria-label on icon buttons,Icon button without label,<button aria-label='Close'><XIcon/></button>,<button><XIcon/></button>,High,
-37,Cards,Card structure,Consistent card styling,rounded-lg shadow-md p-6,Inconsistent card styles,rounded-2xl shadow-lg p-6,Mixed card styling,Low,
+37,Cards,Card structure,Consistent card styling,rounded-lg shadow-md p-6,Inconsistent card styles,rounded-xl shadow-lg p-6,Mixed card styling,Low,
 38,Cards,Card hover states,Interactive cards should have hover feedback,hover:shadow-lg transition-shadow,No hover on clickable cards,hover:shadow-xl transition-shadow,Static cards that are clickable,Medium,
 39,Cards,Card spacing,Consistent internal card spacing,space-y-4 for card content,Inconsistent internal spacing,space-y-4 or p-6,Mixed mb-2 mb-4 mb-6,Low,
 40,Accessibility,Screen reader text,Provide context for screen readers,sr-only for hidden labels,Missing context for icons,<span class='sr-only'>Close menu</span>,No label for icon button,High,https://tailwindcss.com/docs/screen-readers

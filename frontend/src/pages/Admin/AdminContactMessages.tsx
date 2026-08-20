@@ -248,7 +248,7 @@ const AdminContactMessages = () => {
 
       {viewingMessage && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-          <div className="bg-white dark:bg-dark-card w-full max-w-2xl rounded-2xl shadow-xl overflow-hidden flex flex-col max-h-[90vh]">
+          <div className="bg-white dark:bg-dark-card w-full max-w-2xl rounded-xl shadow-xl overflow-hidden flex flex-col max-h-[90vh]">
             <div className="p-6 border-b border-gray-200 dark:border-dark-border flex justify-between items-center bg-gray-50 dark:bg-dark-hover">
               <h3 className="text-xl font-bold text-dark flex items-center gap-2">
                 <MessageSquare className="text-primary" />
