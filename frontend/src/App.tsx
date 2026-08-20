@@ -9,7 +9,7 @@ import { LoadingSpinner } from './components/LoadingSpinner';
 import { getDeterministicUuid } from './lib/user';
 import { auth } from './lib/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
-import { supabase } from './lib/supabase';
+import { supabase, setSupabaseToken } from './lib/supabase';
 import type { User as FirebaseUser } from 'firebase/auth';
 import BannedScreen from './pages/BannedScreen';
 import { CookieConsent } from './components/CookieConsent';
@@ -152,6 +152,25 @@ const RequireAuth = ({ children }: { children: React.ReactNode }) => {
 
       setUser(currentUser);
       const userId = getDeterministicUuid(currentUser.uid);
+      
+      try {
+        const idToken = await currentUser.getIdToken();
+        const apiBase = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+        const res = await fetch(`${apiBase}/api/v1/auth/supabase-token`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id_token: idToken })
+        });
+        if (res.ok) {
+          const { access_token } = await res.json();
+          setSupabaseToken(access_token);
+        } else {
+          console.error('Failed to exchange Firebase token for Supabase token');
+        }
+      } catch (err) {
+        console.error('Error fetching Supabase token', err);
+      }
+
       try {
         const profileRes = await supabase.from('profiles').select('*').eq('id', userId).maybeSingle();
 

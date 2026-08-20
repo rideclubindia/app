@@ -7,4 +7,22 @@ if (!supabaseUrl || !supabaseAnonKey) {
   throw new Error('Missing Supabase environment variables. Check your .env file.');
 }
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+let currentSupabaseToken = '';
+
+export const setSupabaseToken = (token: string) => {
+  currentSupabaseToken = token;
+};
+
+const customFetch = (url: RequestInfo | URL, options?: RequestInit) => {
+  const headers = new Headers(options?.headers);
+  if (currentSupabaseToken) {
+    headers.set('Authorization', `Bearer ${currentSupabaseToken}`);
+  }
+  return fetch(url, { ...options, headers });
+};
+
+export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+  global: {
+    fetch: customFetch
+  }
+});

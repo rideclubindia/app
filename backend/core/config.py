@@ -8,6 +8,7 @@ class Settings(BaseSettings):
     
     # Security
     JWT_SECRET: str = Field("supersecretjwtkey_change_in_prod", env="JWT_SECRET")
+    SUPABASE_JWT_SECRET: str = Field("", env="SUPABASE_JWT_SECRET")
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 7 # 7 days
     

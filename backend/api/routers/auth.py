@@ -104,3 +104,49 @@ def firebase_login(request: Request, data: FirebaseLoginData, db: Session = Depe
         data={"sub": user.email, "role": user.role.value}, expires_delta=access_token_expires
     )
     return {"access_token": access_token, "token_type": "bearer"}
+
+def get_deterministic_uuid(string: str) -> str:
+    hash_val = 0
+    for char in string:
+        code = ord(char)
+        hash_val = code + ((hash_val << 5) - hash_val)
+        hash_val = (hash_val & 0xFFFFFFFF)
+        if hash_val > 0x7FFFFFFF:
+            hash_val -= 0x100000000
+    
+    hex_val = f"{abs(hash_val):012x}"
+    return f"00000000-0000-0000-0000-{hex_val}"
+
+@router.post("/supabase-token", response_model=Token)
+@limiter.limit("20/minute")
+def get_supabase_token(request: Request, data: FirebaseLoginData):
+    from firebase_admin import auth as firebase_auth
+    import jwt
+
+    if not settings.SUPABASE_JWT_SECRET:
+        raise HTTPException(status_code=500, detail="SUPABASE_JWT_SECRET not configured")
+
+    try:
+        decoded_token = firebase_auth.verify_id_token(data.id_token)
+    except Exception as e:
+        logger.warning(f"Firebase ID token verification failed: {e}")
+        raise HTTPException(status_code=401, detail="Invalid or expired Firebase token")
+
+    firebase_uid = decoded_token.get("uid")
+    if not firebase_uid:
+        raise HTTPException(status_code=401, detail="Invalid Firebase token")
+
+    # Supabase expects the token subject (sub) to be a UUID.
+    # We use the same deterministic UUID logic as the frontend to map Firebase UIDs to Supabase UUIDs.
+    supabase_uuid = get_deterministic_uuid(firebase_uid)
+
+    payload = {
+        "aud": "authenticated",
+        "exp": decoded_token.get("exp"), # Match the Firebase token expiration
+        "sub": supabase_uuid,
+        "email": decoded_token.get("email"),
+        "role": "authenticated"
+    }
+
+    supabase_token = jwt.encode(payload, settings.SUPABASE_JWT_SECRET, algorithm="HS256")
+    return {"access_token": supabase_token, "token_type": "bearer"}
