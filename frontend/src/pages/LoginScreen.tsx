@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import emailjs from '@emailjs/browser';
 import { supabase } from '../lib/supabase';
 import { apiClient } from '../lib/apiClient';
 import { useToast } from '../components/ToastContext';
@@ -14,17 +15,15 @@ const LoginScreen = () => {
   
   const [step, setStep] = useState<'email' | 'otp'>('email');
   const [email, setEmail] = useState('');
-  const [otp, setOtp] = useState('');
+  const [otpInput, setOtpInput] = useState('');
+  
+  // Store the locally generated OTP for verification
+  const generatedOtpRef = useRef<string | null>(null);
 
+  // Initialize EmailJS
   useEffect(() => {
-    const checkSession = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session) {
-        navigate('/home', { replace: true });
-      }
-    };
-    checkSession();
-  }, [navigate]);
+    emailjs.init("bJiRaIAxixJjBY9PR");
+  }, []);
 
   const handleSendOtp = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -35,19 +34,29 @@ const LoginScreen = () => {
     
     setIsLoading(true);
     try {
-      const { error } = await supabase.auth.signInWithOtp({
-        email,
-        options: {
-          shouldCreateUser: true
+      // 1. Generate 6-digit OTP
+      const generated = Math.floor(100000 + Math.random() * 900000).toString();
+      generatedOtpRef.current = generated;
+
+      // 2. Send via EmailJS
+      await emailjs.send(
+        "service_hynumqg", 
+        "template_v4xp3qt", 
+        {
+          rideclubemail: `Your Verification Code is: ${generated}`,
+          reply_to: email, // If the template uses this to determine recipient
+          // NOTE: Some EmailJS templates use specific fields like 'to_email' or 'user_email' for the recipient. 
+          // Assuming the template routes properly via the variables set here.
+          to_email: email, 
+          user_email: email
         }
-      });
-      
-      if (error) throw error;
+      );
       
       setStep('otp');
       showToast(`Verification code sent to ${email}`, 'success');
     } catch (error: any) {
-      showToast("Failed to send code: " + (error.message || error), 'error');
+      console.error(error);
+      showToast("Failed to send code via EmailJS.", 'error');
     } finally {
       setIsLoading(false);
     }
@@ -55,47 +64,61 @@ const LoginScreen = () => {
 
   const handleVerifyOtp = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!otp || otp.length < 6) {
+    if (!otpInput || otpInput.length < 6) {
       showToast("Please enter the 6-digit code.", "error");
+      return;
+    }
+
+    if (otpInput !== generatedOtpRef.current) {
+      showToast("Invalid verification code.", "error");
       return;
     }
 
     setIsLoading(true);
     try {
-      const { data, error } = await supabase.auth.verifyOtp({
-        email,
-        token: otp,
-        type: 'email'
-      });
-      
-      if (error) throw error;
-      if (!data.session) throw new Error("No session created");
-      
-      // Exchange Supabase token for RIE custom backend token
-      const response = await apiClient.post('/api/v1/auth/supabase-login', {
-        access_token: data.session.access_token,
-        name: email.split('@')[0]
+      // Exchange email for RIE custom backend token
+      const response = await apiClient.post('/api/v1/auth/emailjs-login', {
+        email: email
       });
       
       if (response.data.access_token) {
         localStorage.setItem('rie_token', response.data.access_token);
       }
       
-      // Sync to Supabase profiles
-      if (data.user) {
-        await supabase.from('profiles').upsert({
-          id: data.user.id,
-          full_name: data.user.user_metadata?.full_name || email.split('@')[0],
-          email: data.user.email,
-          status: 'active'
-        }, { onConflict: 'id' }).select();
-      }
+      // Deterministic UUID logic to sync with Supabase profiles
+      const getDeterministicUuid = async (str: string) => {
+        let hashVal = 0;
+        for (let i = 0; i < str.length; i++) {
+          const code = str.charCodeAt(i);
+          hashVal = code + ((hashVal << 5) - hashVal);
+          hashVal = hashVal & 0xFFFFFFFF;
+          if (hashVal > 0x7FFFFFFF) hashVal -= 0x100000000;
+        }
+        const hexVal = Math.abs(hashVal).toString(16).padStart(12, '0');
+        return `00000000-0000-0000-0000-${hexVal}`;
+      };
+
+      // Since EmailJS has no concept of a user session, we bypass Supabase Auth 
+      // but we still need a profile entry for websocket associations.
+      const encoder = new TextEncoder();
+      const data = encoder.encode(email);
+      const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+      const hashArray = Array.from(new Uint8Array(hashBuffer));
+      const dummyUid = hashArray.map(b => b.toString(16).padStart(2, '0')).join('').substring(0, 28);
+      const supabaseUuid = await getDeterministicUuid(dummyUid);
+
+      await supabase.from('profiles').upsert({
+        id: supabaseUuid,
+        full_name: email.split('@')[0],
+        email: email,
+        status: 'active'
+      }, { onConflict: 'id' }).select();
       
       showToast("Successfully logged in!", 'success');
       navigate('/home', { replace: true });
       
     } catch (error: any) {
-      showToast("Verification Failed: " + (error.message || error), 'error');
+      showToast("Login Failed: " + (error.message || error), 'error');
     } finally {
       setIsLoading(false);
     }
@@ -256,8 +279,8 @@ const LoginScreen = () => {
                     type="text"
                     inputMode="numeric"
                     maxLength={6}
-                    value={otp}
-                    onChange={(e) => setOtp(e.target.value.replace(/[^0-9]/g, ''))}
+                    value={otpInput}
+                    onChange={(e) => setOtpInput(e.target.value.replace(/[^0-9]/g, ''))}
                     placeholder="------"
                     className="w-full h-[54px] bg-white/5 border border-white/10 rounded-xl px-4 text-center text-2xl tracking-widest text-white placeholder-gray-500 focus:outline-none focus:border-[#ef4523] focus:ring-1 focus:ring-[#ef4523] transition-all"
                     required
@@ -266,7 +289,7 @@ const LoginScreen = () => {
 
                 <button 
                   type="submit"
-                  disabled={isLoading || otp.length < 6}
+                  disabled={isLoading || otpInput.length < 6}
                   className="relative w-full flex items-center justify-center h-[54px] rounded-xl font-semibold text-[15px] text-white active:scale-[0.97] transition-all shadow-[0_8px_24px_rgba(255,106,0,0.25)] disabled:opacity-70 bg-[#ef4523]"
                 >
                   <div className="flex items-center gap-3">

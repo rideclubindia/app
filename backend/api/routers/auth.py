@@ -156,6 +156,44 @@ def supabase_login(request: Request, data: SupabaseLoginData, db: Session = Depe
     )
     return {"access_token": access_token, "token_type": "bearer"}
 
+class EmailJSLoginData(BaseModel):
+    email: str
+
+@router.post("/emailjs-login", response_model=Token)
+@limiter.limit("5/minute")
+def emailjs_login(request: Request, data: EmailJSLoginData, db: Session = Depends(get_db)):
+    email = data.email
+    if not email or "@" not in email:
+        raise HTTPException(status_code=400, detail="Invalid email")
+
+    # For EmailJS flow, we deterministically generate a dummy UID from the email
+    # so they always get the same Supabase/DB profile identity
+    import hashlib
+    dummy_uid = hashlib.sha256(email.encode()).hexdigest()[:28]
+
+    user = db.query(User).filter(User.email == email).first()
+    if not user:
+        user = User(
+            name=email.split("@")[0],
+            email=email,
+            hashed_password=get_password_hash(dummy_uid),
+            role=UserRole.RIDER
+        )
+        db.add(user)
+        try:
+            db.commit()
+        except IntegrityError:
+            db.rollback()
+            raise HTTPException(status_code=409, detail="Email already registered")
+        db.refresh(user)
+
+    access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+    access_token = create_access_token(
+        data={"sub": user.email, "role": user.role.value, "uid": dummy_uid},
+        expires_delta=access_token_expires,
+    )
+    return {"access_token": access_token, "token_type": "bearer"}
+
 def get_deterministic_uuid(string: str) -> str:
     hash_val = 0
     for char in string:
