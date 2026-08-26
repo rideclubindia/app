@@ -376,7 +376,7 @@ export class RealtimeManager {
         if (event.type === 'loc:p') {
           if (!byRide[event.rideId]) byRide[event.rideId] = [];
           byRide[event.rideId].push(event.data as PendingFix);
-          keysToDelete.push(event.key);
+          if (event.id) keysToDelete.push(event.id);
         }
       }
 

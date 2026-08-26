@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { signInWithPopup, signInWithCredential, GoogleAuthProvider, signInWithEmailAndPassword } from 'firebase/auth';
 import { auth, googleProvider } from '../lib/firebase';
 import { Capacitor } from '@capacitor/core';
+// @ts-ignore
 import { GoogleAuth } from '@codetrix-studio/capacitor-google-auth';
 import { supabase } from '../lib/supabase';
 import { apiClient } from '../lib/apiClient';

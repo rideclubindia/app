@@ -1,4 +1,4 @@
-import { RequestParameters, ResponseCallback } from 'maplibre-gl';
+import type { RequestParameters } from 'maplibre-gl';
 import { getCachedTile, cacheTile } from './tileCache';
 
 /**

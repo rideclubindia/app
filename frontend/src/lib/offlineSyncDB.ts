@@ -4,6 +4,7 @@ interface SyncDB extends DBSchema {
   pending_events: {
     key: number; // Auto-incrementing ID
     value: {
+      id?: number;
       type: string;
       rideId: string;
       data: any;
