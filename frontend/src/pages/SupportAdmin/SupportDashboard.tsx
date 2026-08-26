@@ -18,10 +18,10 @@ const StatBox = ({ title, value, trend, linkTo, icon: Icon }: any) => {
       
       <div className="flex justify-between items-end mb-auto">
         <div>
-          <h2 className="text-[18px] font-bold tracking-tight leading-none mb-1">{value}</h2>
+          <h2 className="text-[18px] font-semibold tracking-tight leading-none mb-1">{value}</h2>
           <div className="flex items-center gap-1">
             <span className="text-[9px] font-medium text-[#8A8A8E]">vs prev</span>
-            <span className={`text-[8px] font-bold px-1 py-0.5 rounded flex items-center gap-0.5 ${trend >= 0 ? 'bg-[#E5F9ED] text-[#34C759]' : 'bg-[#FFEBEE] text-[#FF3B30]'}`}>
+            <span className={`text-[8px] font-semibold px-1 py-0.5 rounded flex items-center gap-0.5 ${trend >= 0 ? 'bg-[#E5F9ED] text-[#34C759]' : 'bg-[#FFEBEE] text-[#FF3B30]'}`}>
               {trend >= 0 ? <ArrowUpRight className="w-2 h-2" /> : <ArrowDownRight className="w-2 h-2" />} {Math.abs(trend)}%
             </span>
           </div>
@@ -31,7 +31,7 @@ const StatBox = ({ title, value, trend, linkTo, icon: Icon }: any) => {
       <div className="mt-4 pt-2 border-t border-[#E5E5EA]">
         <button 
           onClick={() => navigate(linkTo)}
-          className="text-[11px] font-bold flex items-center gap-1.5 hover:text-[#ef4523] transition-colors"
+          className="text-[11px] font-semibold flex items-center gap-1.5 hover:text-[#ef4523] transition-colors"
         >
           See Details <ChevronRight className="w-3 h-3" />
         </button>
@@ -166,7 +166,7 @@ const SupportDashboard = () => {
   return (
     <div className="flex-1 w-full text-[#273a5a] bg-[#F2F2F7] p-4 overflow-y-auto hide-scrollbar">
       <div className="mb-6">
-        <h1 className="text-[20px] font-bold tracking-tight text-[#111]">Support Dashboard</h1>
+        <h1 className="text-[20px] font-semibold tracking-tight text-[#111]">Support Dashboard</h1>
         <p className="text-[#8A8A8E] text-[12px] mt-1">Overview of all support and subscriber metrics.</p>
       </div>
 
@@ -210,7 +210,7 @@ const SupportDashboard = () => {
                 
                 {/* Custom Tooltip */}
                 <div className="absolute -top-12 opacity-0 group-hover:opacity-100 transition-opacity bg-white border border-[#E5E5EA] shadow-lg rounded-md p-2 z-10 pointer-events-none w-32 flex flex-col gap-1">
-                  <p className="text-[10px] font-bold text-gray-500">{data.name}</p>
+                  <p className="text-[10px] font-semibold text-gray-500">{data.name}</p>
                   <p className="text-xs text-[#ef4523] font-semibold">Tickets: {data.tickets}</p>
                   <p className="text-xs text-[#333333] font-semibold">Subs: {data.subscribers}</p>
                 </div>
@@ -240,7 +240,7 @@ const SupportDashboard = () => {
                   <div key={index} className="flex flex-col gap-1.5">
                     <div className="flex justify-between items-center text-sm">
                       <span className="font-medium text-gray-700">{item.name}</span>
-                      <span className="text-gray-500 font-bold">{item.value} ({percent}%)</span>
+                      <span className="text-gray-500 font-semibold">{item.value} ({percent}%)</span>
                     </div>
                     <div className="w-full bg-gray-100 rounded-full h-2">
                       <div 
@@ -263,18 +263,18 @@ const SupportDashboard = () => {
         <div className="bg-white rounded-lg border border-[#E5E5EA] shadow-[0_2px_12px_rgba(0,0,0,0.02)] overflow-hidden flex flex-col">
           <div className="p-4 border-b border-[#E5E5EA] flex justify-between items-center">
             <div className="flex items-center gap-1.5">
-              <span className="text-[12px] font-bold">Recent Tickets</span>
-              <span className="bg-[#F2F4F7] text-[#8A8A8E] text-[10px] font-bold px-1.5 py-0.5 rounded">{Math.min(rawData.tickets.length, 5)}</span>
+              <span className="text-[12px] font-semibold">Recent Tickets</span>
+              <span className="bg-[#F2F4F7] text-[#8A8A8E] text-[10px] font-semibold px-1.5 py-0.5 rounded">{Math.min(rawData.tickets.length, 5)}</span>
             </div>
-            <button onClick={() => navigate('/support-admin/app-contact')} className="text-[11px] font-bold text-[#ef4523] hover:text-[#ef4523]">View all</button>
+            <button onClick={() => navigate('/support-admin/app-contact')} className="text-[11px] font-semibold text-[#ef4523] hover:text-[#ef4523]">View all</button>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr>
-                  <th className="px-4 py-2 border-b border-[#E5E5EA] text-[10px] font-bold text-[#8A8A8E] uppercase tracking-wider">Subject</th>
-                  <th className="px-4 py-2 border-b border-[#E5E5EA] text-[10px] font-bold text-[#8A8A8E] uppercase tracking-wider">Status</th>
-                  <th className="px-4 py-2 border-b border-[#E5E5EA] text-[10px] font-bold text-[#8A8A8E] uppercase tracking-wider">Date</th>
+                  <th className="px-4 py-2 border-b border-[#E5E5EA] text-[10px] font-semibold text-[#8A8A8E] uppercase tracking-wider">Subject</th>
+                  <th className="px-4 py-2 border-b border-[#E5E5EA] text-[10px] font-semibold text-[#8A8A8E] uppercase tracking-wider">Status</th>
+                  <th className="px-4 py-2 border-b border-[#E5E5EA] text-[10px] font-semibold text-[#8A8A8E] uppercase tracking-wider">Date</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#E5E5EA]">
@@ -282,7 +282,7 @@ const SupportDashboard = () => {
                   <tr key={ticket.id} className="hover:bg-[#F2F4F7] transition-colors group">
                     <td className="px-4 py-2 text-[12px] font-semibold truncate max-w-[200px]">{ticket.category || 'Support Request'}</td>
                     <td className="px-4 py-2">
-                      <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${ticket.status === 'resolved' ? 'bg-[#E5F9ED] text-[#34C759]' : 'bg-[#FFF4E5] text-[#FF9500]'}`}>
+                      <span className={`px-1.5 py-0.5 rounded text-[10px] font-semibold ${ticket.status === 'resolved' ? 'bg-[#E5F9ED] text-[#34C759]' : 'bg-[#FFF4E5] text-[#FF9500]'}`}>
                         {ticket.status || 'open'}
                       </span>
                     </td>
@@ -305,17 +305,17 @@ const SupportDashboard = () => {
         <div className="bg-white rounded-lg border border-[#E5E5EA] shadow-[0_2px_12px_rgba(0,0,0,0.02)] overflow-hidden flex flex-col">
           <div className="p-4 border-b border-[#E5E5EA] flex justify-between items-center">
             <div className="flex items-center gap-1.5">
-              <span className="text-[12px] font-bold">Recent Subscribers</span>
-              <span className="bg-[#F2F4F7] text-[#8A8A8E] text-[10px] font-bold px-1.5 py-0.5 rounded">{Math.min(rawData.subscribers.length, 5)}</span>
+              <span className="text-[12px] font-semibold">Recent Subscribers</span>
+              <span className="bg-[#F2F4F7] text-[#8A8A8E] text-[10px] font-semibold px-1.5 py-0.5 rounded">{Math.min(rawData.subscribers.length, 5)}</span>
             </div>
-            <button onClick={() => navigate('/support-admin/subscribers')} className="text-[11px] font-bold text-[#ef4523] hover:text-[#ef4523]">View all</button>
+            <button onClick={() => navigate('/support-admin/subscribers')} className="text-[11px] font-semibold text-[#ef4523] hover:text-[#ef4523]">View all</button>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr>
-                  <th className="px-4 py-2 border-b border-[#E5E5EA] text-[10px] font-bold text-[#8A8A8E] uppercase tracking-wider">Email</th>
-                  <th className="px-4 py-2 border-b border-[#E5E5EA] text-[10px] font-bold text-[#8A8A8E] uppercase tracking-wider">Date</th>
+                  <th className="px-4 py-2 border-b border-[#E5E5EA] text-[10px] font-semibold text-[#8A8A8E] uppercase tracking-wider">Email</th>
+                  <th className="px-4 py-2 border-b border-[#E5E5EA] text-[10px] font-semibold text-[#8A8A8E] uppercase tracking-wider">Date</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#E5E5EA]">

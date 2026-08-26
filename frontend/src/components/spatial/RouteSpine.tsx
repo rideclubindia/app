@@ -51,7 +51,7 @@ export const RouteSpine: React.FC<RouteSpineProps> = ({ nodes, onNodeClick, clas
             
             {/* Node Content */}
             <div className="flex flex-col justify-center min-h-[32px] pt-1">
-              <span className={`font-bold tracking-wide ${node.isActive ? 'text-[var(--color-hmi-text-primary)] text-[16px]' : 'text-[var(--color-hmi-text-secondary)] text-[14px]'}`}>
+              <span className={`font-semibold tracking-wide ${node.isActive ? 'text-[var(--color-hmi-text-primary)] text-[16px]' : 'text-[var(--color-hmi-text-secondary)] text-[14px]'}`}>
                 {node.label}
               </span>
               {node.sublabel && (

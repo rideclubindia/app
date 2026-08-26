@@ -98,7 +98,7 @@ const MyRides = () => {
               <ArrowLeft className="w-5 h-5 text-white" />
             </button>
             <div>
-              <h1 className="text-[20px] font-bold text-white tracking-tight leading-none">My Navigations</h1>
+              <h1 className="text-[20px] font-semibold text-white tracking-tight leading-none">My Navigations</h1>
               <p className="text-[13px] text-white/50 mt-1">Your recent trips</p>
             </div>
           </div>
@@ -119,7 +119,7 @@ const MyRides = () => {
               <div className="w-20 h-20 bg-blue-500/20 border border-blue-500/30 rounded-full flex items-center justify-center mb-6">
                 <Navigation2 className="w-10 h-10 text-blue-400" strokeWidth={2} />
               </div>
-              <h3 className="text-[20px] font-bold text-white mb-2 tracking-tight">No Navigations Yet</h3>
+              <h3 className="text-[20px] font-semibold text-white mb-2 tracking-tight">No Navigations Yet</h3>
               <p className="text-[14px] text-white/50 max-w-[250px]">Your navigation history will appear here once you start taking trips.</p>
             </div>
           ) : (
@@ -130,22 +130,22 @@ const MyRides = () => {
                 </div>
                 
                 <div className="flex-1 min-w-0">
-                  <h3 className="text-[15px] font-bold text-white leading-tight truncate mb-2">{item.title}</h3>
+                  <h3 className="text-[15px] font-semibold text-white leading-tight truncate mb-2">{item.title}</h3>
                   <div className="flex items-center gap-2 mb-2">
-                    <span className="flex items-center gap-1 px-2 py-0.5 bg-white/10 rounded-md text-white/60 text-[10px] font-bold uppercase tracking-wider">
+                    <span className="flex items-center gap-1 px-2 py-0.5 bg-white/10 rounded-md text-white/60 text-[10px] font-semibold uppercase tracking-wider">
                       <Calendar className="w-3 h-3" />
                       {new Date(item.time).toLocaleDateString(undefined, {month: 'short', day: 'numeric', year: 'numeric'})}
                     </span>
-                    <span className="flex items-center gap-1 px-2 py-0.5 bg-white/10 rounded-md text-white/60 text-[10px] font-bold uppercase tracking-wider">
+                    <span className="flex items-center gap-1 px-2 py-0.5 bg-white/10 rounded-md text-white/60 text-[10px] font-semibold uppercase tracking-wider">
                       <MapPin className="w-3 h-3" />
                       {item.distance}
                     </span>
                   </div>
                   
                   <div className="flex items-center">
-                    {item.status === 'completed' && <span className="flex items-center gap-1 text-green-400 text-[11px] font-bold uppercase tracking-wider"><Activity className="w-3 h-3" /> Completed</span>}
-                    {item.status === 'active' && <span className="flex items-center gap-1 text-blue-400 text-[11px] font-bold uppercase tracking-wider"><Activity className="w-3 h-3 animate-pulse" /> Active</span>}
-                    {item.status === 'cancelled' && <span className="flex items-center gap-1 text-red-400 text-[11px] font-bold uppercase tracking-wider"><Activity className="w-3 h-3" /> Cancelled</span>}
+                    {item.status === 'completed' && <span className="flex items-center gap-1 text-green-400 text-[11px] font-semibold uppercase tracking-wider"><Activity className="w-3 h-3" /> Completed</span>}
+                    {item.status === 'active' && <span className="flex items-center gap-1 text-blue-400 text-[11px] font-semibold uppercase tracking-wider"><Activity className="w-3 h-3 animate-pulse" /> Active</span>}
+                    {item.status === 'cancelled' && <span className="flex items-center gap-1 text-red-400 text-[11px] font-semibold uppercase tracking-wider"><Activity className="w-3 h-3" /> Cancelled</span>}
                   </div>
                 </div>
               </div>

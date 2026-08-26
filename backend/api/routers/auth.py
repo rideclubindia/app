@@ -101,7 +101,12 @@ def firebase_login(request: Request, data: FirebaseLoginData, db: Session = Depe
 
     access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(
-        data={"sub": user.email, "role": user.role.value}, expires_delta=access_token_expires
+        # `uid` carries the verified Firebase UID so stateless consumers
+        # (real-time gateway) can resolve ride-membership identities without
+        # a DB round-trip. Never trust a client-supplied uid - this one is
+        # taken from the verified Firebase token.
+        data={"sub": user.email, "role": user.role.value, "uid": firebase_uid},
+        expires_delta=access_token_expires,
     )
     return {"access_token": access_token, "token_type": "bearer"}
 

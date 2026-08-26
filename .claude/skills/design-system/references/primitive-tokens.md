@@ -117,7 +117,7 @@ Raw design values - foundation of the design system.
   --font-weight-normal:   400;
   --font-weight-medium:   500;
   --font-weight-semibold: 600;
-  --font-weight-bold:     700;
+  --font-weight-semibold:     700;
 
   /* Letter Spacing */
   --tracking-tighter: -0.05em;

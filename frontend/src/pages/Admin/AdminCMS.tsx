@@ -63,7 +63,7 @@ const AdminCMS = () => {
     {
       header: 'Type',
       accessorKey: 'type',
-      cell: (row) => <span className="font-bold text-[13px] capitalize">{row.type}</span>
+      cell: (row) => <span className="font-semibold text-[13px] capitalize">{row.type}</span>
     },
     {
       header: 'Version',
@@ -77,7 +77,7 @@ const AdminCMS = () => {
     {
       header: 'Status',
       cell: (row) => (
-        <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${row.is_published ? 'bg-[#E5F9ED] text-[#34C759]' : 'bg-[#F2F2F7] text-[#8A8A8E]'}`}>
+        <span className={`px-2 py-0.5 rounded text-[10px] font-semibold ${row.is_published ? 'bg-[#E5F9ED] text-[#34C759]' : 'bg-[#F2F2F7] text-[#8A8A8E]'}`}>
           {row.is_published ? 'Published' : 'Draft'}
         </span>
       )
@@ -100,7 +100,7 @@ const AdminCMS = () => {
       <div className={`flex-1 w-full p-4 flex flex-col bg-[#Ffffff] text-[#273a5a] overflow-hidden transition-all ${isEditing ? 'pr-[500px]' : ''}`}>
         <div className="mb-4 flex justify-between items-end shrink-0">
           <div>
-            <h1 className="text-[16px] font-bold tracking-tight leading-tight flex items-center gap-2">
+            <h1 className="text-[16px] font-semibold tracking-tight leading-tight flex items-center gap-2">
               <FileText className="w-4 h-4 text-[#ef4523]" />
               Policy Management
             </h1>
@@ -112,7 +112,7 @@ const AdminCMS = () => {
               setEditForm({ type: 'privacy', content: '', version: nextVersion, is_published: false }); 
               setIsEditing(true); 
             }}
-            className="flex items-center gap-1.5 h-7 px-3 bg-[#ef4523] hover:bg-[#ef4523] text-white rounded text-[11px] font-bold"
+            className="flex items-center gap-1.5 h-7 px-3 bg-[#ef4523] hover:bg-[#ef4523] text-white rounded text-[11px] font-semibold"
           >
             <Plus className="w-3.5 h-3.5" /> Add Version
           </button>
@@ -131,24 +131,24 @@ const AdminCMS = () => {
       <div className={`fixed top-0 right-0 h-full w-[500px] bg-white shadow-[-4px_0_24px_rgba(0,0,0,0.1)] z-50 transform transition-transform duration-300 flex flex-col border-l border-[#E5E5EA] ${isEditing ? 'translate-x-0' : 'translate-x-full'}`}>
         {isEditing && editForm && (
           <div className="p-5 flex flex-col h-full">
-            <h2 className="text-[16px] font-bold mb-4">{editForm.id ? 'Edit Policy Version' : 'New Policy Version'}</h2>
+            <h2 className="text-[16px] font-semibold mb-4">{editForm.id ? 'Edit Policy Version' : 'New Policy Version'}</h2>
             
             <div className="space-y-4 flex-1 overflow-y-auto pr-2">
               <div className="flex gap-4">
                 <div className="flex-1">
-                  <label className="block text-[10px] font-bold text-[#8A8A8E] uppercase mb-1">Type</label>
+                  <label className="block text-[10px] font-semibold text-[#8A8A8E] uppercase mb-1">Type</label>
                   <select value={editForm.type} onChange={e => setEditForm({...editForm, type: e.target.value})} className="w-full border border-[#E5E5EA] rounded p-2 text-[12px] outline-none focus:border-[#ef4523]">
                     <option value="privacy">Privacy Policy</option>
                     <option value="terms">Terms & Conditions</option>
                   </select>
                 </div>
                 <div className="w-24">
-                  <label className="block text-[10px] font-bold text-[#8A8A8E] uppercase mb-1">Version</label>
+                  <label className="block text-[10px] font-semibold text-[#8A8A8E] uppercase mb-1">Version</label>
                   <input type="number" value={editForm.version} onChange={e => setEditForm({...editForm, version: parseInt(e.target.value) || 1})} className="w-full border border-[#E5E5EA] rounded p-2 text-[12px] outline-none focus:border-[#ef4523]" />
                 </div>
               </div>
               <div className="flex-1 flex flex-col h-[calc(100%-100px)]">
-                <label className="block text-[10px] font-bold text-[#8A8A8E] uppercase mb-1">Content (Markdown)</label>
+                <label className="block text-[10px] font-semibold text-[#8A8A8E] uppercase mb-1">Content (Markdown)</label>
                 <textarea 
                   value={editForm.content} 
                   onChange={e => setEditForm({...editForm, content: e.target.value})} 
@@ -158,13 +158,13 @@ const AdminCMS = () => {
               </div>
               <div className="flex items-center gap-2 pt-2">
                 <input type="checkbox" checked={editForm.is_published} onChange={e => setEditForm({...editForm, is_published: e.target.checked})} id="pub" className="accent-[#ef4523]" />
-                <label htmlFor="pub" className="text-[12px] font-bold">Publish this version (Users must accept)</label>
+                <label htmlFor="pub" className="text-[12px] font-semibold">Publish this version (Users must accept)</label>
               </div>
             </div>
 
             <div className="flex gap-2 pt-4 border-t border-[#E5E5EA] mt-4">
-              <button onClick={() => setIsEditing(false)} className="flex-1 h-8 border border-[#E5E5EA] rounded font-bold text-[11px] hover:bg-gray-50">Cancel</button>
-              <button onClick={handleSave} className="flex-1 h-8 bg-[#ef4523] hover:bg-[#ef4523] text-white rounded font-bold text-[11px]">Save Policy</button>
+              <button onClick={() => setIsEditing(false)} className="flex-1 h-8 border border-[#E5E5EA] rounded font-semibold text-[11px] hover:bg-gray-50">Cancel</button>
+              <button onClick={handleSave} className="flex-1 h-8 bg-[#ef4523] hover:bg-[#ef4523] text-white rounded font-semibold text-[11px]">Save Policy</button>
             </div>
           </div>
         )}

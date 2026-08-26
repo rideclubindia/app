@@ -91,7 +91,7 @@ const RideHistory = () => {
               <ArrowLeft className="w-5 h-5 text-white" />
             </button>
             <div>
-              <h1 className="text-[20px] font-bold text-white tracking-tight leading-none">Ride History</h1>
+              <h1 className="text-[20px] font-semibold text-white tracking-tight leading-none">Ride History</h1>
               <p className="text-[13px] text-white/50 mt-1">Your group rides</p>
             </div>
           </div>
@@ -118,7 +118,7 @@ const RideHistory = () => {
             <button 
               key={f}
               onClick={() => setFilter(f)}
-              className={`px-4 py-1.5 rounded-full text-[12px] font-bold whitespace-nowrap capitalize transition-all border ${filter === f ? 'bg-primary text-white border-primary shadow-lg shadow-primary/20' : 'bg-white/5 text-white/60 border-white/10 hover:bg-white/10'}`}
+              className={`px-4 py-1.5 rounded-full text-[12px] font-semibold whitespace-nowrap capitalize transition-all border ${filter === f ? 'bg-primary text-white border-primary shadow-lg shadow-primary/20' : 'bg-white/5 text-white/60 border-white/10 hover:bg-white/10'}`}
             >
               {f}
             </button>
@@ -138,7 +138,7 @@ const RideHistory = () => {
               <div className="w-16 h-16 bg-primary/20 border border-primary/30 rounded-full flex items-center justify-center mb-4">
                 <Car className="w-8 h-8 text-primary" />
               </div>
-              <h2 className="text-[20px] font-bold text-white mb-2">No Rides Yet</h2>
+              <h2 className="text-[20px] font-semibold text-white mb-2">No Rides Yet</h2>
               <p className="text-[14px] text-white/50 max-w-[250px]">Your ride history will appear here once you join or create a ride.</p>
             </div>
           ) : filteredHistory.length === 0 ? (
@@ -151,7 +151,7 @@ const RideHistory = () => {
                 </div>
                 
                 <div className="flex-1 min-w-0 flex flex-col justify-center">
-                  <h3 className="text-[15px] font-bold text-white leading-tight truncate mb-2">{item.name}</h3>
+                  <h3 className="text-[15px] font-semibold text-white leading-tight truncate mb-2">{item.name}</h3>
                   <div className="flex items-center gap-3 mb-1">
                     <span className="flex items-center gap-1.5 text-white/60 text-[11px] font-medium">
                       <Calendar className="w-3.5 h-3.5" />
@@ -165,10 +165,10 @@ const RideHistory = () => {
                 </div>
 
                 <div className="flex items-start shrink-0">
-                  {item.status === 'ended' && <span className="px-2.5 py-1 bg-white/10 text-white/60 border border-white/10 text-[10px] font-bold rounded-full uppercase tracking-wider">Ended</span>}
-                  {item.status === 'live' && <span className="px-2.5 py-1 bg-primary/20 text-primary border border-primary/30 text-[10px] font-bold rounded-full uppercase tracking-wider">Live</span>}
-                  {item.status === 'scheduled' && <span className="px-2.5 py-1 bg-blue-500/20 text-blue-400 border border-blue-500/30 text-[10px] font-bold rounded-full uppercase tracking-wider">Scheduled</span>}
-                  {item.status === 'cancelled' && <span className="px-2.5 py-1 bg-red-500/20 text-red-400 border border-red-500/30 text-[10px] font-bold rounded-full uppercase tracking-wider">Cancelled</span>}
+                  {item.status === 'ended' && <span className="px-2.5 py-1 bg-white/10 text-white/60 border border-white/10 text-[10px] font-semibold rounded-full uppercase tracking-wider">Ended</span>}
+                  {item.status === 'live' && <span className="px-2.5 py-1 bg-primary/20 text-primary border border-primary/30 text-[10px] font-semibold rounded-full uppercase tracking-wider">Live</span>}
+                  {item.status === 'scheduled' && <span className="px-2.5 py-1 bg-blue-500/20 text-blue-400 border border-blue-500/30 text-[10px] font-semibold rounded-full uppercase tracking-wider">Scheduled</span>}
+                  {item.status === 'cancelled' && <span className="px-2.5 py-1 bg-red-500/20 text-red-400 border border-red-500/30 text-[10px] font-semibold rounded-full uppercase tracking-wider">Cancelled</span>}
                 </div>
               </div>
             ))

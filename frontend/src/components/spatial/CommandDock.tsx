@@ -22,7 +22,7 @@ export const CommandDock: React.FC<CommandDockProps> = ({
   className = '' 
 }) => {
   return (
-    <div className={`flex items-center gap-3 bg-[var(--color-hmi-surface)]/80 backdrop-blur-md p-3 rounded-[24px] border border-[var(--color-hmi-text-muted)]/20 shadow-[0_10px_40px_rgba(0,0,0,0.5)] ${className}`}>
+    <div className={`flex items-center gap-3 bg-[var(--color-hmi-surface)]/80 backdrop-blur-md p-3 rounded-[8px] border border-[var(--color-hmi-text-muted)]/20 shadow-[0_10px_40px_rgba(0,0,0,0.5)] ${className}`}>
       
       {secondaryActions.slice(0, 2).map(action => (
         <button
@@ -44,7 +44,7 @@ export const CommandDock: React.FC<CommandDockProps> = ({
           className="h-[64px] px-8 rounded-full flex items-center justify-center gap-3 transition-all active:scale-95 bg-[var(--color-hmi-accent)] hover:bg-[#ff603a] text-white shadow-[0_0_20px_rgba(255,77,33,0.3)] border border-[#ff8c73]/30"
         >
           <primaryAction.icon className="w-6 h-6" />
-          <span className="font-black uppercase tracking-wider text-[16px]">{primaryAction.label}</span>
+          <span className="font-semibold uppercase tracking-wider text-[16px]">{primaryAction.label}</span>
         </button>
       )}
 

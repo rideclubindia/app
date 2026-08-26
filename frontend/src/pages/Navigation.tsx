@@ -18,7 +18,8 @@ import { EdgeRail } from '../components/spatial/EdgeRail';
 import { CommandDock } from '../components/spatial/CommandDock';
 import { Telemetry } from '../components/spatial/Telemetry';
 import { SpatialMembrane } from '../components/spatial/SpatialMembrane';
-import LoadingSpinner from '../components/LoadingSpinner';const Navigation = () => {
+import LoadingSpinner from '../components/LoadingSpinner';
+import { getRealtime } from '../realtime';const Navigation = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { showToast } = useToast();
@@ -382,15 +383,18 @@ import LoadingSpinner from '../components/LoadingSpinner';const Navigation = () 
     return () => { locSub.unsubscribe(); memSub.unsubscribe(); };
   }, [groupRideId]);
 
-  // ─── Broadcast own location to ride_locations ──────────────────────────
+  // ─── Broadcast own location to ride members ─────────────────────────────
   useEffect(() => {
     if (!groupRideId || !auth.currentUser) return;
     const rawUid = auth.currentUser.uid;
+    const rt = getRealtime();
+    rt.connect();
+    rt.joinRide(groupRideId);
 
     locationBroadcastRef.current = setInterval(async () => {
       if (!userLocation) return;
       const nowStr = new Date().toISOString();
-      
+
       // Instantly update local state so current user never shows as offline
       setParticipants(prev => {
         if (!prev[rawUid]) return prev;
@@ -406,17 +410,30 @@ import LoadingSpinner from '../components/LoadingSpinner';const Navigation = () 
         };
       });
 
-      await supabase.from('ride_locations').upsert({
-        ride_id: groupRideId,
-        user_id: rawUid,
-        latitude: userLocation.lat,
-        longitude: userLocation.lng,
-        speed: currentSpeed || 0,
-        updated_at: nowStr
-      }, { onConflict: 'ride_id,user_id' });
+      // Realtime platform: adaptive WS batching (server fans out to the ride
+      // room and persists ride_locations in batches). Supabase upsert remains
+      // as the offline fallback so the durable path never breaks.
+      if (rt.connected) {
+        rt.sendLocation(groupRideId, {
+          lat: userLocation.lat, lng: userLocation.lng,
+          speed: currentSpeed || 0, heading: 0
+        });
+      } else {
+        await supabase.from('ride_locations').upsert({
+          ride_id: groupRideId,
+          user_id: rawUid,
+          latitude: userLocation.lat,
+          longitude: userLocation.lng,
+          speed: currentSpeed || 0,
+          updated_at: nowStr
+        }, { onConflict: 'ride_id,user_id' });
+      }
     }, 5000);
 
-    return () => { if (locationBroadcastRef.current) clearInterval(locationBroadcastRef.current); };
+    return () => {
+      if (locationBroadcastRef.current) clearInterval(locationBroadcastRef.current);
+      rt.leaveRide(groupRideId);
+    };
   }, [groupRideId, userLocation, currentSpeed]);
 
   // ─── Place participant markers on map ──────────────────────────────────
@@ -612,7 +629,7 @@ import LoadingSpinner from '../components/LoadingSpinner';const Navigation = () 
         // Add destination marker if destLng, destLat exist
         if (destLng && destLat) {
           const destEl = document.createElement('div');
-          destEl.className = 'w-8 h-8 rounded-full flex shrink-0 flex-col items-center justify-center text-[10px] font-bold shadow-lg border-2 border-white bg-danger text-white';
+          destEl.className = 'w-8 h-8 rounded-full flex shrink-0 flex-col items-center justify-center text-[10px] font-semibold shadow-lg border-2 border-white bg-danger text-white';
           destEl.innerText = 'END';
           new maplibregl.Marker({ element: destEl })
             .setLngLat([destLng, destLat])
@@ -1005,7 +1022,7 @@ import LoadingSpinner from '../components/LoadingSpinner';const Navigation = () 
               <IconComp className={`w-4 h-4 ${typeObj?.color || 'text-gray-600'}`} />
             </div>
             {distanceStr && (
-              <div className="bg-dark/90 backdrop-blur-md text-white text-[11px] font-bold px-2.5 py-1 rounded-full mt-1 border border-white/20 whitespace-nowrap shadow-xl">
+              <div className="bg-dark/90 backdrop-blur-md text-white text-[11px] font-semibold px-2.5 py-1 rounded-full mt-1 border border-white/20 whitespace-nowrap shadow-xl">
                 {distanceStr}
               </div>
             )}
@@ -1105,15 +1122,15 @@ import LoadingSpinner from '../components/LoadingSpinner';const Navigation = () 
                     {React.cloneElement(getTurnIcon(currentInstruction.type) as React.ReactElement<{className?: string}>, { className: 'w-10 h-10 text-[var(--color-hmi-accent)]' })}
                  </div>
                  <div className="flex flex-col items-center text-center">
-                   <h2 className="text-[32px] font-black leading-none text-[var(--color-hmi-text-primary)] mb-2">{currentInstruction.dist || `to ${destName || 'destination'}`}</h2>
-                   <p className="text-[18px] text-[var(--color-hmi-text-secondary)] font-bold">{currentInstruction.text}</p>
+                   <h2 className="text-[32px] font-semibold leading-none text-[var(--color-hmi-text-primary)] mb-2">{currentInstruction.dist || `to ${destName || 'destination'}`}</h2>
+                   <p className="text-[18px] text-[var(--color-hmi-text-secondary)] font-semibold">{currentInstruction.text}</p>
                  </div>
               </div>
 
               {/* MIDDLE SECTION: Hazard Alerts */}
               {nextHazard && (
                 <div className="p-4 bg-[var(--color-hmi-critical)]/10 rounded-[20px] border border-[var(--color-hmi-critical)]/50 w-full max-w-[400px] pointer-events-auto mt-2">
-                   <div className="text-[var(--color-hmi-critical)] font-black text-[16px] flex items-center justify-center gap-3">
+                   <div className="text-[var(--color-hmi-critical)] font-semibold text-[16px] flex items-center justify-center gap-3">
                      <AlertTriangle className="w-6 h-6" />
                      <span className="truncate uppercase">{Math.max(0, Math.round(nextHazard.remainingDist * 1000))}m - Hazard Ahead</span>
                    </div>
@@ -1127,7 +1144,7 @@ import LoadingSpinner from '../components/LoadingSpinner';const Navigation = () 
                    <div className="w-[1px] h-16 bg-[var(--color-hmi-text-muted)]/30" />
                    <div className="flex flex-col">
                      <Telemetry label="ETA" value={currentEta} size="md" color="primary" />
-                     <span className="text-[14px] text-[var(--color-hmi-text-muted)] font-bold mt-1">{currentDistance} left</span>
+                     <span className="text-[14px] text-[var(--color-hmi-text-muted)] font-semibold mt-1">{currentDistance} left</span>
                    </div>
                  </div>
               </div>

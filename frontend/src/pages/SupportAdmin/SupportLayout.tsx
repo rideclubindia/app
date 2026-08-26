@@ -51,7 +51,7 @@ const SupportLayout = () => {
           <span className="text-[13px] flex-1 truncate">{label}</span>
         )}
         {!collapsed && badge && (
-          <span className="bg-[#F2F4F7] text-gray-600 text-[10px] font-bold px-1.5 py-0.5 rounded">
+          <span className="bg-[#F2F4F7] text-gray-600 text-[10px] font-semibold px-1.5 py-0.5 rounded">
             {badge}
           </span>
         )}
@@ -171,7 +171,7 @@ const SupportLayout = () => {
         {/* Scrollable Nav */}
         <div className="flex-1 overflow-y-auto py-5 px-3 flex flex-col hide-scrollbar">
           <div className="mb-5">
-            {!collapsed && <p className="text-[10px] font-bold text-[#8A8A8E] tracking-wider mb-1.5 px-3 uppercase">Main Menu</p>}
+            {!collapsed && <p className="text-[10px] font-semibold text-[#8A8A8E] tracking-wider mb-1.5 px-3 uppercase">Main Menu</p>}
             <NavItem to={`${bp}/dashboard`} icon={LayoutDashboard} label="Dashboard" />
             <NavItem to={`${bp}/subscribers`} icon={Users2} label="Early Access" />
             <NavItem to={`${bp}/website-contact`} icon={MessageSquare} label="Website Contact Us" />
@@ -191,13 +191,13 @@ const SupportLayout = () => {
                 className="w-8 h-8 rounded-full border border-gray-200 object-cover" 
               />
             ) : (
-              <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center font-bold text-gray-500 text-[12px]">
+              <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center font-semibold text-gray-500 text-[12px]">
                 {adminProfile?.full_name?.charAt(0) || 'A'}
               </div>
             )}
             {!collapsed && (
               <div className="flex-1 min-w-0">
-                <p className="text-[13px] font-bold truncate">{adminProfile?.full_name || 'Admin User'}</p>
+                <p className="text-[13px] font-semibold truncate">{adminProfile?.full_name || 'Admin User'}</p>
                 <p className="text-[11px] text-[#8A8A8E] truncate">{adminProfile?.email || auth.currentUser?.email || 'admin@app.com'}</p>
               </div>
             )}
@@ -230,8 +230,8 @@ const SupportLayout = () => {
               placeholder="Search" 
               rightElement={
                 <div className="flex gap-1 pr-1">
-                  <span className="bg-[#F2F4F7] text-[#8A8A8E] text-[9px] font-bold px-1.5 py-[1px] rounded">F</span>
-                  <span className="bg-[#F2F4F7] text-[#8A8A8E] text-[9px] font-bold px-1.5 py-[1px] rounded">⌘</span>
+                  <span className="bg-[#F2F4F7] text-[#8A8A8E] text-[9px] font-semibold px-1.5 py-[1px] rounded">F</span>
+                  <span className="bg-[#F2F4F7] text-[#8A8A8E] text-[9px] font-semibold px-1.5 py-[1px] rounded">⌘</span>
                 </div>
               }
             />
@@ -252,7 +252,7 @@ const SupportLayout = () => {
                       className="w-full h-full object-cover" 
                     />
                   ) : (
-                    <span className="text-[10px] font-bold text-gray-500">{u.full_name?.charAt(0) || 'U'}</span>
+                    <span className="text-[10px] font-semibold text-gray-500">{u.full_name?.charAt(0) || 'U'}</span>
                   )}
                 </div>
               ))}

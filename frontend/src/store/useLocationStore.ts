@@ -1,7 +1,10 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import { matchToRoute } from '../lib/mapMatching';
+import { useNavigationStore } from './useNavigationStore';
 
 export interface LocationState {
+  rawCoordinates: { lat: number; lng: number } | null;
   coordinates: { lat: number; lng: number } | null;
   locationName: string | null;
   speed: number; // km/h
@@ -9,6 +12,8 @@ export interface LocationState {
   error: string | null;
   isTracking: boolean;
   isMapReporting: boolean;
+  activeRouteGeoJSON: any | null;
+  setActiveRouteGeoJSON: (geojson: any) => void;
   setIsMapReporting: (val: boolean) => void;
   startTracking: () => void;
   stopTracking: () => void;
@@ -38,6 +43,7 @@ export const useLocationStore = create<LocationState>()(
   };
 
   return {
+    rawCoordinates: null,
     coordinates: null,
     locationName: null,
     speed: 0,
@@ -45,6 +51,8 @@ export const useLocationStore = create<LocationState>()(
     error: null,
     isTracking: false,
     isMapReporting: false,
+    activeRouteGeoJSON: null,
+    setActiveRouteGeoJSON: (geojson: any) => set({ activeRouteGeoJSON: geojson }),
     setIsMapReporting: (val: boolean) => set({ isMapReporting: val }),
 
     startTracking: () => {
@@ -67,11 +75,20 @@ export const useLocationStore = create<LocationState>()(
             : get().speed;
 
           if (!prevCoords || prevCoords.lat !== latitude || prevCoords.lng !== longitude) {
-            set({ 
-              coordinates: { lat: latitude, lng: longitude },
+            const rawCoords = { lat: latitude, lng: longitude };
+            const activeRoute = get().activeRouteGeoJSON;
+            const matchedCoords = activeRoute 
+              ? matchToRoute(latitude, longitude, activeRoute)
+              : rawCoords;
+
+            const newState = {
+              rawCoordinates: rawCoords,
+              coordinates: matchedCoords,
               speed: speedKmh,
               heading: heading !== null ? heading : get().heading
-            });
+            };
+
+            set(newState);
           } else {
             set({ speed: speedKmh, heading: heading !== null ? heading : get().heading });
           }
@@ -109,11 +126,21 @@ export const useLocationStore = create<LocationState>()(
         navigator.geolocation.getCurrentPosition(
           (pos) => {
             const { latitude, longitude } = pos.coords;
-            set({ coordinates: { lat: latitude, lng: longitude }, error: null });
+            const rawCoords = { lat: latitude, lng: longitude };
+            const activeRoute = get().activeRouteGeoJSON;
+            const matchedCoords = activeRoute 
+              ? matchToRoute(latitude, longitude, activeRoute)
+              : rawCoords;
+
+            set({ 
+              rawCoordinates: rawCoords,
+              coordinates: matchedCoords, 
+              error: null 
+            });
             
             // Reverse geocode
             reverseGeocode(latitude, longitude).then(() => {
-              resolve({ lat: latitude, lng: longitude, locationName: get().locationName });
+              resolve({ lat: matchedCoords.lat, lng: matchedCoords.lng, locationName: get().locationName });
             });
           },
           (error) => {
@@ -130,7 +157,8 @@ export const useLocationStore = create<LocationState>()(
     name: 'location-storage',
     partialize: (state) => ({ 
       coordinates: state.coordinates,
-      locationName: state.locationName 
+      locationName: state.locationName,
+      activeRouteGeoJSON: state.activeRouteGeoJSON
     }),
   }
 ));

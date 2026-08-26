@@ -287,7 +287,7 @@ export default function RideDash404() {
       {/* Header Overlay */}
       <div className="absolute top-0 left-0 w-full p-6 bg-gradient-to-b from-[#273a5a]/80 to-transparent pointer-events-none flex justify-between items-start">
         <div>
-          <h1 className="text-3xl md:text-5xl font-black text-white tracking-tight flex items-center gap-3">
+          <h1 className="text-3xl md:text-5xl font-semibold text-white tracking-tight flex items-center gap-3">
             404 
             <span className="text-[#ef4523]">Wrong Turn!</span>
           </h1>
@@ -295,7 +295,7 @@ export default function RideDash404() {
         </div>
         <div className="flex items-center gap-2 bg-[#273a5a]/40 backdrop-blur px-4 py-2 rounded-lg border border-white/10">
           <ShieldAlert className="text-[#ef4523] w-5 h-5" />
-          <span className="text-white font-bold font-mono text-xl">{score}s</span>
+          <span className="text-white font-semibold font-mono text-xl">{score}s</span>
         </div>
       </div>
 
@@ -306,19 +306,19 @@ export default function RideDash404() {
             <div className="w-16 h-16 bg-[#FFF0E6] rounded-xl flex items-center justify-center mx-auto mb-4">
               <Play className="w-8 h-8 text-[#ef4523] ml-1" />
             </div>
-            <h2 className="text-2xl font-bold text-gray-900 mb-2">RideDash</h2>
+            <h2 className="text-2xl font-semibold text-gray-900 mb-2">RideDash</h2>
             <p className="text-sm text-gray-500 mb-6">
               Survive for 12 seconds to find your way back! Tap screen or press Space to jump over obstacles.
             </p>
             <button 
               onClick={startGame}
-              className="w-full py-4 bg-[#ef4523] hover:bg-[#ef4523] text-white font-bold rounded-xl text-lg shadow-lg shadow-[#ef4523]/30 transition-all active:scale-95"
+              className="w-full py-4 bg-[#ef4523] hover:bg-[#ef4523] text-white font-semibold rounded-xl text-lg shadow-lg shadow-[#ef4523]/30 transition-all active:scale-95"
             >
               Start Dash
             </button>
             <button 
               onClick={() => navigate('/home')}
-              className="w-full mt-3 py-3 text-gray-500 hover:text-gray-900 font-bold transition-colors text-sm"
+              className="w-full mt-3 py-3 text-gray-500 hover:text-gray-900 font-semibold transition-colors text-sm"
             >
               Skip & Go Home
             </button>
@@ -330,20 +330,20 @@ export default function RideDash404() {
       {gameState === 'GAMEOVER' && (
         <div className="absolute inset-0 flex flex-col items-center justify-center bg-red-900/40 backdrop-blur-md animate-in fade-in zoom-in duration-300">
           <div className="bg-white p-8 rounded-xl shadow-2xl max-w-sm w-full text-center border-t-4 border-red-500">
-            <h2 className="text-3xl font-black text-gray-900 mb-2">CRASH!</h2>
+            <h2 className="text-3xl font-semibold text-gray-900 mb-2">CRASH!</h2>
             <p className="text-gray-500 mb-6 font-medium">You survived for {score} seconds.</p>
             
             <div className="flex flex-col gap-3">
               <button 
                 onClick={startGame}
-                className="w-full py-4 bg-gray-900 hover:bg-[#273a5a] text-white font-bold rounded-xl flex items-center justify-center gap-2 shadow-lg transition-all active:scale-95"
+                className="w-full py-4 bg-gray-900 hover:bg-[#273a5a] text-white font-semibold rounded-xl flex items-center justify-center gap-2 shadow-lg transition-all active:scale-95"
               >
                 <RefreshCw className="w-5 h-5" />
                 Play Again
               </button>
               <button 
                 onClick={() => navigate('/home')}
-                className="w-full py-4 bg-white border-2 border-gray-200 hover:border-gray-300 text-gray-700 font-bold rounded-xl flex items-center justify-center gap-2 transition-all active:scale-95"
+                className="w-full py-4 bg-white border-2 border-gray-200 hover:border-gray-300 text-gray-700 font-semibold rounded-xl flex items-center justify-center gap-2 transition-all active:scale-95"
               >
                 <Home className="w-5 h-5" />
                 Back to Homepage
@@ -357,20 +357,20 @@ export default function RideDash404() {
       {gameState === 'VICTORY' && (
         <div className="absolute inset-0 flex flex-col items-center justify-center bg-emerald-900/40 backdrop-blur-md animate-in fade-in zoom-in duration-300">
           <div className="bg-white p-8 rounded-xl shadow-2xl max-w-sm w-full text-center border-t-4 border-[#34C759]">
-            <h2 className="text-3xl font-black text-gray-900 mb-2">You Made It!</h2>
+            <h2 className="text-3xl font-semibold text-gray-900 mb-2">You Made It!</h2>
             <p className="text-gray-500 mb-6 font-medium">You survived {score} seconds and found your way back.</p>
             
             <div className="flex flex-col gap-3">
               <button 
                 onClick={() => navigate('/home')}
-                className="w-full py-4 bg-[#ef4523] hover:bg-[#ef4523] text-white font-bold rounded-xl flex items-center justify-center gap-2 shadow-lg shadow-[#ef4523]/30 transition-all active:scale-95"
+                className="w-full py-4 bg-[#ef4523] hover:bg-[#ef4523] text-white font-semibold rounded-xl flex items-center justify-center gap-2 shadow-lg shadow-[#ef4523]/30 transition-all active:scale-95"
               >
                 <Home className="w-5 h-5" />
                 Back to Homepage
               </button>
               <button 
                 onClick={startGame}
-                className="w-full py-4 bg-white border-2 border-gray-200 hover:border-gray-300 text-gray-700 font-bold rounded-xl flex items-center justify-center gap-2 transition-all active:scale-95"
+                className="w-full py-4 bg-white border-2 border-gray-200 hover:border-gray-300 text-gray-700 font-semibold rounded-xl flex items-center justify-center gap-2 transition-all active:scale-95"
               >
                 <RefreshCw className="w-5 h-5" />
                 Play Again

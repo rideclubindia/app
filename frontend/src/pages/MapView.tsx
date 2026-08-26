@@ -7,12 +7,13 @@ import { useLocationStore } from '../store/useLocationStore';
 import { useNavigate, useLocation, useOutletContext } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { apiClient, API_BASE_URL } from '../lib/apiClient';
-import { io } from 'socket.io-client';
+import { getRealtime, EV_PINS_NEW } from '../realtime';
 import { auth } from '../lib/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 import { IncidentDrawer } from '../components/IncidentDrawer';
 import { useToast } from '../components/ToastContext';
 import { useIncidentCategories, incidentIconMap } from '../hooks/useIncidentCategories';
+import { filterActiveIncidents } from '../lib/incidentExpiry';
 import { useIncidentNotifications } from '../hooks/useIncidentNotifications';
 import { getDeterministicUuid } from '../lib/user';
 import logoLight from '../assets/Logos/Logo for White Backgrounds 2.svg';
@@ -176,7 +177,7 @@ const MapView = () => {
           .order('created_at', { ascending: false })
           .limit(50);
         if (!error && data) {
-          setAlerts(data);
+          setAlerts(await filterActiveIncidents(data));
         }
       } catch (err) {
         console.error('Error fetching pins:', err);
@@ -186,6 +187,13 @@ const MapView = () => {
     };
     fetchPins();
 
+    // Realtime platform: instant pin fan-out via the shared WS connection
+    // (the Supabase channel below stays as the durable fallback).
+    const rt = getRealtime();
+    rt.connect();
+    rt.subscribePins();
+    const offPins = rt.on(EV_PINS_NEW, () => { fetchPins(); });
+
     // Optional: Realtime subscription for pins
     const channel = supabase.channel('public:pins')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'pins' }, payload => {
@@ -194,6 +202,8 @@ const MapView = () => {
       .subscribe();
 
     return () => {
+      offPins();
+      rt.unsubscribePins();
       supabase.removeChannel(channel);
     };
   }, []);
@@ -202,7 +212,7 @@ const MapView = () => {
 
   // Render Alert Markers on Map
   useEffect(() => {
-    if (!map.current || !alerts || alerts.length === 0) return;
+    if (!map.current) return;
 
     // Remove existing markers that are no longer in alerts
     const currentAlertIds = new Set(alerts.map(a => a.id));
@@ -213,35 +223,38 @@ const MapView = () => {
       }
     });
 
-    // Add new markers
+    // Add new markers (supports both PostGIS `location` and plain lat/lng columns)
     alerts.forEach(alert => {
-      if (!pinMarkersRef.current[alert.id] && alert.location && alert.location.coordinates) {
-        const [lng, lat] = alert.location.coordinates;
-        
-        // Find category styling
-        const cat = reportTypes?.find(t => t.id === alert.category);
-        const color = cat?.color || '#ef4523';
-        
-        // Create custom element
-        const el = document.createElement('div');
-        el.className = 'w-10 h-10 rounded-full flex items-center justify-center shadow-lg border-2 border-white transition-transform hover:scale-110 cursor-pointer';
-        el.style.backgroundColor = color;
-        
-        // Use a simple dot if icon isn't immediately available, or just the color
-        el.innerHTML = `<div class="w-3 h-3 bg-white rounded-full"></div>`;
+      if (pinMarkersRef.current[alert.id]) return;
 
-        const marker = new maplibregl.Marker({ element: el })
-          .setLngLat([lng, lat])
-          .addTo(map.current!);
-          
-        marker.getElement().addEventListener('click', () => {
-          navigate(`/incident/${alert.id}`);
-        });
+      const lng = alert.location?.coordinates?.[0] ?? alert.longitude;
+      const lat = alert.location?.coordinates?.[1] ?? alert.latitude;
+      if (lat == null || lng == null) return;
 
-        pinMarkersRef.current[alert.id] = marker;
-      }
+      // Find category styling (color/bg are Tailwind classes)
+      const typeObj = reportTypes?.find(t => t.id === alert.category);
+      const IconComp = typeObj ? incidentIconMap[typeObj.iconName] : AlertTriangle;
+
+      const el = document.createElement('div');
+      el.className = 'cursor-pointer hover:scale-110 transition-transform active:scale-95';
+      const root = createRoot(el);
+      root.render(
+        <div className={`w-9 h-9 rounded-full flex items-center justify-center shadow-lg border-2 border-white ${typeObj?.bg || 'bg-red-50'}`}>
+          <IconComp className={`w-4 h-4 ${typeObj?.color || 'text-red-500'}`} />
+        </div>
+      );
+
+      const marker = new maplibregl.Marker({ element: el })
+        .setLngLat([lng, lat])
+        .addTo(map.current!);
+        
+      marker.getElement().addEventListener('click', () => {
+        navigate(`/incident/${alert.id}`);
+      });
+
+      pinMarkersRef.current[alert.id] = marker;
     });
-  }, [alerts, map.current, reportTypes]);
+  }, [alerts, contextMap, reportTypes]);
 
   const nearbyAlerts = alerts; // Temporary mock or mapping if alerts is populated elsewhere
 
@@ -352,21 +365,21 @@ const MapView = () => {
                 <button onClick={() => { setShowDrawer(false); setClickLocation(null); markerRef.current?.remove(); popupRef.current?.remove(); }} className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-white/10 transition-colors">
                   <ArrowLeft className="w-6 h-6 text-white" />
                 </button>
-                <h2 className="font-bold text-[18px] text-white">Add Report</h2>
+                <h2 className="font-semibold text-[18px] text-white">Add Report</h2>
                 <div className="w-10" />
               </div>
               
               <div className="flex-1 overflow-y-auto px-2 py-2 flex flex-col gap-2 custom-scrollbar">
                 {/* Location Confirmed Text */}
-                <div className="w-full bg-green-500/10 text-green-400 font-bold p-2 rounded-xl flex items-center gap-3 border border-green-500/20 text-[14px]">
+                <div className="w-full bg-green-500/10 text-green-400 font-semibold p-2 rounded-[8px] flex items-center gap-3 border border-green-500/20 text-[14px]">
                   <MapPin className="w-4 h-4" />
                   Location Confirmed on Map
                 </div>
                 
                 {/* Select Type Grid */}
                 <div className="flex-shrink-0">
-                  <h3 className="font-bold text-[13px] text-white/50 uppercase tracking-wider mb-3">Select Type</h3>
-                  <div className="grid grid-cols-4 gap-y-4 gap-x-4">
+                  <h3 className="font-semibold text-[13px] text-white/50 uppercase tracking-wider mb-3">Select Type</h3>
+                  <div className="grid grid-cols-4 gap-y-2 gap-x-2">
                     {reportTypes.map((type) => {
                       const IconComp = incidentIconMap[type.iconName as keyof typeof incidentIconMap];
                       const isSelected = reportType === type.id;
@@ -387,10 +400,10 @@ const MapView = () => {
                 {/* Custom Name (if Other) */}
                 {reportType === 'Other' && (
                   <div className="flex-shrink-0 animate-in fade-in slide-in-from-top-2">
-                    <h3 className="font-bold text-[14px] text-white/50 uppercase tracking-wider mb-3">Custom Name</h3>
+                    <h3 className="font-semibold text-[14px] text-white/50 uppercase tracking-wider mb-3">Custom Name</h3>
                     <input 
                       type="text" 
-                      className="w-full bg-white/5 border border-white/10 rounded-xl p-4 outline-none focus:border-[#ef4523] focus:ring-1 focus:ring-[#ef4523] transition-all text-[15px] text-white placeholder-white/30" 
+                      className="w-full bg-white/5 border border-white/10 rounded-[8px] p-4 outline-none focus:border-[#ef4523] focus:ring-1 focus:ring-[#ef4523] transition-all text-[15px] text-white placeholder-white/30" 
                       placeholder="E.g., Pothole, Stray Animal..." 
                       value={customCategory} 
                       onChange={(e) => setCustomCategory(e.target.value)}
@@ -400,12 +413,12 @@ const MapView = () => {
                 
                 {/* Description Area */}
                 <div className="flex-shrink-0">
-                  <h3 className="font-bold text-[14px] text-white/50 uppercase tracking-wider mb-3 flex items-center justify-between">
+                  <h3 className="font-semibold text-[14px] text-white/50 uppercase tracking-wider mb-3 flex items-center justify-between">
                     Description <span className="text-white/30 font-normal text-[12px] capitalize tracking-normal">(optional)</span>
                   </h3>
                   <div className="relative">
                     <textarea 
-                      className="w-full bg-white/5 border border-white/10 rounded-xl p-4 pb-8 h-[120px] resize-none outline-none focus:border-[#ef4523] focus:ring-1 focus:ring-[#ef4523] transition-all text-[15px] text-white placeholder-white/30" 
+                      className="w-full bg-white/5 border border-white/10 rounded-[8px] p-4 pb-8 h-[120px] resize-none outline-none focus:border-[#ef4523] focus:ring-1 focus:ring-[#ef4523] transition-all text-[15px] text-white placeholder-white/30" 
                       placeholder="Tell others what's happening..." 
                       value={description} 
                       onChange={(e) => setDescription(e.target.value)}
@@ -416,7 +429,7 @@ const MapView = () => {
 
                 {/* Photo Area */}
                 <div className="flex-shrink-0">
-                  <h3 className="font-bold text-[14px] text-white/50 uppercase tracking-wider mb-3 flex items-center justify-between">
+                  <h3 className="font-semibold text-[14px] text-white/50 uppercase tracking-wider mb-3 flex items-center justify-between">
                     Photos ({selectedFiles.length}/3) <span className="text-white/30 font-normal text-[12px] capitalize tracking-normal">(optional)</span>
                   </h3>
                   
@@ -436,7 +449,7 @@ const MapView = () => {
                   
                   <div className="flex gap-3 overflow-x-auto pb-2 custom-scrollbar">
                     {selectedFiles.map((file, idx) => (
-                      <div key={idx} className="relative w-[100px] h-[100px] shrink-0 rounded-xl overflow-hidden border border-[#ef4523]">
+                      <div key={idx} className="relative w-[100px] h-[100px] shrink-0 rounded-[8px] overflow-hidden border border-[#ef4523]">
                         <img src={URL.createObjectURL(file)} alt="Preview" className="w-full h-full object-cover" />
                         <button 
                           onClick={() => setSelectedFiles(prev => prev.filter((_, i) => i !== idx))} 
@@ -450,7 +463,7 @@ const MapView = () => {
                     {selectedFiles.length < 3 && (
                       <button 
                         onClick={() => fileInputRef.current?.click()}
-                        className="w-[100px] h-[100px] shrink-0 border border-dashed border-white/20 rounded-xl flex items-center justify-center text-white/30 hover:bg-white/5 transition-colors"
+                        className="w-[100px] h-[100px] shrink-0 border border-dashed border-white/20 rounded-[8px] flex items-center justify-center text-white/30 hover:bg-white/5 transition-colors"
                       >
                         <Camera className="w-8 h-8" />
                       </button>
@@ -460,10 +473,10 @@ const MapView = () => {
                 
                 {/* Post To Selection */}
                 <div className="flex-shrink-0 relative">
-                  <h3 className="font-bold text-[14px] text-white/50 uppercase tracking-wider mb-3">Post To</h3>
+                  <h3 className="font-semibold text-[14px] text-white/50 uppercase tracking-wider mb-3">Post To</h3>
                   <div 
                     onClick={() => setShowGroupDropdown(!showGroupDropdown)}
-                    className="w-full bg-white/5 border border-white/10 rounded-xl p-4 flex items-center justify-between cursor-pointer outline-none focus:border-[#ef4523] focus:ring-1 focus:ring-[#ef4523] transition-all hover:bg-white/10"
+                    className="w-full bg-white/5 border border-white/10 rounded-[8px] p-4 flex items-center justify-between cursor-pointer outline-none focus:border-[#ef4523] focus:ring-1 focus:ring-[#ef4523] transition-all hover:bg-white/10"
                   >
                     <span className="text-[15px] font-medium text-white/90">
                       {selectedGroupForReport === null 
@@ -475,7 +488,7 @@ const MapView = () => {
                   </div>
 
                   {showGroupDropdown && (
-                    <div className="absolute left-0 right-0 bottom-full mb-2 bg-[#1C2538] border border-white/10 rounded-xl shadow-2xl overflow-hidden z-50 animate-in fade-in slide-in-from-bottom-2 backdrop-blur-xl">
+                    <div className="absolute left-0 right-0 bottom-full mb-2 bg-[#1C2538] border border-white/10 rounded-[8px] shadow-2xl overflow-hidden z-50 animate-in fade-in slide-in-from-bottom-2 backdrop-blur-xl">
                       <div 
                         onClick={() => { setSelectedGroupForReport(null); setShowGroupDropdown(false); }}
                         className={`p-4 border-b border-white/5 cursor-pointer hover:bg-white/5 transition-colors flex items-center justify-between ${selectedGroupForReport === null ? 'bg-[#ef4523]/10' : ''}`}
@@ -483,7 +496,7 @@ const MapView = () => {
                         <div className="flex items-center gap-3">
                           <Globe className={`w-5 h-5 ${selectedGroupForReport === null ? 'text-[#ef4523]' : 'text-white/50'}`} />
                           <div>
-                            <p className={`font-bold text-[15px] ${selectedGroupForReport === null ? 'text-[#ef4523]' : 'text-white'}`}>Public (Everyone)</p>
+                            <p className={`font-semibold text-[15px] ${selectedGroupForReport === null ? 'text-[#ef4523]' : 'text-white'}`}>Public (Everyone)</p>
                             <p className="text-[12px] text-white/40">Anyone nearby can see this</p>
                           </div>
                         </div>
@@ -500,7 +513,7 @@ const MapView = () => {
                             <div className="flex items-center gap-3">
                               <Users className={`w-5 h-5 ${selectedGroupForReport === g.id ? 'text-[#ef4523]' : 'text-white/50'}`} />
                               <div>
-                                <p className={`font-bold text-[15px] ${selectedGroupForReport === g.id ? 'text-[#ef4523]' : 'text-white'}`}>{g.name}</p>
+                                <p className={`font-semibold text-[15px] ${selectedGroupForReport === g.id ? 'text-[#ef4523]' : 'text-white'}`}>{g.name}</p>
                                 <p className="text-[12px] text-white/40">Only group members can see this</p>
                               </div>
                             </div>
@@ -518,7 +531,7 @@ const MapView = () => {
                 <button 
                   onClick={submitReport} 
                   disabled={isSubmitting}
-                  className={`w-full h-[56px] text-white font-bold text-[16px] rounded-xl flex items-center justify-center transition-all ${isSubmitting ? 'bg-white/10 text-white/50 cursor-not-allowed' : 'bg-[#ef4523] shadow-[0_8px_20px_rgba(239,69,35,0.3)] active:scale-95 hover:bg-[#ff5533]'}`}
+                  className={`w-full h-[56px] text-white font-semibold text-[16px] rounded-[8px] flex items-center justify-center transition-all ${isSubmitting ? 'bg-white/10 text-white/50 cursor-not-allowed' : 'bg-[#ef4523] shadow-[0_8px_20px_rgba(239,69,35,0.3)] active:scale-95 hover:bg-[#ff5533]'}`}
                 >
                   {isSubmitting ? (
                     <div className="flex items-center gap-2">
@@ -534,7 +547,7 @@ const MapView = () => {
               
               {/* Search Bar */}
               <div className="relative z-30 shrink-0">
-                <div className="bg-white/5 rounded-xl border border-white/10 h-[52px] flex items-center px-4 gap-3 focus-within:border-[#ef4523] focus-within:bg-white/10 transition-colors">
+                <div className="bg-white/5 rounded-[8px] border border-white/10 h-[52px] flex items-center px-4 gap-3 focus-within:border-[#ef4523] focus-within:bg-white/10 transition-colors">
                   <Search className="w-5 h-5 shrink-0 text-[#ef4523]" strokeWidth={3} />
                   <input 
                     type="text" 
@@ -543,7 +556,7 @@ const MapView = () => {
                     onChange={(e) => setSearchQuery(e.target.value)}
                     onKeyDown={handleSearch}
                     disabled={isSearching}
-                    className="flex-1 min-w-0 text-[14px] font-bold outline-none bg-transparent placeholder-white/30 text-white truncate"
+                    className="flex-1 min-w-0 text-[14px] font-semibold outline-none bg-transparent placeholder-white/30 text-white truncate"
                   />
                   <button 
                     aria-label="Navigate to Location"
@@ -576,21 +589,21 @@ const MapView = () => {
                 
                 {/* Autocomplete Dropdown */}
                 {(searchResults.length > 0 || searchQuery.length > 0) && (
-                   <div className="absolute top-[64px] w-full bg-[#1C2538] rounded-xl shadow-2xl py-2 flex flex-col max-h-[320px] overflow-y-auto z-50 border border-white/10 custom-scrollbar backdrop-blur-xl">
+                   <div className="absolute top-[64px] w-full bg-[#1C2538] rounded-[8px] shadow-2xl py-2 flex flex-col max-h-[320px] overflow-y-auto z-50 border border-white/10 custom-scrollbar backdrop-blur-xl">
                      {isSearching && searchResults.length === 0 && (
                        <div className="px-5 py-4 text-center text-[13px] text-white/50">
                          Searching "{searchQuery}"...
                        </div>
                      )}
                      {searchResults.length > 0 && (
-                       <div className="text-[11px] text-white/40 uppercase tracking-wider px-5 py-2 font-bold bg-white/5">
+                       <div className="text-[11px] text-white/40 uppercase tracking-wider px-5 py-2 font-semibold bg-white/5">
                          {searchResults.some((r: any) => r.isSavedLocation) ? 'SAVED LOCATIONS' : 'SUGGESTIONS'}
                        </div>
                      )}
                      {searchResults.map((item, i) => (
                         <div key={i} className="px-3 py-3 border-b border-white/5 last:border-0 hover:bg-white/5 cursor-pointer flex items-center justify-between gap-3 group transition-colors">
                           <div onClick={() => selectSearchResult(item)} className="flex-1 min-w-0">
-                            <p className="text-[15px] font-bold text-white truncate flex items-center gap-2">
+                            <p className="text-[15px] font-semibold text-white truncate flex items-center gap-2">
                               {item.isSavedLocation && <span className="text-[#fbbf24]">⭐</span>}
                               {(item.display_name || item.name).split(',')[0]}
                             </p>
@@ -615,7 +628,7 @@ const MapView = () => {
                          <div className="px-5 py-3 text-[13px] text-white/50 border-b border-white/5">
                            No results found for "{searchQuery}"
                          </div>
-                         <div className="text-[11px] text-white/40 uppercase tracking-wider px-5 py-2 font-bold bg-white/5 border-b border-white/5">
+                         <div className="text-[11px] text-white/40 uppercase tracking-wider px-5 py-2 font-semibold bg-white/5 border-b border-white/5">
                            TRY THESE OPTIONS
                          </div>
                        </div>
@@ -631,7 +644,7 @@ const MapView = () => {
                           className="px-5 py-3 hover:bg-white/5 cursor-pointer flex items-center gap-3 text-[#ef4523] transition-colors"
                         >
                           <MapPin className="w-5 h-5 shrink-0" />
-                          <p className="text-[14px] font-bold truncate">Select on Map</p>
+                          <p className="text-[14px] font-semibold truncate">Select on Map</p>
                         </div>
                      )}
                      {(searchResults.length > 0 || searchQuery.length > 0) && (
@@ -646,7 +659,7 @@ const MapView = () => {
                           className="px-5 py-3 hover:bg-white/5 cursor-pointer flex items-center gap-3 text-blue-400 transition-colors"
                         >
                           <MapPin className="w-5 h-5 shrink-0" />
-                          <p className="text-[14px] font-bold truncate">Select on Map & Save</p>
+                          <p className="text-[14px] font-semibold truncate">Select on Map & Save</p>
                         </div>
                      )}
                    </div>
@@ -654,27 +667,27 @@ const MapView = () => {
               </div>
 
               {/* Live Updates */}
-              <div className="flex-1 flex flex-col min-h-0 bg-white/5 rounded-xl border border-white/10 p-2 overflow-hidden">
+              <div className="flex-1 flex flex-col min-h-0 bg-white/5 rounded-[8px] border border-white/10 p-2 overflow-hidden">
                 <div className="flex justify-between items-center mb-4 shrink-0">
-                  <h3 className="text-[16px] font-bold text-white flex items-center gap-2">
+                  <h3 className="text-[16px] font-semibold text-white flex items-center gap-2">
                     Live Updates
                   </h3>
-                  <span className="bg-[#ef4523]/20 text-[#ef4523] px-2 py-1 rounded-full text-[11px] font-bold shrink-0">
+                  <span className="bg-[#ef4523]/20 text-[#ef4523] px-2 py-1 rounded-full text-[11px] font-semibold shrink-0">
                     {nearbyAlerts.length} Active
                   </span>
                 </div>
 
-                <div className="flex gap-1 shrink-0 mb-2 p-1 bg-black/20 rounded-xl overflow-x-auto custom-scrollbar whitespace-nowrap">
-                  <button onClick={() => setActiveTab('All')} className={`flex-1 min-w-0 px-3 py-1.5 rounded-lg text-[11px] font-bold flex items-center justify-center gap-1.5 transition-colors ${activeTab === 'All' ? 'bg-white/10 text-white shadow-sm' : 'text-white/50 hover:text-white'}`}>
+                <div className="flex gap-1 shrink-0 mb-2 p-1 bg-black/20 rounded-[8px] overflow-x-auto custom-scrollbar whitespace-nowrap">
+                  <button onClick={() => setActiveTab('All')} className={`flex-1 min-w-0 px-3 py-1.5 rounded-lg text-[11px] font-semibold flex items-center justify-center gap-1.5 transition-colors ${activeTab === 'All' ? 'bg-white/10 text-white shadow-sm' : 'text-white/50 hover:text-white'}`}>
                     <Layers className="w-3 h-3 shrink-0" /> All
                   </button>
-                  <button onClick={() => setActiveTab('Rides')} className={`flex-1 min-w-0 px-3 py-1.5 rounded-lg text-[11px] font-bold flex items-center justify-center gap-1.5 transition-colors ${activeTab === 'Rides' ? 'bg-white/10 text-white shadow-sm' : 'text-white/50 hover:text-white'}`}>
+                  <button onClick={() => setActiveTab('Rides')} className={`flex-1 min-w-0 px-3 py-1.5 rounded-lg text-[11px] font-semibold flex items-center justify-center gap-1.5 transition-colors ${activeTab === 'Rides' ? 'bg-white/10 text-white shadow-sm' : 'text-white/50 hover:text-white'}`}>
                     <Car className="w-3 h-3 shrink-0" /> Rides
                   </button>
-                  <button onClick={() => setActiveTab('Events')} className={`flex-1 min-w-0 px-3 py-1.5 rounded-lg text-[11px] font-bold flex items-center justify-center gap-1.5 transition-colors ${activeTab === 'Events' ? 'bg-white/10 text-white shadow-sm' : 'text-white/50 hover:text-white'}`}>
+                  <button onClick={() => setActiveTab('Events')} className={`flex-1 min-w-0 px-3 py-1.5 rounded-lg text-[11px] font-semibold flex items-center justify-center gap-1.5 transition-colors ${activeTab === 'Events' ? 'bg-white/10 text-white shadow-sm' : 'text-white/50 hover:text-white'}`}>
                     <Calendar className="w-3 h-3 shrink-0" /> Events
                   </button>
-                  <button onClick={() => setActiveTab('Alerts')} className={`flex-1 min-w-0 px-3 py-1.5 rounded-lg text-[11px] font-bold flex items-center justify-center gap-1.5 transition-colors ${activeTab === 'Alerts' ? 'bg-white/10 text-white shadow-sm' : 'text-white/50 hover:text-white'}`}>
+                  <button onClick={() => setActiveTab('Alerts')} className={`flex-1 min-w-0 px-3 py-1.5 rounded-lg text-[11px] font-semibold flex items-center justify-center gap-1.5 transition-colors ${activeTab === 'Alerts' ? 'bg-white/10 text-white shadow-sm' : 'text-white/50 hover:text-white'}`}>
                     <AlertTriangle className="w-3 h-3 shrink-0" /> Alerts
                   </button>
                 </div>
@@ -682,7 +695,7 @@ const MapView = () => {
                 <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar flex flex-col gap-1">
                   {isLoadingUpdates ? (
                     Array(3).fill(0).map((_, i) => (
-                      <div key={i} className="w-full bg-white/5 rounded-xl p-4 flex items-center gap-4 shrink-0 animate-pulse">
+                      <div key={i} className="w-full bg-white/5 rounded-[8px] p-4 flex items-center gap-4 shrink-0 animate-pulse">
                         <div className="w-[48px] h-[48px] rounded-full bg-white/10 flex-shrink-0"></div>
                         <div className="flex-1">
                           <div className="h-4 bg-white/10 rounded w-1/2 mb-2"></div>
@@ -705,13 +718,13 @@ const MapView = () => {
                       const typeObj = reportTypes.find(t => t.id === alert.category) || reportTypes.find(t => t.id === 'Other');
                       const IconComp = typeObj ? incidentIconMap[typeObj.iconName as keyof typeof incidentIconMap] : AlertTriangle;
                       return (
-                        <div key={alert.id} onClick={() => navigate(`/incident/${alert.id}`)} className="w-full bg-black/20 rounded-xl p-2 flex items-center justify-between border border-white/5 cursor-pointer hover:bg-white/10 hover:border-white/20 transition-all shrink-0 group">
+                        <div key={alert.id} onClick={() => navigate(`/incident/${alert.id}`)} className="w-full bg-black/20 rounded-[8px] p-2 flex items-center justify-between border border-white/5 cursor-pointer hover:bg-white/10 hover:border-white/20 transition-all shrink-0 group">
                           <div className="flex items-center gap-4">
                             <div className={`w-[48px] h-[48px] rounded-full flex items-center justify-center flex-shrink-0 bg-white/10 border border-white/10 group-hover:scale-110 transition-transform`}>
                               <IconComp className={`w-5 h-5 text-white`} />
                             </div>
                             <div>
-                              <h4 className="font-bold text-[16px] text-white leading-tight mb-1">{alert.category}</h4>
+                              <h4 className="font-semibold text-[16px] text-white leading-tight mb-1">{alert.category}</h4>
                               <p className="text-[13px] text-white/50 leading-tight truncate max-w-[140px]">{alert.description || "Nearby report"}</p>
                             </div>
                           </div>

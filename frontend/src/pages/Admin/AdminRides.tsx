@@ -151,7 +151,7 @@ const AdminRides = () => {
               };
 
               const el = document.createElement('div');
-              el.className = `w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-bold z-20 border-2 border-white shadow-md ${isStart ? 'bg-[#E5F9ED] text-[#34C759]' : isEnd ? 'bg-[#FFEBEE] text-[#FF3B30]' : 'bg-gray-100 text-gray-500'}`;
+              el.className = `w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-semibold z-20 border-2 border-white shadow-md ${isStart ? 'bg-[#E5F9ED] text-[#34C759]' : isEnd ? 'bg-[#FFEBEE] text-[#FF3B30]' : 'bg-gray-100 text-gray-500'}`;
               
               if (isStart) el.innerText = 'A';
               else if (isEnd) el.innerText = 'B';
@@ -279,13 +279,13 @@ const AdminRides = () => {
         <div className="p-5 border-b border-[#E5E5EA] shrink-0">
           <div className="flex items-center justify-between mb-4">
             <div>
-              <h1 className="text-[18px] font-bold text-dark flex items-center gap-2">
+              <h1 className="text-[18px] font-semibold text-dark flex items-center gap-2">
                 <Car className="w-5 h-5 text-primary" />
                 {rides.length} Total Rides
               </h1>
               <p className="text-[12px] text-[#8A8A8E] mt-0.5">Overview and manage live rides</p>
             </div>
-            <button className="flex items-center gap-1.5 px-3 py-1.5 border border-[#E5E5EA] rounded text-[12px] font-bold text-dark hover:bg-gray-50">
+            <button className="flex items-center gap-1.5 px-3 py-1.5 border border-[#E5E5EA] rounded text-[12px] font-semibold text-dark hover:bg-gray-50">
               <Filter className="w-3.5 h-3.5" />
               More filters
             </button>
@@ -300,7 +300,7 @@ const AdminRides = () => {
               />
             </div>
             {searchQuery && (
-              <button onClick={() => setSearchQuery('')} className="px-3 h-9 rounded border border-[#E5E5EA] text-[12px] font-bold hover:bg-gray-50">
+              <button onClick={() => setSearchQuery('')} className="px-3 h-9 rounded border border-[#E5E5EA] text-[12px] font-semibold hover:bg-gray-50">
                 Clear
               </button>
             )}
@@ -323,11 +323,11 @@ const AdminRides = () => {
                         <Car className="w-4 h-4" />
                       </div>
                       <div>
-                        <h3 className="font-bold text-[14px] text-dark leading-tight">{ride.name || 'Unnamed Ride'}</h3>
+                        <h3 className="font-semibold text-[14px] text-dark leading-tight">{ride.name || 'Unnamed Ride'}</h3>
                         <p className="text-[11px] text-[#8A8A8E] font-mono mt-0.5">ID: {String(ride.id).substring(0, 8)}...</p>
                       </div>
                     </div>
-                    <span className={`px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider ${isActive ? 'bg-[#E5F9ED] text-[#34C759]' : 'bg-[#F2F4F7] text-[#8A8A8E]'}`}>
+                    <span className={`px-2 py-1 rounded text-[10px] font-semibold uppercase tracking-wider ${isActive ? 'bg-[#E5F9ED] text-[#34C759]' : 'bg-[#F2F4F7] text-[#8A8A8E]'}`}>
                       {ride.status || 'ended'}
                     </span>
                   </div>
@@ -342,7 +342,7 @@ const AdminRides = () => {
                 <div className="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center mx-auto mb-3">
                   <Car className="w-6 h-6 text-gray-400" />
                 </div>
-                <p className="text-[14px] font-bold text-dark">No rides found</p>
+                <p className="text-[14px] font-semibold text-dark">No rides found</p>
                 <p className="text-[12px] text-[#8A8A8E] mt-1">Try adjusting your filters</p>
               </div>
             )}
@@ -360,8 +360,8 @@ const AdminRides = () => {
               <div className="flex items-start justify-between">
                 <div>
                   <div className="flex items-center gap-2 mb-1">
-                    <h2 className="text-[20px] font-bold text-dark leading-tight">{selectedRide.name || 'Unnamed Ride'}</h2>
-                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${selectedRide.status === 'live' ? 'bg-[#E5F9ED] text-[#34C759]' : 'bg-[#F2F4F7] text-[#8A8A8E]'}`}>
+                    <h2 className="text-[20px] font-semibold text-dark leading-tight">{selectedRide.name || 'Unnamed Ride'}</h2>
+                    <span className={`px-2 py-0.5 rounded text-[10px] font-semibold uppercase ${selectedRide.status === 'live' ? 'bg-[#E5F9ED] text-[#34C759]' : 'bg-[#F2F4F7] text-[#8A8A8E]'}`}>
                       {selectedRide.status || 'ended'}
                     </span>
                   </div>
@@ -382,14 +382,14 @@ const AdminRides = () => {
               ) : (
                 <div className="space-y-8">
                   <div className="mb-6">
-                    <h3 className="text-[11px] font-bold text-[#8A8A8E] uppercase tracking-wider mb-3 flex items-center gap-2">
+                    <h3 className="text-[11px] font-semibold text-[#8A8A8E] uppercase tracking-wider mb-3 flex items-center gap-2">
                       <Clock className="w-4 h-4" />
                       Ride Details
                     </h3>
                     <div className="bg-[#F8F9FB] rounded-lg p-3 grid grid-cols-2 gap-y-3 gap-x-4 text-[12px]">
                       <div className="col-span-2">
                         <span className="text-[#8A8A8E] block mb-0.5">Created By</span>
-                        <span className="font-bold text-dark">
+                        <span className="font-semibold text-dark">
                           {(() => {
                             const creator = rideDetails.creator;
                             if (creator && (creator.full_name || creator.display_name || creator.email)) {
@@ -407,19 +407,19 @@ const AdminRides = () => {
                       </div>
                       <div>
                         <span className="text-[#8A8A8E] block mb-0.5">Time of Creation</span>
-                        <span className="font-bold text-dark">{new Date(selectedRide.created_at).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}</span>
+                        <span className="font-semibold text-dark">{new Date(selectedRide.created_at).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}</span>
                       </div>
                       {selectedRide.status === 'ended' && selectedRide.updated_at && (
                         <div>
                           <span className="text-[#8A8A8E] block mb-0.5">When Ended</span>
-                          <span className="font-bold text-[#FF3B30]">{new Date(selectedRide.updated_at).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}</span>
+                          <span className="font-semibold text-[#FF3B30]">{new Date(selectedRide.updated_at).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}</span>
                         </div>
                       )}
                     </div>
                   </div>
 
                   <div>
-                    <h3 className="text-[11px] font-bold text-[#8A8A8E] uppercase tracking-wider mb-3 flex items-center gap-2">
+                    <h3 className="text-[11px] font-semibold text-[#8A8A8E] uppercase tracking-wider mb-3 flex items-center gap-2">
                       <Users className="w-4 h-4" />
                       Passengers ({rideDetails.members.length})
                     </h3>
@@ -430,11 +430,11 @@ const AdminRides = () => {
                         {rideDetails.members.map((member: any) => (
                           <div key={member.id} className="flex items-center justify-between p-3 bg-[#F8F9FB] rounded-lg">
                             <div className="flex items-center gap-3">
-                              <div className="w-8 h-8 bg-primary/10 text-primary rounded-full flex items-center justify-center font-bold text-[12px]">
+                              <div className="w-8 h-8 bg-primary/10 text-primary rounded-full flex items-center justify-center font-semibold text-[12px]">
                                 {member.display_name?.charAt(0) || 'U'}
                               </div>
                               <div>
-                                <div className="font-bold text-[13px] text-dark">{member.display_name || 'Unknown User'}</div>
+                                <div className="font-semibold text-[13px] text-dark">{member.display_name || 'Unknown User'}</div>
                                 <div className="text-[11px] text-gray-500 capitalize">{member.role}</div>
                               </div>
                             </div>
@@ -445,7 +445,7 @@ const AdminRides = () => {
                   </div>
 
                   <div>
-                    <h3 className="text-[11px] font-bold text-[#8A8A8E] uppercase tracking-wider mb-3 flex items-center gap-2">
+                    <h3 className="text-[11px] font-semibold text-[#8A8A8E] uppercase tracking-wider mb-3 flex items-center gap-2">
                       <MapPin className="w-4 h-4" />
                       Route Stops ({rideDetails.stops.length})
                     </h3>
@@ -456,9 +456,9 @@ const AdminRides = () => {
                         const isEnd = index === rideDetails.stops.length - 1;
                         const type = stop.stop_type?.toLowerCase() || '';
                         
-                        let iconRender = <span className="font-bold text-[11px]">{index}</span>;
-                        if (isStart) iconRender = <span className="font-bold text-[11px]">A</span>;
-                        else if (isEnd) iconRender = <span className="font-bold text-[11px]">B</span>;
+                        let iconRender = <span className="font-semibold text-[11px]">{index}</span>;
+                        if (isStart) iconRender = <span className="font-semibold text-[11px]">A</span>;
+                        else if (isEnd) iconRender = <span className="font-semibold text-[11px]">B</span>;
                         else if (type === 'rest stop') iconRender = <Coffee className="w-3.5 h-3.5" />;
                         else if (type === 'gas station') iconRender = <Fuel className="w-3.5 h-3.5" />;
                         else if (type === 'restaurant') iconRender = <Utensils className="w-3.5 h-3.5" />;
@@ -485,11 +485,11 @@ const AdminRides = () => {
                               {iconRender}
                             </div>
                             <div className="flex-1 pb-2">
-                              <div className="text-sm font-bold text-gray-900 group-hover:text-primary transition-colors">
+                              <div className="text-sm font-semibold text-gray-900 group-hover:text-primary transition-colors">
                                 {stop.location_name || (stop.latitude ? `${stop.latitude.toFixed(4)}, ${stop.longitude.toFixed(4)}` : 'Unknown Location')}
                               </div>
                               <div className="text-xs text-gray-500 mt-0.5 flex gap-2">
-                                <span className="uppercase text-[9px] font-bold px-1.5 rounded bg-gray-100">{stop.stop_type || (isStart ? 'pickup' : isEnd ? 'dropoff' : 'stop')}</span>
+                                <span className="uppercase text-[9px] font-semibold px-1.5 rounded bg-gray-100">{stop.stop_type || (isStart ? 'pickup' : isEnd ? 'dropoff' : 'stop')}</span>
                               </div>
                             </div>
                           </div>
@@ -503,7 +503,7 @@ const AdminRides = () => {
 
                   {/* Recent Locations Section */}
                   <div>
-                    <h3 className="text-[11px] font-bold text-[#8A8A8E] uppercase tracking-wider mb-3 flex items-center gap-2">
+                    <h3 className="text-[11px] font-semibold text-[#8A8A8E] uppercase tracking-wider mb-3 flex items-center gap-2">
                       <MapIcon className="w-4 h-4" />
                       Recent Pings
                     </h3>
@@ -541,7 +541,7 @@ const AdminRides = () => {
                     showToast('Ride ended', 'success');
                     setSelectedRide(null);
                   }}
-                  className="flex-1 bg-white border border-red-500 text-red-500 font-bold h-[44px] rounded-lg hover:bg-red-50 transition-colors flex items-center justify-center"
+                  className="flex-1 bg-white border border-red-500 text-red-500 font-semibold h-[44px] rounded-lg hover:bg-red-50 transition-colors flex items-center justify-center"
                 >
                   Force End Ride
                 </button>

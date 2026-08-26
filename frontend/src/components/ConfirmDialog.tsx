@@ -80,7 +80,7 @@ export const ConfirmProvider: React.FC<{ children: ReactNode }> = ({ children })
                    <Info className="w-5 h-5" />}
                 </div>
                 <div className="flex-1 pt-1">
-                  <h3 className="text-[16px] font-bold text-[#273a5a] leading-tight">{dialog.title}</h3>
+                  <h3 className="text-[16px] font-semibold text-[#273a5a] leading-tight">{dialog.title}</h3>
                 </div>
                 <button
                   onClick={() => handleChoice(false)}
@@ -97,13 +97,13 @@ export const ConfirmProvider: React.FC<{ children: ReactNode }> = ({ children })
               <div className="flex gap-2 pl-14">
                 <button
                   onClick={() => handleChoice(false)}
-                  className="flex-1 h-9 rounded-lg border border-[#E5E5EA] text-[13px] font-bold text-[#273a5a] hover:bg-[#F2F4F7] transition-colors"
+                  className="flex-1 h-9 rounded-lg border border-[#E5E5EA] text-[13px] font-semibold text-[#273a5a] hover:bg-[#F2F4F7] transition-colors"
                 >
                   {dialog.cancelLabel || 'Cancel'}
                 </button>
                 <button
                   onClick={() => handleChoice(true)}
-                  className={`flex-1 h-9 rounded-lg text-white text-[13px] font-bold transition-colors ${
+                  className={`flex-1 h-9 rounded-lg text-white text-[13px] font-semibold transition-colors ${
                     dialog.variant === 'danger' ? 'bg-[#FF3B30] hover:bg-[#FF3B30]/90' :
                     dialog.variant === 'warning' ? 'bg-[#ef4523] hover:bg-[#ef4523]/90' :
                     'bg-[#273a5a] hover:bg-[#273a5a]/90'

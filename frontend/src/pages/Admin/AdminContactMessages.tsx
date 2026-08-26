@@ -111,7 +111,7 @@ const AdminContactMessages = () => {
       accessorKey: 'full_name',
       cell: (row) => (
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-full bg-indigo-100 dark:bg-indigo-900 flex items-center justify-center font-bold text-indigo-700 dark:text-indigo-300">
+          <div className="w-8 h-8 rounded-full bg-indigo-100 dark:bg-indigo-900 flex items-center justify-center font-semibold text-indigo-700 dark:text-indigo-300">
             {row.full_name.charAt(0).toUpperCase()}
           </div>
           <div>
@@ -175,7 +175,7 @@ const AdminContactMessages = () => {
   if (loading) {
     return (
       <div className="p-6">
-        <h1 className="text-2xl font-bold text-dark mb-6">Contact Messages</h1>
+        <h1 className="text-2xl font-semibold text-dark mb-6">Contact Messages</h1>
         <div className="bg-white dark:bg-dark-card rounded-xl border border-gray-200 dark:border-dark-border p-8 text-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
           <p className="text-muted">Loading messages...</p>
@@ -188,7 +188,7 @@ const AdminContactMessages = () => {
     <div className="p-6">
       <div className="flex justify-between items-center mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-dark">Contact Messages</h1>
+          <h1 className="text-2xl font-semibold text-dark">Contact Messages</h1>
           <p className="text-muted mt-1">Review and manage inquiries from the website.</p>
         </div>
         <div className="flex items-center gap-4">
@@ -238,7 +238,7 @@ const AdminContactMessages = () => {
         ) : (
           <div className="p-8 text-center">
             <MessageSquare size={48} className="mx-auto text-gray-300 dark:text-gray-600 mb-4" />
-            <h3 className="text-lg font-bold text-dark mb-2">No messages found</h3>
+            <h3 className="text-lg font-semibold text-dark mb-2">No messages found</h3>
             <p className="text-muted">
               {searchQuery ? "Try adjusting your search filters." : "You have no contact messages."}
             </p>
@@ -250,7 +250,7 @@ const AdminContactMessages = () => {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
           <div className="bg-white dark:bg-dark-card w-full max-w-2xl rounded-xl shadow-xl overflow-hidden flex flex-col max-h-[90vh]">
             <div className="p-6 border-b border-gray-200 dark:border-dark-border flex justify-between items-center bg-gray-50 dark:bg-dark-hover">
-              <h3 className="text-xl font-bold text-dark flex items-center gap-2">
+              <h3 className="text-xl font-semibold text-dark flex items-center gap-2">
                 <MessageSquare className="text-primary" />
                 Message Details
               </h3>

@@ -13,7 +13,7 @@ export const EnvironmentPill: React.FC<EnvironmentPillProps> = ({ weather }) => 
       <div className="flex items-center gap-2">
         <Sun className="w-5 h-5 text-[#F97316]" />
         <div>
-          <span className="text-[14px] font-black text-[#111827] leading-none block">{weather.temp}°</span>
+          <span className="text-[14px] font-semibold text-[#111827] leading-none block">{weather.temp}°</span>
           <span className="text-[10px] font-medium text-[#6B7280] leading-none block mt-0.5">Clear</span>
         </div>
       </div>
@@ -21,7 +21,7 @@ export const EnvironmentPill: React.FC<EnvironmentPillProps> = ({ weather }) => 
       <div className="flex items-center gap-1">
         <div className="w-1.5 h-1.5 rounded-full bg-green-500"></div>
         <div>
-           <span className="text-[10px] font-black text-[#6B7280] uppercase block leading-none">AQI {weather.aqi}</span>
+           <span className="text-[10px] font-semibold text-[#6B7280] uppercase block leading-none">AQI {weather.aqi}</span>
            <span className="text-[10px] font-medium text-[#111827] block mt-0.5 leading-none">Good</span>
         </div>
       </div>

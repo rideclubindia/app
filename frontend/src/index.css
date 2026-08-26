@@ -15,8 +15,9 @@
   --color-border: #E5E7EB;
   
   --font-sans: "Inter", "Roboto", sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
   
-  --font-weight-bold: 600;
+  --font-weight-semibold: 600;
   --font-weight-extrabold: 700;
   --font-weight-black: 800;
 
@@ -117,4 +118,9 @@ html, body {
   border-radius: 12px !important;
   box-shadow: 0 4px 12px rgba(0,0,0,0.1) !important;
   overflow: hidden;
+}
+
+@keyframes wheelSpin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }

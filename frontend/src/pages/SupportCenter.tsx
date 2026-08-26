@@ -143,7 +143,7 @@ const SupportCenter = () => {
           <ArrowLeft className="w-5 h-5" />
         </button>
         <div>
-          <h1 className="text-[20px] font-bold text-[#273a5a] leading-tight">Help & Support</h1>
+          <h1 className="text-[20px] font-semibold text-[#273a5a] leading-tight">Help & Support</h1>
           <p className="text-[12px] text-[#8A8A8E]">Find answers or contact us</p>
         </div>
       </div>
@@ -153,7 +153,7 @@ const SupportCenter = () => {
         {/* Active Tickets Banner */}
         {activeTickets.length > 0 && !activeCategory && (
           <div className="mb-6">
-            <h3 className="text-[13px] font-bold text-[#8A8A8E] uppercase tracking-wider mb-2">Active Conversations</h3>
+            <h3 className="text-[13px] font-semibold text-[#8A8A8E] uppercase tracking-wider mb-2">Active Conversations</h3>
             <div className="space-y-3">
               {activeTickets.map(ticket => (
                 <div 
@@ -164,7 +164,7 @@ const SupportCenter = () => {
                   <div>
                     <div className="flex items-center gap-2 mb-1">
                       <span className="w-2 h-2 rounded-full bg-orange-500 animate-pulse"></span>
-                      <h4 className="text-[14px] font-bold text-[#273a5a]">{ticket.category}</h4>
+                      <h4 className="text-[14px] font-semibold text-[#273a5a]">{ticket.category}</h4>
                     </div>
                     <p className="text-[12px] text-[#8A8A8E]">Ticket #{ticket.id.slice(0,6).toUpperCase()} • {ticket.status}</p>
                   </div>
@@ -177,7 +177,7 @@ const SupportCenter = () => {
 
         {!activeCategory ? (
           <>
-            <h3 className="text-[13px] font-bold text-[#8A8A8E] uppercase tracking-wider mb-3">How can we help?</h3>
+            <h3 className="text-[13px] font-semibold text-[#8A8A8E] uppercase tracking-wider mb-3">How can we help?</h3>
             <div className="grid grid-cols-1 gap-3">
               {SUPPORT_CATEGORIES.map(cat => (
                 <div 
@@ -189,7 +189,7 @@ const SupportCenter = () => {
                     <div className={`w-10 h-10 rounded-lg ${cat.color} flex items-center justify-center flex-shrink-0`}>
                       {cat.icon}
                     </div>
-                    <h4 className="text-[15px] font-bold text-[#273a5a]">{cat.title}</h4>
+                    <h4 className="text-[15px] font-semibold text-[#273a5a]">{cat.title}</h4>
                   </div>
                   <ChevronRight className="w-5 h-5 text-[#8A8A8E]" />
                 </div>
@@ -202,12 +202,12 @@ const SupportCenter = () => {
               <div className={`w-10 h-10 rounded-lg ${activeCategory.color} flex items-center justify-center`}>
                 {activeCategory.icon}
               </div>
-              <h3 className="text-[18px] font-bold text-[#273a5a]">{activeCategory.title}</h3>
+              <h3 className="text-[18px] font-semibold text-[#273a5a]">{activeCategory.title}</h3>
             </div>
 
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden mb-6">
               <div className="p-4 bg-gray-50 border-b border-gray-100">
-                <h4 className="text-[13px] font-bold text-[#8A8A8E] uppercase tracking-wider">Frequently Asked Questions</h4>
+                <h4 className="text-[13px] font-semibold text-[#8A8A8E] uppercase tracking-wider">Frequently Asked Questions</h4>
               </div>
               <div className="divide-y divide-gray-100">
                 {activeCategory.faqs.map((faq: any, idx: number) => (
@@ -216,7 +216,7 @@ const SupportCenter = () => {
                       onClick={() => setOpenFaq(openFaq === idx ? null : idx)}
                       className="w-full flex items-start justify-between text-left gap-4"
                     >
-                      <h5 className="text-[14px] font-bold text-[#273a5a]">{faq.q}</h5>
+                      <h5 className="text-[14px] font-semibold text-[#273a5a]">{faq.q}</h5>
                       <ChevronRight className={`w-4 h-4 text-[#8A8A8E] transition-transform ${openFaq === idx ? 'rotate-90' : ''} shrink-0 mt-0.5`} />
                     </button>
                     {openFaq === idx && (
@@ -233,14 +233,14 @@ const SupportCenter = () => {
               <div className="w-12 h-12 bg-orange-50 rounded-full flex items-center justify-center mx-auto mb-3">
                 <MessageSquare className="w-6 h-6 text-[#ef4523]" />
               </div>
-              <h4 className="text-[16px] font-bold text-[#273a5a] mb-2">Still need help?</h4>
+              <h4 className="text-[16px] font-semibold text-[#273a5a] mb-2">Still need help?</h4>
               <p className="text-[13px] text-[#8A8A8E] mb-4">
                 Can't find the answer you're looking for? Chat with our support team.
               </p>
               <button
                 onClick={() => handleCreateTicket(activeCategory.id, activeCategory.title)}
                 disabled={loading}
-                className="w-full py-3 bg-[#ef4523] text-white rounded-xl font-bold text-[14px] shadow-sm hover:bg-[#ef4523]/90 transition-colors disabled:opacity-70 flex items-center justify-center gap-2"
+                className="w-full py-3 bg-[#ef4523] text-white rounded-xl font-semibold text-[14px] shadow-sm hover:bg-[#ef4523]/90 transition-colors disabled:opacity-70 flex items-center justify-center gap-2"
               >
                 {loading ? 'Creating ticket...' : 'Connect to Support Team'}
               </button>

@@ -63,7 +63,7 @@ export const ToastProvider: React.FC<{ children: ReactNode }> = ({ children }) =
             {toast.type === 'error' && <AlertCircle className="w-5 h-5 flex-shrink-0" />}
             {toast.type === 'success' && <CheckCircle className="w-5 h-5 flex-shrink-0" />}
             {toast.type === 'info' && <Info className="w-5 h-5 flex-shrink-0 text-blue-500" />}
-            <span className="text-[14px] font-bold flex-1">{toast.message}</span>
+            <span className="text-[14px] font-semibold flex-1">{toast.message}</span>
             <button onClick={() => removeToast(toast.id)} className="p-1 hover:bg-[#273a5a]/5 rounded-full transition-colors flex-shrink-0">
               <X className="w-4 h-4" />
             </button>

@@ -204,13 +204,13 @@ const SavedLocationPicker = () => {
           <ArrowLeft className="w-5 h-5" />
         </button>
         <div className="flex-1 min-w-0">
-          <h1 className="text-[18px] font-bold text-[#273a5a] leading-tight">Pick Saved Location</h1>
+          <h1 className="text-[18px] font-semibold text-[#273a5a] leading-tight">Pick Saved Location</h1>
           <p className="text-[12px] text-[#8A8A8E]">Tap map to choose exact point</p>
         </div>
       </div>
 
       <div className="px-4 py-3 border-b border-gray-100 bg-[#F8F9FB]">
-        <label className="text-[12px] font-bold text-[#8A8A8E] block mb-2">Location Name</label>
+        <label className="text-[12px] font-semibold text-[#8A8A8E] block mb-2">Location Name</label>
         <input
           value={name}
           onChange={(e) => setName(e.target.value)}
@@ -235,14 +235,14 @@ const SavedLocationPicker = () => {
       <div className="px-4 py-3 border-t border-gray-100 bg-white flex gap-2">
         <button
           onClick={() => navigate('/profile')}
-          className="flex-1 bg-[#F2F4F7] text-[#273a5a] font-bold py-3 rounded-lg"
+          className="flex-1 bg-[#F2F4F7] text-[#273a5a] font-semibold py-3 rounded-lg"
         >
           Cancel
         </button>
         <button
           onClick={onConfirm}
           disabled={isSaving}
-          className="flex-1 bg-[#ef4523] disabled:bg-gray-300 text-white font-bold py-3 rounded-lg"
+          className="flex-1 bg-[#ef4523] disabled:bg-gray-300 text-white font-semibold py-3 rounded-lg"
         >
           {isSaving ? 'Saving...' : 'Use This Location'}
         </button>

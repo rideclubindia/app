@@ -168,7 +168,7 @@ export const IncidentDrawer: React.FC<IncidentDrawerProps> = ({ incident, onClos
             })()}
           </div>
           <div className="flex-1">
-            <h2 className="text-[22px] font-bold text-dark leading-tight">{incident.category}</h2>
+            <h2 className="text-[22px] font-semibold text-dark leading-tight">{incident.category}</h2>
             <div className="flex items-center gap-1.5 mt-2 text-gray-400 text-[13px] font-medium">
               <Clock className="w-4 h-4" /> Reported {timeAgo(incident.created_at)}
             </div>
@@ -191,20 +191,20 @@ export const IncidentDrawer: React.FC<IncidentDrawerProps> = ({ incident, onClos
 
         <div className="mt-2 border-t border-gray-100 pt-4">
           <div className="flex flex-wrap items-center gap-2 mb-4">
-            <div className="flex items-center gap-1.5 px-3 py-1 bg-green-50 text-green-700 rounded-full font-bold text-[13px]">
+            <div className="flex items-center gap-1.5 px-3 py-1 bg-green-50 text-green-700 rounded-full font-semibold text-[13px]">
               👍 {incidentStats.confirms} Confirms
             </div>
-            <div className="flex items-center gap-1.5 px-3 py-1 bg-red-50 text-red-700 rounded-full font-bold text-[13px]">
+            <div className="flex items-center gap-1.5 px-3 py-1 bg-red-50 text-red-700 rounded-full font-semibold text-[13px]">
               👎 {incidentStats.falses} Fake Reports
             </div>
-            <div className="flex items-center gap-1.5 px-3 py-1 bg-blue-50 text-blue-700 rounded-full font-bold text-[13px]">
+            <div className="flex items-center gap-1.5 px-3 py-1 bg-blue-50 text-blue-700 rounded-full font-semibold text-[13px]">
               💬 {incidentStats.comments} Comments
             </div>
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             {userVote !== null ? (
-              <div className={`col-span-2 h-[48px] rounded-lg flex items-center justify-center font-bold text-[15px] ${
+              <div className={`col-span-2 h-[48px] rounded-lg flex items-center justify-center font-semibold text-[15px] ${
                 userVote === 'confirm'
                   ? 'bg-green-100 text-green-700 border-2 border-green-300'
                   : 'bg-red-100 text-red-700 border-2 border-red-300'
@@ -216,14 +216,14 @@ export const IncidentDrawer: React.FC<IncidentDrawerProps> = ({ incident, onClos
                 <button
                   onClick={() => handleVote(false)}
                   disabled={isVoting || !currentUserId}
-                  className="h-[48px] rounded-lg bg-[#10B981] hover:bg-[#059669] text-white font-bold w-full shadow-lg shadow-emerald-500/20 transition-all active:scale-95 disabled:opacity-50"
+                  className="h-[48px] rounded-lg bg-[#10B981] hover:bg-[#059669] text-white font-semibold w-full shadow-lg shadow-emerald-500/20 transition-all active:scale-95 disabled:opacity-50"
                 >
                   Confirm
                 </button>
                 <button
                   onClick={() => handleVote(true)}
                   disabled={isVoting || !currentUserId || !isWithinHours(incident.created_at, 1)}
-                  className="h-[48px] rounded-lg bg-white border-2 border-red-500 text-red-500 font-bold w-full hover:bg-red-50 transition-all active:scale-95 disabled:opacity-50"
+                  className="h-[48px] rounded-lg bg-white border-2 border-red-500 text-red-500 font-semibold w-full hover:bg-red-50 transition-all active:scale-95 disabled:opacity-50"
                 >
                   Report False
                 </button>
@@ -241,7 +241,7 @@ export const IncidentDrawer: React.FC<IncidentDrawerProps> = ({ incident, onClos
 
           <div className="mt-4 border-t border-gray-100 pt-4">
             <div className="flex items-center justify-between mb-3">
-              <h3 className="text-[15px] font-bold text-dark">Comments</h3>
+              <h3 className="text-[15px] font-semibold text-dark">Comments</h3>
               <span className="text-[12px] text-[#8A8A8E]">{comments.length} latest</span>
             </div>
 
@@ -249,7 +249,7 @@ export const IncidentDrawer: React.FC<IncidentDrawerProps> = ({ incident, onClos
               {comments.slice(0, 4).map(comment => (
                 <div key={comment.id} className="bg-[#F9FAFB] rounded-xl p-3">
                   <div className="flex items-center justify-between gap-3 mb-2">
-                    <span className="text-[12px] font-bold text-dark">{comment.user_id ? comment.user_id.substring(0, 8) : 'Anonymous'}</span>
+                    <span className="text-[12px] font-semibold text-dark">{comment.user_id ? comment.user_id.substring(0, 8) : 'Anonymous'}</span>
                     <span className="text-[11px] text-[#8A8A8E]">{formatRelativeTime(comment.created_at)}</span>
                   </div>
                   <p className="text-[14px] text-[#374151] leading-snug">{comment.content}</p>
@@ -269,7 +269,7 @@ export const IncidentDrawer: React.FC<IncidentDrawerProps> = ({ incident, onClos
                 type="button"
                 onClick={handleAddComment}
                 disabled={!currentUserId || !commentText.trim()}
-                className="w-full py-3 rounded-xl bg-[#ef4523] text-white font-bold hover:bg-[#ef4523] transition-colors disabled:opacity-50"
+                className="w-full py-3 rounded-xl bg-[#ef4523] text-white font-semibold hover:bg-[#ef4523] transition-colors disabled:opacity-50"
               >
                 Post Comment
               </button>

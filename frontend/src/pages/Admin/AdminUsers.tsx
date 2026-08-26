@@ -217,7 +217,7 @@ const AdminUsers = () => {
             />
           </div>
           <div>
-            <div className="font-bold text-[12px] leading-tight text-[#273a5a]">{row.full_name || 'Anonymous'}</div>
+            <div className="font-semibold text-[12px] leading-tight text-[#273a5a]">{row.full_name || 'Anonymous'}</div>
             <div className="text-[11px] text-[#8A8A8E]">{row.email || 'No email provided'}</div>
           </div>
         </div>
@@ -233,7 +233,7 @@ const AdminUsers = () => {
       cell: (row) => {
         const isSuspended = row.status === 'suspended';
         return (
-          <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold ${isSuspended ? 'bg-[#FFEBEE] text-[#FF3B30]' : 'bg-[#E5F9ED] text-[#34C759]'}`}>
+          <span className={`px-1.5 py-0.5 rounded text-[9px] font-semibold ${isSuspended ? 'bg-[#FFEBEE] text-[#FF3B30]' : 'bg-[#E5F9ED] text-[#34C759]'}`}>
             {isSuspended ? 'Suspended' : 'Active'}
           </span>
         );
@@ -310,7 +310,7 @@ const AdminUsers = () => {
       <div className={`flex-1 w-full p-6 flex flex-col bg-[#Ffffff] text-[#273a5a] overflow-hidden transition-all duration-300 ${selectedUser ? 'pr-[400px]' : ''}`}>
         <div className="mb-3 flex justify-between items-end shrink-0">
           <div>
-            <h1 className="text-[18px] font-bold tracking-tight leading-tight">User Management</h1>
+            <h1 className="text-[18px] font-semibold tracking-tight leading-tight">User Management</h1>
             <p className="text-[12px] text-[#8A8A8E] mt-1">Manage all registered users across the platform.</p>
           </div>
         </div>
@@ -319,13 +319,13 @@ const AdminUsers = () => {
         <div className="flex gap-1 bg-[#F2F4F7] p-1 rounded-lg self-start mb-4 shrink-0">
           <button
             onClick={() => { setActiveTab('active'); setSelectedUser(null); }}
-            className={`px-4 py-1.5 text-[12px] font-bold rounded-md transition-colors ${ activeTab === 'active' ? 'bg-white shadow text-[#273a5a]' : 'text-[#8A8A8E] hover:text-[#273a5a]' }`}
+            className={`px-4 py-1.5 text-[12px] font-semibold rounded-md transition-colors ${ activeTab === 'active' ? 'bg-white shadow text-[#273a5a]' : 'text-[#8A8A8E] hover:text-[#273a5a]' }`}
           >
             Active Users
           </button>
           <button
             onClick={() => { setActiveTab('deleted'); setSelectedUser(null); }}
-            className={`px-4 py-1.5 text-[12px] font-bold rounded-md transition-colors flex items-center gap-1.5 ${ activeTab === 'deleted' ? 'bg-white shadow text-[#FF3B30]' : 'text-[#8A8A8E] hover:text-[#273a5a]' }`}
+            className={`px-4 py-1.5 text-[12px] font-semibold rounded-md transition-colors flex items-center gap-1.5 ${ activeTab === 'deleted' ? 'bg-white shadow text-[#FF3B30]' : 'text-[#8A8A8E] hover:text-[#273a5a]' }`}
           >
             <UserX className="w-3.5 h-3.5" />
             Deleted Users
@@ -359,7 +359,7 @@ const AdminUsers = () => {
                   header: 'Deleted',
                   cell: (row: any) => (
                     <div className="text-[11px]">
-                      <div className="font-bold text-[#FF3B30]">{new Date(row.deleted_at).toLocaleDateString()}</div>
+                      <div className="font-semibold text-[#FF3B30]">{new Date(row.deleted_at).toLocaleDateString()}</div>
                       <div className={`font-semibold ${ daysRemaining(row.deleted_at) <= 7 ? 'text-[#FF3B30]' : 'text-[#8A8A8E]' }`}>
                         {daysRemaining(row.deleted_at)}d left
                       </div>
@@ -392,7 +392,7 @@ const AdminUsers = () => {
                     />
                   </div>
                   <div>
-                    <h2 className="text-[18px] font-bold text-dark leading-tight">{selectedUser.full_name || 'Anonymous User'}</h2>
+                    <h2 className="text-[18px] font-semibold text-dark leading-tight">{selectedUser.full_name || 'Anonymous User'}</h2>
                     <p className="text-[11px] text-[#8A8A8E]">{selectedUser.email || 'No email provided'}</p>
                   </div>
                 </div>
@@ -413,32 +413,32 @@ const AdminUsers = () => {
                   {/* Quick Stats */}
                   <div className="grid grid-cols-2 gap-3">
                     <div className="bg-[#F8F9FB] rounded-lg p-3 text-center">
-                      <div className="text-[20px] font-bold text-dark">{userDetails.createdRides.length}</div>
-                      <div className="text-[10px] font-bold text-[#8A8A8E] uppercase mt-1">Rides Created</div>
+                      <div className="text-[20px] font-semibold text-dark">{userDetails.createdRides.length}</div>
+                      <div className="text-[10px] font-semibold text-[#8A8A8E] uppercase mt-1">Rides Created</div>
                     </div>
                     <div className="bg-[#F8F9FB] rounded-lg p-3 text-center">
-                      <div className="text-[20px] font-bold text-dark">{userDetails.joinedRides.length}</div>
-                      <div className="text-[10px] font-bold text-[#8A8A8E] uppercase mt-1">Rides Joined</div>
+                      <div className="text-[20px] font-semibold text-dark">{userDetails.joinedRides.length}</div>
+                      <div className="text-[10px] font-semibold text-[#8A8A8E] uppercase mt-1">Rides Joined</div>
                     </div>
                     <div className="bg-[#F8F9FB] rounded-lg p-3 text-center">
-                      <div className="text-[20px] font-bold text-dark">{userDetails.groups.length}</div>
-                      <div className="text-[10px] font-bold text-[#8A8A8E] uppercase mt-1">Groups</div>
+                      <div className="text-[20px] font-semibold text-dark">{userDetails.groups.length}</div>
+                      <div className="text-[10px] font-semibold text-[#8A8A8E] uppercase mt-1">Groups</div>
                     </div>
                     <div className="bg-[#F8F9FB] rounded-lg p-3 text-center col-span-2">
-                      <div className="text-[20px] font-bold text-dark">{userDetails.savedLocations.length}</div>
-                      <div className="text-[10px] font-bold text-[#8A8A8E] uppercase mt-1">Saved Locations</div>
+                      <div className="text-[20px] font-semibold text-dark">{userDetails.savedLocations.length}</div>
+                      <div className="text-[10px] font-semibold text-[#8A8A8E] uppercase mt-1">Saved Locations</div>
                     </div>
                   </div>
 
                   {/* Profile Editing */}
                   <div>
                     <div className="flex items-center justify-between mb-3">
-                      <h3 className="text-[11px] font-bold text-[#8A8A8E] uppercase tracking-wider flex items-center gap-2">
+                      <h3 className="text-[11px] font-semibold text-[#8A8A8E] uppercase tracking-wider flex items-center gap-2">
                         <Shield className="w-4 h-4" />
                         Account Settings
                       </h3>
                       {!isEditing && (
-                        <button onClick={() => setIsEditing(true)} className="text-[11px] font-bold text-primary hover:underline">
+                        <button onClick={() => setIsEditing(true)} className="text-[11px] font-semibold text-primary hover:underline">
                           Edit
                         </button>
                       )}
@@ -447,7 +447,7 @@ const AdminUsers = () => {
                     {isEditing ? (
                       <div className="bg-[#F8F9FB] rounded-lg p-4 space-y-4">
                         <div>
-                          <label className="block text-[10px] font-bold text-[#8A8A8E] uppercase mb-1.5">Full Name</label>
+                          <label className="block text-[10px] font-semibold text-[#8A8A8E] uppercase mb-1.5">Full Name</label>
                           <input 
                             type="text" 
                             value={editForm.full_name} 
@@ -457,7 +457,7 @@ const AdminUsers = () => {
                         </div>
                         <div className="grid grid-cols-2 gap-3">
                           <div className="hidden">
-                            <label className="block text-[10px] font-bold text-[#8A8A8E] uppercase mb-1.5">Role</label>
+                            <label className="block text-[10px] font-semibold text-[#8A8A8E] uppercase mb-1.5">Role</label>
                             <select 
                               value={editForm.role} 
                               onChange={e => setEditForm({...editForm, role: e.target.value})}
@@ -468,7 +468,7 @@ const AdminUsers = () => {
                             </select>
                           </div>
                           <div className="col-span-2">
-                            <label className="block text-[10px] font-bold text-[#8A8A8E] uppercase mb-1.5">Status</label>
+                            <label className="block text-[10px] font-semibold text-[#8A8A8E] uppercase mb-1.5">Status</label>
                             <select 
                               value={editForm.status} 
                               onChange={e => setEditForm({...editForm, status: e.target.value})}
@@ -480,25 +480,25 @@ const AdminUsers = () => {
                           </div>
                         </div>
                         <div className="flex gap-2 pt-2">
-                          <button onClick={() => setIsEditing(false)} className="flex-1 h-8 rounded border border-[#E5E5EA] text-[12px] font-bold text-dark hover:bg-gray-50">Cancel</button>
-                          <button onClick={handleSaveChanges} className="flex-1 h-8 rounded bg-primary text-white text-[12px] font-bold hover:bg-primary/90">Save Changes</button>
+                          <button onClick={() => setIsEditing(false)} className="flex-1 h-8 rounded border border-[#E5E5EA] text-[12px] font-semibold text-dark hover:bg-gray-50">Cancel</button>
+                          <button onClick={handleSaveChanges} className="flex-1 h-8 rounded bg-primary text-white text-[12px] font-semibold hover:bg-primary/90">Save Changes</button>
                         </div>
                       </div>
                     ) : (
                       <div className="bg-[#F8F9FB] rounded-lg p-3 grid grid-cols-2 gap-y-3 gap-x-4 text-[12px]">
                         <div>
                           <span className="text-[#8A8A8E] block mb-0.5">Role</span>
-                          <span className="font-bold text-dark capitalize">{selectedUser.role || 'User'}</span>
+                          <span className="font-semibold text-dark capitalize">{selectedUser.role || 'User'}</span>
                         </div>
                         <div>
                           <span className="text-[#8A8A8E] block mb-0.5">Status</span>
-                          <span className={`font-bold capitalize ${selectedUser.status === 'suspended' ? 'text-[#FF3B30]' : 'text-[#34C759]'}`}>
+                          <span className={`font-semibold capitalize ${selectedUser.status === 'suspended' ? 'text-[#FF3B30]' : 'text-[#34C759]'}`}>
                             {selectedUser.status || 'Active'}
                           </span>
                         </div>
                         <div className="col-span-2">
                           <span className="text-[#8A8A8E] block mb-0.5">Joined</span>
-                          <span className="font-bold text-dark">{new Date(selectedUser.created_at).toLocaleString()}</span>
+                          <span className="font-semibold text-dark">{new Date(selectedUser.created_at).toLocaleString()}</span>
                         </div>
                         <div className="col-span-2">
                           <span className="text-[#8A8A8E] block mb-0.5">User ID</span>
@@ -510,7 +510,7 @@ const AdminUsers = () => {
 
                   {/* Created Rides */}
                   <div>
-                    <h3 className="text-[11px] font-bold text-[#8A8A8E] uppercase tracking-wider mb-3 flex items-center gap-2">
+                    <h3 className="text-[11px] font-semibold text-[#8A8A8E] uppercase tracking-wider mb-3 flex items-center gap-2">
                       <Car className="w-4 h-4" />
                       Created Rides ({userDetails.createdRides.length})
                     </h3>
@@ -518,10 +518,10 @@ const AdminUsers = () => {
                       {userDetails.createdRides.slice(0, 5).map((ride: any) => (
                         <div key={ride.id} className="p-3 bg-[#F8F9FB] rounded-lg flex items-center justify-between">
                           <div>
-                            <div className="font-bold text-[13px] text-dark">{ride.name || 'Unnamed Ride'}</div>
+                            <div className="font-semibold text-[13px] text-dark">{ride.name || 'Unnamed Ride'}</div>
                             <div className="text-[11px] text-[#8A8A8E] mt-0.5">{new Date(ride.created_at).toLocaleDateString()}</div>
                           </div>
-                          <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${ride.status === 'active' ? 'bg-[#E5F9ED] text-[#34C759]' : 'bg-[#E5E5EA] text-[#8A8A8E]'}`}>
+                          <span className={`px-2 py-0.5 rounded text-[10px] font-semibold uppercase ${ride.status === 'active' ? 'bg-[#E5F9ED] text-[#34C759]' : 'bg-[#E5E5EA] text-[#8A8A8E]'}`}>
                             {ride.status || 'ended'}
                           </span>
                         </div>
@@ -530,7 +530,7 @@ const AdminUsers = () => {
                         <div className="text-[13px] text-gray-500 py-2">No rides created.</div>
                       )}
                       {userDetails.createdRides.length > 5 && (
-                        <div className="text-center pt-2 text-[11px] font-bold text-primary cursor-pointer hover:underline">
+                        <div className="text-center pt-2 text-[11px] font-semibold text-primary cursor-pointer hover:underline">
                           View all {userDetails.createdRides.length} rides
                         </div>
                       )}
@@ -539,7 +539,7 @@ const AdminUsers = () => {
 
                   {/* Saved Locations */}
                   <div>
-                    <h3 className="text-[11px] font-bold text-[#8A8A8E] uppercase tracking-wider mb-3 flex items-center gap-2">
+                    <h3 className="text-[11px] font-semibold text-[#8A8A8E] uppercase tracking-wider mb-3 flex items-center gap-2">
                       <MapPin className="w-4 h-4" />
                       Saved Locations ({userDetails.savedLocations.length})
                     </h3>
@@ -550,10 +550,10 @@ const AdminUsers = () => {
                             <MapPin className="w-4 h-4" />
                           </div>
                           <div className="flex-1 min-w-0">
-                            <div className="font-bold text-[13px] text-dark truncate">{loc.name || 'Unnamed'}</div>
+                            <div className="font-semibold text-[13px] text-dark truncate">{loc.name || 'Unnamed'}</div>
                             <div className="text-[11px] text-[#8A8A8E] mt-0.5">{loc.address || `${Number(loc.latitude).toFixed(5)}, ${Number(loc.longitude).toFixed(5)}`}</div>
                           </div>
-                          <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-[#E5E5EA] text-[#8A8A8E] flex-shrink-0 capitalize">
+                          <span className="px-2 py-0.5 rounded text-[10px] font-semibold uppercase bg-[#E5E5EA] text-[#8A8A8E] flex-shrink-0 capitalize">
                             {loc.location_type || 'custom'}
                           </span>
                         </div>
@@ -566,18 +566,18 @@ const AdminUsers = () => {
 
                   {/* Groups */}
                   <div>
-                    <h3 className="text-[11px] font-bold text-[#8A8A8E] uppercase tracking-wider mb-3 flex items-center gap-2">
+                    <h3 className="text-[11px] font-semibold text-[#8A8A8E] uppercase tracking-wider mb-3 flex items-center gap-2">
                       <Users className="w-4 h-4" />
                       Groups ({userDetails.groups.length})
                     </h3>
                     <div className="space-y-2">
                       {userDetails.groups.map((g: any) => (
                         <div key={g.id} className="p-3 bg-[#F8F9FB] rounded-lg flex items-center gap-3">
-                          <div className="w-8 h-8 rounded bg-primary/10 flex items-center justify-center text-primary font-bold text-[12px]">
+                          <div className="w-8 h-8 rounded bg-primary/10 flex items-center justify-center text-primary font-semibold text-[12px]">
                             {g.groups?.name?.charAt(0) || 'G'}
                           </div>
                           <div>
-                            <div className="font-bold text-[13px] text-dark">{g.groups?.name || 'Unnamed Group'}</div>
+                            <div className="font-semibold text-[13px] text-dark">{g.groups?.name || 'Unnamed Group'}</div>
                             <div className="text-[11px] text-[#8A8A8E] capitalize mt-0.5">Role: {g.role}</div>
                           </div>
                         </div>
@@ -593,24 +593,24 @@ const AdminUsers = () => {
                     <div className="bg-[#FFF3F3] border border-[#FF3B30]/20 rounded-lg p-4">
                       <div className="flex items-center gap-2 mb-3">
                         <AlertCircle className="w-4 h-4 text-[#FF3B30]" />
-                        <h3 className="text-[11px] font-bold text-[#FF3B30] uppercase tracking-wider">Account Deleted</h3>
+                        <h3 className="text-[11px] font-semibold text-[#FF3B30] uppercase tracking-wider">Account Deleted</h3>
                       </div>
                       <div className="text-[12px] text-[#273a5a] space-y-1 mb-4">
-                        <div>Deleted on: <span className="font-bold">{new Date(selectedUser.deleted_at).toLocaleString()}</span></div>
-                        <div className={`font-bold ${ daysRemaining(selectedUser.deleted_at) <= 7 ? 'text-[#FF3B30]' : 'text-[#273a5a]' }`}>
+                        <div>Deleted on: <span className="font-semibold">{new Date(selectedUser.deleted_at).toLocaleString()}</span></div>
+                        <div className={`font-semibold ${ daysRemaining(selectedUser.deleted_at) <= 7 ? 'text-[#FF3B30]' : 'text-[#273a5a]' }`}>
                           {daysRemaining(selectedUser.deleted_at)} days remaining to restore
                         </div>
                       </div>
                       <div className="flex gap-2">
                         <button
                           onClick={() => handleRestore(selectedUser)}
-                          className="flex-1 h-8 rounded bg-[#34C759] text-white text-[12px] font-bold hover:bg-[#34C759]/90 flex items-center justify-center gap-1.5"
+                          className="flex-1 h-8 rounded bg-[#34C759] text-white text-[12px] font-semibold hover:bg-[#34C759]/90 flex items-center justify-center gap-1.5"
                         >
                           <RotateCcw className="w-3.5 h-3.5" /> Restore Account
                         </button>
                         <button
                           onClick={() => handlePermanentDelete(selectedUser)}
-                          className="flex-1 h-8 rounded bg-[#FF3B30] text-white text-[12px] font-bold hover:bg-[#FF3B30]/90 flex items-center justify-center gap-1.5"
+                          className="flex-1 h-8 rounded bg-[#FF3B30] text-white text-[12px] font-semibold hover:bg-[#FF3B30]/90 flex items-center justify-center gap-1.5"
                         >
                           <Trash2 className="w-3.5 h-3.5" /> Delete Forever
                         </button>

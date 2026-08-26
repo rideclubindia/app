@@ -34,7 +34,7 @@ export const RouteList: React.FC<RouteListProps> = ({ activeRoute, savedRoutes, 
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2 text-white">
             <RouteIcon size={16} />
-            <h3 className="font-bold text-sm">My Route</h3>
+            <h3 className="font-semibold text-sm">My Route</h3>
           </div>
           <Link to="/routes" className="text-[11px] font-semibold text-[#F97316] hover:text-[#FB923C] flex items-center gap-1">
             View All <span className="text-sm leading-none">&rsaquo;</span>
@@ -57,8 +57,8 @@ export const RouteList: React.FC<RouteListProps> = ({ activeRoute, savedRoutes, 
                 </div>
                 <div>
                   <div className="flex items-center gap-2">
-                    <h4 className="font-bold text-white text-[13px]">{activeRoute.name}</h4>
-                    <span className="px-1.5 py-0.5 bg-[#F97316] text-white text-[8px] font-bold rounded-sm uppercase tracking-wider">
+                    <h4 className="font-semibold text-white text-[13px]">{activeRoute.name}</h4>
+                    <span className="px-1.5 py-0.5 bg-[#F97316] text-white text-[8px] font-semibold rounded-sm uppercase tracking-wider">
                       Live
                     </span>
                   </div>
@@ -127,7 +127,7 @@ export const RouteList: React.FC<RouteListProps> = ({ activeRoute, savedRoutes, 
               <Navigation size={14} className="text-[#8890A0]" />
             </div>
             <div className="flex-1 min-w-0">
-              <h4 className="font-bold text-white text-[12px] truncate">{route.name}</h4>
+              <h4 className="font-semibold text-white text-[12px] truncate">{route.name}</h4>
               <p className="text-[10px] font-medium text-[#9BA3B0]">
                 {route.distance} &bull; {route.duration} &bull; {route.stops} Stops
               </p>

@@ -29,9 +29,20 @@ spec:
           limits:
             memory: "1Gi"
             cpu: "1000m"
+        readinessProbe:
+          # Fails while the node is draining or Redis is down; LB stops
+          # routing NEW handshakes but existing sockets keep working.
+          httpGet:
+            path: /readyz
+            port: 8000
+          initialDelaySeconds: 5
+          periodSeconds: 10
         livenessProbe:
           httpGet:
             path: /health
             port: 8000
           initialDelaySeconds: 15
           periodSeconds: 20
+        # Graceful shutdown: SIGTERM -> gateway drains (notifies clients,
+        # flushes location batches) before the pod terminates.
+        terminationGracePeriodSeconds: 30

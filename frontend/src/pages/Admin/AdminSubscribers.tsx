@@ -140,7 +140,7 @@ const AdminSubscribers = () => {
   if (loading) {
     return (
       <div className="p-6">
-        <h1 className="text-2xl font-bold text-dark mb-6">Early Access Subscribers</h1>
+        <h1 className="text-2xl font-semibold text-dark mb-6">Early Access Subscribers</h1>
         <div className="bg-white dark:bg-dark-card rounded-xl border border-gray-200 dark:border-dark-border p-8 text-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
           <p className="text-muted">Loading subscribers...</p>
@@ -152,7 +152,7 @@ const AdminSubscribers = () => {
   if (errorMsg) {
     return (
       <div className="p-6">
-        <h1 className="text-2xl font-bold text-dark mb-6">Early Access Subscribers</h1>
+        <h1 className="text-2xl font-semibold text-dark mb-6">Early Access Subscribers</h1>
         <div className="bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 p-4 rounded-xl">
           {errorMsg}
         </div>
@@ -164,12 +164,12 @@ const AdminSubscribers = () => {
     <div className="p-6">
       <div className="flex justify-between items-center mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-dark">Early Access Subscribers</h1>
+          <h1 className="text-2xl font-semibold text-dark">Early Access Subscribers</h1>
           <p className="text-muted mt-1">Manage users who subscribed for early access.</p>
         </div>
         <div className="flex items-center gap-4">
           <div className="text-sm text-muted">
-            Total: <span className="font-bold text-dark">{filteredSubscribers.length}</span>
+            Total: <span className="font-semibold text-dark">{filteredSubscribers.length}</span>
           </div>
           <button 
             onClick={exportToCSV}
@@ -210,7 +210,7 @@ const AdminSubscribers = () => {
         ) : (
           <div className="p-8 text-center">
             <Mail size={48} className="mx-auto text-gray-300 dark:text-gray-600 mb-4" />
-            <h3 className="text-lg font-bold text-dark mb-2">No subscribers found</h3>
+            <h3 className="text-lg font-semibold text-dark mb-2">No subscribers found</h3>
             <p className="text-muted">
               {searchQuery ? "Try adjusting your search filters." : "No one has subscribed yet."}
             </p>

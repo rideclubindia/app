@@ -484,10 +484,10 @@ const WebsiteHome: React.FC = () => {
               Two Wheels, One Soul. Discover routes. Meet riders. Create unforgettable journeys with the world's most premium motorcycle community.
             </div>
             <div className="social-links">
-              <a href="#" className="font-bold text-gray-400 hover:text-orange-500 px-2">IG</a>
-              <a href="#" className="font-bold text-gray-400 hover:text-orange-500 px-2">FB</a>
-              <a href="#" className="font-bold text-gray-400 hover:text-orange-500 px-2">YT</a>
-              <a href="#" className="font-bold text-gray-400 hover:text-orange-500 px-2">IN</a>
+              <a href="#" className="font-semibold text-gray-400 hover:text-orange-500 px-2">IG</a>
+              <a href="#" className="font-semibold text-gray-400 hover:text-orange-500 px-2">FB</a>
+              <a href="#" className="font-semibold text-gray-400 hover:text-orange-500 px-2">YT</a>
+              <a href="#" className="font-semibold text-gray-400 hover:text-orange-500 px-2">IN</a>
             </div>
           </div>
           <div className="footer-col">

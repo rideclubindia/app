@@ -27,7 +27,7 @@ export const LeftGravityRail: React.FC = () => {
       {/* 72px Permanent Interaction Zone */}
       <div className="w-[72px] h-full flex flex-col items-center pt-8 pointer-events-auto">
          <div className="w-1 h-12 bg-[#F97316] rounded-full opacity-40"></div>
-         <span className="text-[#F97316] text-[10px] font-bold rotate-90 mt-12 whitespace-nowrap opacity-60">
+         <span className="text-[#F97316] text-[10px] font-semibold rotate-90 mt-12 whitespace-nowrap opacity-60">
            {isExpanded ? 'Pull again to close' : 'Pull to reveal'}
          </span>
       </div>

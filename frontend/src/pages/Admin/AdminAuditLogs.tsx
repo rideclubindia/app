@@ -47,7 +47,7 @@ const AdminAuditLogs = () => {
       accessorKey: 'created_at',
       cell: (row) => (
         <div className="text-[11px] text-[#8A8A8E]">
-          <div className="font-bold text-[#273a5a]">{new Date(row.created_at).toLocaleDateString()}</div>
+          <div className="font-semibold text-[#273a5a]">{new Date(row.created_at).toLocaleDateString()}</div>
           <div>{new Date(row.created_at).toLocaleTimeString()}</div>
         </div>
       )
@@ -57,7 +57,7 @@ const AdminAuditLogs = () => {
       cell: (row) => (
         <div className="text-[12px]">
           {row.profiles ? (
-            <span className="font-bold text-[#273a5a]">{row.profiles.full_name || row.profiles.email}</span>
+            <span className="font-semibold text-[#273a5a]">{row.profiles.full_name || row.profiles.email}</span>
           ) : (
             <span className="font-mono text-[#8A8A8E]">{row.actor_id || 'System'}</span>
           )}
@@ -74,7 +74,7 @@ const AdminAuditLogs = () => {
         if (row.action.startsWith('DELETE')) color = 'bg-[#FFEBEE] text-[#FF3B30]';
         
         return (
-          <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${color}`}>
+          <span className={`px-2 py-0.5 rounded text-[10px] font-semibold ${color}`}>
             {row.action}
           </span>
         );
@@ -100,13 +100,13 @@ const AdminAuditLogs = () => {
       <div className="flex-1 w-full p-6 flex flex-col bg-[#Ffffff] text-[#273a5a] overflow-hidden">
         <div className="mb-6 flex justify-between items-end shrink-0">
           <div>
-            <h1 className="text-[18px] font-bold tracking-tight leading-tight flex items-center gap-2">
+            <h1 className="text-[18px] font-semibold tracking-tight leading-tight flex items-center gap-2">
               <Activity className="w-5 h-5 text-primary" />
               Audit Logs
             </h1>
             <p className="text-[12px] text-[#8A8A8E] mt-1">Track every action across the platform to ensure 100% visibility.</p>
           </div>
-          <button onClick={fetchLogs} className="h-8 px-3 bg-[#F2F2F7] hover:bg-[#E5E5EA] rounded text-[12px] font-bold transition-colors">
+          <button onClick={fetchLogs} className="h-8 px-3 bg-[#F2F2F7] hover:bg-[#E5E5EA] rounded text-[12px] font-semibold transition-colors">
             Refresh
           </button>
         </div>

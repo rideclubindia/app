@@ -1,19 +1,37 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Response
 from fastapi.middleware.cors import CORSMiddleware
+from contextlib import asynccontextmanager
 from core.config import settings
 from core.limiter import limiter
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
 from api.routers import auth, tracking, pins, analytics, dashboard, intelligence, grca, traffic, sos
-from api.routers.websockets import sio
+from api.routers.websockets import gateway, sio
 import socketio
+import logging
+
+logging.basicConfig(
+    level=logging.INFO,
+    format='{"ts":"%(asctime)s","level":"%(levelname)s","logger":"%(name)s","msg":"%(message)s"}',
+)
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Start the real-time platform (Redis store, location pipeline, sweeper)
+    await gateway.start()
+    yield
+    # Graceful shutdown: notify clients, drain connections, flush batches
+    await gateway.stop()
+
 
 # Create FastAPI app
 app = FastAPI(
     title=settings.PROJECT_NAME,
     version=settings.VERSION,
-    openapi_url=f"{settings.API_V1_STR}/openapi.json"
+    openapi_url=f"{settings.API_V1_STR}/openapi.json",
+    lifespan=lifespan,
 )
 
 # Rate limiting
@@ -41,12 +59,44 @@ app.include_router(grca.router, prefix=f"{settings.API_V1_STR}")
 app.include_router(traffic.router, prefix=f"{settings.API_V1_STR}/traffic", tags=["Traffic"])
 app.include_router(sos.router, prefix=f"{settings.API_V1_STR}/sos", tags=["SOS"])
 
+
 @app.get("/health")
 def health_check():
     return {"status": "ok", "service": "RIE Backend"}
 
-# Test: Create the combined ASGI app with Socket.IO mounted directly on app instead of wrapping
-app.mount("/socket.io", socketio.ASGIApp(sio, socketio_path='socket.io'))
+
+@app.get("/readyz")
+async def readiness_check():
+    """Kubernetes readiness: fails while the node is draining or Redis is down.
+
+    Load balancers stop routing NEW websocket handshakes to a node that fails
+    readiness; existing connections keep working until the node finishes
+    draining (connection draining for rolling deployments).
+    """
+    redis_ok = gateway.store.redis is not None
+    if redis_ok:
+        try:
+            await gateway.store.redis.ping()
+        except Exception:
+            redis_ok = False
+    ready = redis_ok and not gateway.draining
+    return Response(
+        content='{"status":"%s"}' % ("ready" if ready else "not_ready"),
+        status_code=200 if ready else 503,
+        media_type="application/json",
+    )
+
+
+@app.get("/metrics")
+def prometheus_metrics():
+    """Prometheus text exposition of all realtime platform metrics."""
+    from realtime.metrics import registry
+    return Response(content=registry.render(), media_type="text/plain; version=0.0.4")
+
+
+# Realtime gateway: Socket.IO ASGI app mounted on the same server.
+# The gateway uses the Redis manager, so any node can emit to any room.
+app.mount("/socket.io", socketio.ASGIApp(sio, socketio_path="socket.io"))
 
 if __name__ == "__main__":
     import uvicorn

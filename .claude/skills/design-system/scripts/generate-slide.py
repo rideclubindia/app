@@ -122,7 +122,7 @@ SLIDE_TEMPLATE = '''<!DOCTYPE html>
         /* Typography - MUST use token fonts and sizes */
         h1, h2, h3, h4, h5, h6 {{
             font-family: var(--typography-font-heading);
-            font-weight: var(--primitive-fontWeight-bold);
+            font-weight: var(--primitive-fontWeight-semibold);
             line-height: var(--primitive-lineHeight-tight);
         }}
 
@@ -238,7 +238,7 @@ SLIDE_TEMPLATE = '''<!DOCTYPE html>
         .metric-value {{
             font-family: var(--typography-font-heading);
             font-size: var(--primitive-fontSize-6xl);
-            font-weight: var(--primitive-fontWeight-bold);
+            font-weight: var(--primitive-fontWeight-semibold);
             background: var(--primitive-gradient-primary);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;

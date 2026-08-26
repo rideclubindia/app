@@ -56,7 +56,7 @@ const AdminErrors = () => {
       <div className="flex-1 overflow-hidden flex flex-col p-6">
         <div className="mb-6 flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+            <h1 className="text-2xl font-semibold text-gray-900 flex items-center gap-2">
               <AlertTriangle className="w-6 h-6 text-red-500" /> System Errors
             </h1>
             <p className="text-gray-500 text-sm mt-1">Review and resolve client-side application crashes.</p>
@@ -122,7 +122,7 @@ const AdminErrors = () => {
                                 className="w-8 h-8 rounded-full border border-gray-200 object-cover" 
                               />
                             ) : (
-                              <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center font-bold text-gray-500 text-xs">
+                              <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center font-semibold text-gray-500 text-xs">
                                 {err.user.full_name?.charAt(0) || 'U'}
                               </div>
                             )}
@@ -170,7 +170,7 @@ const AdminErrors = () => {
         <div className="fixed inset-0 bg-[#273a5a]/50 flex justify-end z-[100] animate-in fade-in duration-200">
           <div className="w-[500px] h-full bg-white shadow-2xl flex flex-col animate-in slide-in-from-right duration-300">
             <div className="p-5 border-b border-[#E5E5EA] flex items-center justify-between bg-gray-50">
-              <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+              <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
                 <AlertTriangle className="w-5 h-5 text-red-500" /> Error Details
               </h2>
               <button 
@@ -192,7 +192,7 @@ const AdminErrors = () => {
 
                 <button 
                   onClick={() => toggleResolved(selectedError.id, selectedError.resolved)}
-                  className={`px-4 py-2 rounded-lg text-sm font-bold border transition-colors ${
+                  className={`px-4 py-2 rounded-lg text-sm font-semibold border transition-colors ${
                     selectedError.resolved 
                       ? 'border-gray-200 text-gray-700 hover:bg-gray-50' 
                       : 'border-green-600 bg-green-600 text-white hover:bg-green-700'
@@ -203,14 +203,14 @@ const AdminErrors = () => {
               </div>
 
               <div className="mb-6">
-                <p className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-2">Error Message</p>
+                <p className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-2">Error Message</p>
                 <div className="p-4 bg-red-50 text-red-900 border border-red-100 rounded-lg font-medium">
                   {selectedError.error_message}
                 </div>
               </div>
 
               <div className="mb-6">
-                <p className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-2">Route Occurred</p>
+                <p className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-2">Route Occurred</p>
                 <div className="flex items-center gap-2 text-gray-900 bg-gray-100 px-3 py-2 rounded-md font-mono text-sm w-max border border-gray-200">
                   <ExternalLink className="w-4 h-4 text-gray-500" />
                   {selectedError.route || 'Unknown'}
@@ -219,7 +219,7 @@ const AdminErrors = () => {
 
               {selectedError.user && (
                 <div className="mb-6">
-                  <p className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-2">Affected User</p>
+                  <p className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-2">Affected User</p>
                   <div className="flex items-center gap-3 p-4 border border-gray-100 rounded-xl bg-gray-50">
                     {selectedError.user.avatar_url ? (
                       <img 
@@ -230,12 +230,12 @@ const AdminErrors = () => {
                         className="w-10 h-10 rounded-full border border-gray-200 shadow-sm object-cover" 
                       />
                     ) : (
-                      <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center font-bold text-gray-500">
+                      <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center font-semibold text-gray-500">
                         {selectedError.user.full_name?.charAt(0) || 'U'}
                       </div>
                     )}
                     <div>
-                      <div className="font-bold text-gray-900">{selectedError.user.full_name}</div>
+                      <div className="font-semibold text-gray-900">{selectedError.user.full_name}</div>
                       <div className="text-sm text-gray-500">{selectedError.user.email}</div>
                     </div>
                   </div>
@@ -243,13 +243,13 @@ const AdminErrors = () => {
               )}
 
               <div className="mb-6">
-                <p className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-2">Timestamp</p>
+                <p className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-2">Timestamp</p>
                 <p className="text-gray-900 font-medium">{new Date(selectedError.created_at).toLocaleString()}</p>
               </div>
 
               {selectedError.error_stack && (
                 <div>
-                  <p className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-2">Component Stack Trace</p>
+                  <p className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-2">Component Stack Trace</p>
                   <pre className="p-4 bg-gray-900 text-green-400 text-xs rounded-lg overflow-x-auto border border-gray-800 shadow-inner whitespace-pre-wrap">
                     {selectedError.error_stack}
                   </pre>

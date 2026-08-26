@@ -6,8 +6,6 @@ import { supabase } from '../lib/supabase';
 import { getDeterministicUuid } from '../lib/user';
 import { useToast } from '../components/ToastContext';
 import { Helmet } from 'react-helmet-async';
-import { CockpitLayout } from '../components/spatial/CockpitLayout';
-import { SpatialMembrane } from '../components/spatial/SpatialMembrane';
 
 const EditProfile = () => {
   const navigate = useNavigate();
@@ -136,87 +134,82 @@ const EditProfile = () => {
     }
   };
 
+  const inputClass = "w-full bg-[#F7F8FA] border border-gray-200 rounded-xl pl-10 pr-4 py-3 text-[14px] text-[#111111] placeholder-gray-400 font-medium focus:outline-none focus:border-[#FF5A00]/60 focus:bg-white focus:ring-1 focus:ring-[#FF5A00]/30 transition-all";
+
   return (
-    <CockpitLayout 
-      mapChildren={
-        <div className="w-full h-full bg-[#0a0a0a] relative overflow-hidden flex items-center justify-center">
-          <div className="absolute inset-0 bg-gradient-to-br from-primary/10 to-transparent"></div>
-          <div className="absolute w-[800px] h-[800px] bg-primary/10 rounded-full blur-[120px] -top-[300px] -right-[200px]"></div>
-          <div className="absolute w-[600px] h-[600px] bg-blue-500/10 rounded-full blur-[120px] -bottom-[300px] -left-[100px]"></div>
-        </div>
-      }
-    >
+    <React.Fragment>
       <Helmet>
         <title>Edit Profile | Ride Club</title>
       </Helmet>
-      
-      <SpatialMembrane position="left" className="w-[420px] p-5 flex flex-col gap-6 max-h-[100dvh]">
+
+      <div className="w-full h-full bg-[#F2F4F7] flex flex-col font-sans overflow-hidden">
+
         {/* Header */}
-        <div className="flex items-center justify-between shrink-0 mb-2">
+        <div className="flex items-center justify-between shrink-0 px-5 pt-4 pb-2">
           <div className="flex items-center gap-3">
             <button 
               onClick={() => navigate('/profile')} 
-              className="w-10 h-10 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 flex items-center justify-center transition-all active:scale-95"
+              className="w-9 h-9 rounded-full bg-white border border-gray-200 flex items-center justify-center text-[#111111] hover:bg-gray-50 active:scale-95 transition-all shadow-sm"
             >
-              <ArrowLeft className="w-5 h-5 text-white" />
+              <ArrowLeft className="w-5 h-5" />
             </button>
             <div>
-              <h1 className="text-[20px] font-bold text-white tracking-tight leading-none">Edit Profile</h1>
-              <p className="text-[13px] text-white/50 mt-1">Update your details</p>
+              <h1 className="text-[#111111] font-semibold text-lg tracking-wide uppercase leading-tight">Edit Profile</h1>
+              <p className="text-[12px] text-gray-400 font-medium mt-0.5">Update your details</p>
             </div>
           </div>
-          
+
           <button 
             onClick={handleSave} 
             disabled={isSaving || isLoading}
-            className="h-10 px-4 rounded-full bg-primary hover:bg-primary/90 text-white text-[14px] font-bold flex items-center gap-2 shadow-lg shadow-primary/30 transition-all active:scale-95 disabled:opacity-50 disabled:active:scale-100"
+            className="h-9 px-4 rounded-full bg-[#FF5A00] hover:bg-[#ff6a1a] text-white text-[13px] font-semibold flex items-center gap-2 shadow-md shadow-[#FF5A00]/25 transition-all active:scale-95 disabled:opacity-50 disabled:active:scale-100"
           >
             {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-            Save
+            Save Changes
           </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto hide-scrollbar flex flex-col gap-4 pb-8">
-          
+        <div className="flex-1 overflow-y-auto hide-scrollbar px-5 pb-6">
           {isLoading ? (
             <div className="flex justify-center p-12">
-              <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+              <div className="w-8 h-8 border-4 border-[#FF5A00] border-t-transparent rounded-full animate-spin"></div>
             </div>
           ) : (
-            <>
+            <div className="grid grid-cols-1 landscape:grid-cols-3 gap-4 max-w-[1200px]">
+
               {/* Personal Details */}
-              <div className="bg-white/5 border border-white/10 rounded-[20px] p-5 backdrop-blur-md flex flex-col gap-4">
-                <h3 className="text-[14px] font-bold text-white/40 uppercase tracking-wider mb-1">Personal</h3>
-                
+              <div className="bg-white border border-gray-100 rounded-[8px] p-4 shadow-sm flex flex-col gap-3">
+                <h3 className="text-[12px] font-semibold text-gray-400 uppercase tracking-wider">Personal</h3>
+
                 <div className="relative">
-                  <User className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-white/40" />
+                  <User className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                   <input 
                     type="text" 
                     name="full_name"
                     value={formData.full_name}
                     onChange={handleChange}
                     placeholder="Full Name"
-                    className="w-full bg-black/40 border border-white/10 rounded-xl pl-10 pr-4 py-3 text-[14px] text-white placeholder-white/30 focus:outline-none focus:border-primary/50 transition-all"
+                    className={inputClass}
                   />
                 </div>
 
                 <div className="relative">
-                  <Phone className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-white/40" />
+                  <Phone className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                   <input 
                     type="tel" 
                     name="phone_number"
                     value={formData.phone_number}
                     onChange={handleChange}
                     placeholder="Phone Number"
-                    className="w-full bg-black/40 border border-white/10 rounded-xl pl-10 pr-4 py-3 text-[14px] text-white placeholder-white/30 focus:outline-none focus:border-primary/50 transition-all"
+                    className={inputClass}
                   />
                 </div>
               </div>
 
               {/* Safety Details */}
-              <div className="bg-white/5 border border-white/10 rounded-[20px] p-5 backdrop-blur-md flex flex-col gap-4">
-                <h3 className="text-[14px] font-bold text-white/40 uppercase tracking-wider mb-1">Safety</h3>
-                
+              <div className="bg-white border border-gray-100 rounded-[8px] p-4 shadow-sm flex flex-col gap-3">
+                <h3 className="text-[12px] font-semibold text-gray-400 uppercase tracking-wider">Safety</h3>
+
                 <div className="relative">
                   <Droplet className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-red-400" />
                   <input 
@@ -225,56 +218,56 @@ const EditProfile = () => {
                     value={formData.blood_group}
                     onChange={handleChange}
                     placeholder="Blood Group (e.g. O+)"
-                    className="w-full bg-black/40 border border-white/10 rounded-xl pl-10 pr-4 py-3 text-[14px] text-white placeholder-white/30 focus:outline-none focus:border-primary/50 transition-all uppercase"
+                    className={`${inputClass} uppercase`}
                   />
                 </div>
 
                 <div className="relative">
-                  <ShieldAlert className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-white/40" />
+                  <ShieldAlert className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#FF5A00]" />
                   <input 
                     type="tel" 
                     name="emergency_contact"
                     value={formData.emergency_contact}
                     onChange={handleChange}
                     placeholder="Emergency Contact"
-                    className="w-full bg-black/40 border border-white/10 rounded-xl pl-10 pr-4 py-3 text-[14px] text-white placeholder-white/30 focus:outline-none focus:border-primary/50 transition-all"
+                    className={inputClass}
                   />
                 </div>
               </div>
 
               {/* Bike Details */}
-              <div className="bg-white/5 border border-white/10 rounded-[20px] p-5 backdrop-blur-md flex flex-col gap-4">
-                <h3 className="text-[14px] font-bold text-white/40 uppercase tracking-wider mb-1">Bike</h3>
-                
+              <div className="bg-white border border-gray-100 rounded-[8px] p-4 shadow-sm flex flex-col gap-3">
+                <h3 className="text-[12px] font-semibold text-gray-400 uppercase tracking-wider">Bike</h3>
+
                 <div className="relative">
-                  <Bike className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-white/40" />
+                  <Bike className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-blue-500" />
                   <input 
                     type="text" 
                     name="bike_model"
                     value={formData.bike_model}
                     onChange={handleChange}
                     placeholder="Bike Model (e.g. Classic 350)"
-                    className="w-full bg-black/40 border border-white/10 rounded-xl pl-10 pr-4 py-3 text-[14px] text-white placeholder-white/30 focus:outline-none focus:border-primary/50 transition-all"
+                    className={inputClass}
                   />
                 </div>
 
                 <div className="relative">
-                  <Hash className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-white/40" />
+                  <Hash className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                   <input 
                     type="text" 
                     name="bike_number"
                     value={formData.bike_number}
                     onChange={handleChange}
                     placeholder="Registration Plate"
-                    className="w-full bg-black/40 border border-white/10 rounded-xl pl-10 pr-4 py-3 text-[14px] text-white placeholder-white/30 focus:outline-none focus:border-primary/50 transition-all uppercase"
+                    className={`${inputClass} uppercase`}
                   />
                 </div>
               </div>
-            </>
+            </div>
           )}
         </div>
-      </SpatialMembrane>
-    </CockpitLayout>
+      </div>
+    </React.Fragment>
   );
 };
 

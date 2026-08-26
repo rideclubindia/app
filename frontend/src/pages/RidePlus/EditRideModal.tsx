@@ -574,7 +574,7 @@ const EditRideModal: React.FC<EditRideModalProps> = ({ rideId, onClose, onSaved 
       <div className="fixed inset-0 z-[200] bg-dark/60 backdrop-blur-sm flex items-center justify-center">
         <div className="bg-white rounded-xl p-8 flex flex-col items-center gap-4 shadow-2xl">
           <Loader2 className="w-8 h-8 text-primary animate-spin" />
-          <p className="text-[#273a5a] font-bold">Loading ride data...</p>
+          <p className="text-[#273a5a] font-semibold">Loading ride data...</p>
         </div>
       </div>
     );
@@ -593,7 +593,7 @@ const EditRideModal: React.FC<EditRideModalProps> = ({ rideId, onClose, onSaved 
               <ChevronLeft className="w-5 h-5" />
             </button>
             <div>
-              <h2 className="text-lg font-bold text-[#273a5a] flex items-center gap-2">
+              <h2 className="text-lg font-semibold text-[#273a5a] flex items-center gap-2">
                 <Edit2 className="w-5 h-5 text-[#ef4523]" /> Edit Ride
               </h2>
               <p className="text-xs text-gray-400 font-medium">Changes sync to all riders in real time</p>
@@ -611,7 +611,7 @@ const EditRideModal: React.FC<EditRideModalProps> = ({ rideId, onClose, onSaved 
         <div className="flex bg-gray-50 p-1 mx-5 mt-3 rounded-xl shrink-0">
           <button
             onClick={() => setActiveTab('info')}
-            className={`flex-1 py-2 text-sm font-bold rounded-lg transition-all ${
+            className={`flex-1 py-2 text-sm font-semibold rounded-lg transition-all ${
               activeTab === 'info'
                 ? 'bg-white text-[#273a5a] shadow-sm'
                 : 'text-gray-500 hover:text-gray-700'
@@ -621,7 +621,7 @@ const EditRideModal: React.FC<EditRideModalProps> = ({ rideId, onClose, onSaved 
           </button>
           <button
             onClick={() => setActiveTab('route')}
-            className={`flex-1 py-2 text-sm font-bold rounded-lg transition-all ${
+            className={`flex-1 py-2 text-sm font-semibold rounded-lg transition-all ${
               activeTab === 'route'
                 ? 'bg-white text-[#273a5a] shadow-sm'
                 : 'text-gray-500 hover:text-gray-700'
@@ -631,7 +631,7 @@ const EditRideModal: React.FC<EditRideModalProps> = ({ rideId, onClose, onSaved 
           </button>
           <button
             onClick={() => setActiveTab('log')}
-            className={`flex-1 py-2 text-sm font-bold rounded-lg transition-all ${
+            className={`flex-1 py-2 text-sm font-semibold rounded-lg transition-all ${
               activeTab === 'log'
                 ? 'bg-white text-[#273a5a] shadow-sm'
                 : 'text-gray-500 hover:text-gray-700'
@@ -649,7 +649,7 @@ const EditRideModal: React.FC<EditRideModalProps> = ({ rideId, onClose, onSaved 
             <div className="flex flex-col gap-5">
               {/* Name */}
               <div className="space-y-1.5">
-                <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Ride Name</label>
+                <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Ride Name</label>
                 <input
                   type="text"
                   value={formData.name}
@@ -661,7 +661,7 @@ const EditRideModal: React.FC<EditRideModalProps> = ({ rideId, onClose, onSaved 
 
               {/* Description */}
               <div className="space-y-1.5">
-                <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Description / Notes</label>
+                <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Description / Notes</label>
                 <textarea
                   value={formData.description}
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
@@ -683,7 +683,7 @@ const EditRideModal: React.FC<EditRideModalProps> = ({ rideId, onClose, onSaved 
                 <div className="p-4 rounded-xl bg-gray-50 border border-gray-100 flex flex-col gap-2">
                   <div className="flex items-center gap-2">
                     <Users className="w-4 h-4 text-[#273a5a]" />
-                    <span className="text-[#273a5a] font-bold text-[13px]">
+                    <span className="text-[#273a5a] font-semibold text-[13px]">
                       {formData.max_riders} Riders
                     </span>
                   </div>
@@ -708,7 +708,7 @@ const EditRideModal: React.FC<EditRideModalProps> = ({ rideId, onClose, onSaved 
                 >
                   <div className="flex items-center gap-2">
                     <Motorcycle className="w-4 h-4 text-[#273a5a]" />
-                    <span className="text-[#273a5a] font-bold text-[13px] flex-1 truncate">
+                    <span className="text-[#273a5a] font-semibold text-[13px] flex-1 truncate">
                       {vehicleTypes.find((v) => v.value === formData.vehicle_type)?.label || 'Any'}
                     </span>
                   </div>
@@ -749,7 +749,7 @@ const EditRideModal: React.FC<EditRideModalProps> = ({ rideId, onClose, onSaved 
                 >
                   <div className="flex items-center gap-2">
                     <Globe className="w-4 h-4 text-emerald-500" />
-                    <span className="text-[#273a5a] font-bold text-[13px]">
+                    <span className="text-[#273a5a] font-semibold text-[13px]">
                       {formData.visibility === 'public' ? 'Public' : 'Private'}
                     </span>
                     <span className="text-[11px] text-gray-400 font-medium ml-auto mr-4">
@@ -796,7 +796,7 @@ const EditRideModal: React.FC<EditRideModalProps> = ({ rideId, onClose, onSaved 
                 <div className="relative">
                   <div className="flex items-center gap-2 mb-1">
                     <div className="w-[10px] h-[10px] rounded-full border-2 border-[#34C759] shrink-0" />
-                    <span className="text-[11px] font-bold text-gray-400 uppercase">Start</span>
+                    <span className="text-[11px] font-semibold text-gray-400 uppercase">Start</span>
                   </div>
                   <input
                     type="text"
@@ -975,7 +975,7 @@ const EditRideModal: React.FC<EditRideModalProps> = ({ rideId, onClose, onSaved 
                 <div className="relative">
                   <div className="flex items-center gap-2 mb-1">
                     <div className="w-[10px] h-[10px] rounded-full bg-[#FF3B30] shrink-0" />
-                    <span className="text-[11px] font-bold text-gray-400 uppercase">Destination</span>
+                    <span className="text-[11px] font-semibold text-gray-400 uppercase">Destination</span>
                   </div>
                   <div className="relative">
                     <Search className="w-3.5 h-3.5 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
@@ -1023,7 +1023,7 @@ const EditRideModal: React.FC<EditRideModalProps> = ({ rideId, onClose, onSaved 
               <div className="relative h-[250px] rounded-xl overflow-hidden border border-gray-200 shadow-sm">
                 <div ref={mapContainer} className="absolute inset-0 w-full h-full" />
                 {selectingLocationFor && (
-                  <div className="absolute top-3 left-1/2 -translate-x-1/2 bg-[#273a5a] text-white px-3 py-1.5 rounded-full font-bold text-[11px] shadow-xl z-30 animate-pulse">
+                  <div className="absolute top-3 left-1/2 -translate-x-1/2 bg-[#273a5a] text-white px-3 py-1.5 rounded-full font-semibold text-[11px] shadow-xl z-30 animate-pulse">
                     Tap map to select location
                   </div>
                 )}
@@ -1049,7 +1049,7 @@ const EditRideModal: React.FC<EditRideModalProps> = ({ rideId, onClose, onSaved 
                       <div className="absolute -left-[27px] w-4 h-4 rounded-full bg-white border-4 border-[#ef4523]" />
                       <div className="bg-gray-50 rounded-xl p-3 border border-gray-100">
                         <div className="flex items-center justify-between mb-1">
-                          <span className="text-xs font-bold text-[#273a5a]">
+                          <span className="text-xs font-semibold text-[#273a5a]">
                             {entry.editor_name || 'Admin'}
                           </span>
                           <span className="text-[10px] text-gray-400 font-medium">
@@ -1069,7 +1069,7 @@ const EditRideModal: React.FC<EditRideModalProps> = ({ rideId, onClose, onSaved 
                             {Object.keys(entry.changes).map((key) => (
                               <span
                                 key={key}
-                                className="px-2 py-0.5 bg-orange-50 text-[#ef4523] rounded-full text-[10px] font-bold"
+                                className="px-2 py-0.5 bg-orange-50 text-[#ef4523] rounded-full text-[10px] font-semibold"
                               >
                                 {key.replace(/_/g, ' ')}
                               </span>
@@ -1091,7 +1091,7 @@ const EditRideModal: React.FC<EditRideModalProps> = ({ rideId, onClose, onSaved 
             <button
               onClick={handleSave}
               disabled={saving || !formData.name}
-              className="w-full bg-[#ef4523] hover:bg-[#e0481c] text-white font-bold text-[15px] py-3.5 rounded-xl shadow-[0_8px_24px_rgba(239,69,35,0.3)] active:scale-[0.97] transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:active:scale-100"
+              className="w-full bg-[#ef4523] hover:bg-[#e0481c] text-white font-semibold text-[15px] py-3.5 rounded-xl shadow-[0_8px_24px_rgba(239,69,35,0.3)] active:scale-[0.97] transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:active:scale-100"
             >
               {saving ? (
                 <>

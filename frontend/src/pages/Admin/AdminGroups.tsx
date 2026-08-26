@@ -235,11 +235,11 @@ const AdminGroups = () => {
         <div className="px-6 pt-3 pb-4 border-b border-[#E5E5EA] shrink-0">
           <div className="flex flex-col gap-2 mb-2">
             <div className="flex gap-1 bg-gray-100 p-1 rounded-lg self-start">
-              <button onClick={() => setFilter('all')} className={`px-2 py-1 text-[10px] font-bold rounded ${filter === 'all' ? 'bg-white shadow text-[#273a5a]' : 'text-gray-500'}`}>All</button>
-              <button onClick={() => setFilter('public')} className={`flex items-center gap-1 px-2 py-1 text-[10px] font-bold rounded ${filter === 'public' ? 'bg-white shadow text-[#273a5a]' : 'text-gray-500'}`}>
+              <button onClick={() => setFilter('all')} className={`px-2 py-1 text-[10px] font-semibold rounded ${filter === 'all' ? 'bg-white shadow text-[#273a5a]' : 'text-gray-500'}`}>All</button>
+              <button onClick={() => setFilter('public')} className={`flex items-center gap-1 px-2 py-1 text-[10px] font-semibold rounded ${filter === 'public' ? 'bg-white shadow text-[#273a5a]' : 'text-gray-500'}`}>
                 <Globe className="w-3 h-3" /> Public
               </button>
-              <button onClick={() => setFilter('private')} className={`flex items-center gap-1 px-2 py-1 text-[10px] font-bold rounded ${filter === 'private' ? 'bg-white shadow text-[#273a5a]' : 'text-gray-500'}`}>
+              <button onClick={() => setFilter('private')} className={`flex items-center gap-1 px-2 py-1 text-[10px] font-semibold rounded ${filter === 'private' ? 'bg-white shadow text-[#273a5a]' : 'text-gray-500'}`}>
                 <Lock className="w-3 h-3" /> Private
               </button>
             </div>
@@ -248,7 +248,7 @@ const AdminGroups = () => {
           <div className="flex items-center justify-between mb-1 mt-3">
             <div className="flex items-center gap-2 text-[#ef4523]">
               <UsersRound className="w-5 h-5" />
-              <h1 className="text-[20px] font-bold text-[#273a5a]">{groups.length} Total Groups</h1>
+              <h1 className="text-[20px] font-semibold text-[#273a5a]">{groups.length} Total Groups</h1>
             </div>
           </div>
           <p className="text-[12px] text-[#8A8A8E] mb-3">Overview and manage groups</p>
@@ -281,8 +281,8 @@ const AdminGroups = () => {
                   
                   <div className="flex-1 flex flex-col justify-between py-0">
                     <div className="flex justify-between items-start">
-                      <h3 className="text-[12px] font-bold leading-none truncate max-w-[130px] pt-0.5">{group.name || 'Untitled group'}</h3>
-                      <span className={`text-[8px] font-bold px-1 py-0.5 rounded uppercase ${
+                      <h3 className="text-[12px] font-semibold leading-none truncate max-w-[130px] pt-0.5">{group.name || 'Untitled group'}</h3>
+                      <span className={`text-[8px] font-semibold px-1 py-0.5 rounded uppercase ${
                         group.is_private ? 'bg-[#F2F4F7] text-[#8A8A8E]' : 'bg-[#E5F9ED] text-[#34C759]'
                       }`}>
                         {group.is_private ? 'PRIV' : 'PUB'}
@@ -293,7 +293,7 @@ const AdminGroups = () => {
                       <div className="flex items-center gap-1.5 text-[9px] font-medium text-[#8A8A8E]">
                         <span className="font-mono">ID:{group.id.slice(0,5)}..</span>
                         <div className="w-0.5 h-0.5 bg-[#E5E5EA] rounded-full"></div>
-                        <span className="text-[#ef4523] font-bold">{group.members_count || 0} Mem</span>
+                        <span className="text-[#ef4523] font-semibold">{group.members_count || 0} Mem</span>
                       </div>
                       <span className="text-[8px] font-medium text-[#8A8A8E]">
                         {group.created_at ? new Date(group.created_at).toLocaleDateString() : ''}
@@ -322,13 +322,13 @@ const AdminGroups = () => {
                   <UsersRound className="w-5 h-5" />
                 </div>
                 <div className="flex flex-col">
-                  <h2 className="text-[16px] font-bold text-[#273a5a] leading-tight">{selectedGroup.name}</h2>
+                  <h2 className="text-[16px] font-semibold text-[#273a5a] leading-tight">{selectedGroup.name}</h2>
                   <div className="flex items-center gap-2 text-[11px] text-[#8A8A8E] mt-0.5">
                     <span className="font-mono">ID: {selectedGroup.id.slice(0,6)}..</span>
                     <span className="w-1 h-1 bg-[#E5E5EA] rounded-full"></span>
                     <span>Admin: <span className="font-semibold text-[#273a5a]">{selectedGroup.admin?.full_name || 'Unknown'}</span></span>
                     <span className="w-1 h-1 bg-[#E5E5EA] rounded-full"></span>
-                    <span className={`uppercase font-bold ${selectedGroup.is_private ? 'text-rose-500' : 'text-[#34C759]'}`}>{selectedGroup.is_private ? 'Private' : 'Public'}</span>
+                    <span className={`uppercase font-semibold ${selectedGroup.is_private ? 'text-rose-500' : 'text-[#34C759]'}`}>{selectedGroup.is_private ? 'Private' : 'Public'}</span>
                     <span className="w-1 h-1 bg-[#E5E5EA] rounded-full"></span>
                     <span>Created: {new Date(selectedGroup.created_at).toLocaleDateString()}</span>
                   </div>
@@ -337,7 +337,7 @@ const AdminGroups = () => {
               <div className="flex items-center gap-3">
                 <button
                   onClick={() => setIsMembersDrawerOpen(!isMembersDrawerOpen)}
-                  className={`px-4 h-8 rounded border flex items-center gap-2 text-[12px] font-bold transition-colors ${isMembersDrawerOpen ? 'bg-[#ef4523] text-white border-[#ef4523]' : 'bg-white text-[#273a5a] border-[#E5E5EA] hover:bg-gray-50'}`}
+                  className={`px-4 h-8 rounded border flex items-center gap-2 text-[12px] font-semibold transition-colors ${isMembersDrawerOpen ? 'bg-[#ef4523] text-white border-[#ef4523]' : 'bg-white text-[#273a5a] border-[#E5E5EA] hover:bg-gray-50'}`}
                 >
                   <UsersRound className="w-4 h-4" />
                   {groupMembers.length} Members
@@ -373,7 +373,7 @@ const AdminGroups = () => {
                       <div className="shrink-0 mx-4 mt-3 px-3 py-2 bg-yellow-50 border border-yellow-200 rounded-lg flex items-start gap-2">
                         <Pin className="w-3.5 h-3.5 text-yellow-600 flex-shrink-0 mt-0.5" />
                         <div className="flex-1 min-w-0">
-                          <div className="text-[10px] font-bold text-yellow-700 uppercase mb-0.5">Pinned by Admin</div>
+                          <div className="text-[10px] font-semibold text-yellow-700 uppercase mb-0.5">Pinned by Admin</div>
                           <p className="text-[12px] text-[#273a5a] truncate">{pinned.content}</p>
                         </div>
                         <button onClick={() => handlePinMessage(pinned)} className="text-yellow-500 hover:text-yellow-700">
@@ -388,7 +388,7 @@ const AdminGroups = () => {
                       groupMessages.map((message) => (
                         <div key={message.id} className={`group rounded-xl border p-3.5 bg-white shadow-sm max-w-[80%] self-start ${ message.id === pinnedMessageId ? 'border-yellow-300 bg-yellow-50/50' : 'border-[#E5E5EA]' }`}>
                           <div className="flex items-center justify-between gap-6 mb-2 border-b border-[#F2F4F7] pb-1.5">
-                            <span className={`font-bold text-[12px] ${ message.username?.startsWith('[Admin]') ? 'text-[#273a5a]' : 'text-[#ef4523]' }`}>{message.username || message.user_id || 'Member'}</span>
+                            <span className={`font-semibold text-[12px] ${ message.username?.startsWith('[Admin]') ? 'text-[#273a5a]' : 'text-[#ef4523]' }`}>{message.username || message.user_id || 'Member'}</span>
                             <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                               <span className="text-[10px] font-semibold text-[#8A8A8E]">{new Date(message.created_at).toLocaleString()}</span>
                               <button onClick={() => handlePinMessage(message)} className={`w-5 h-5 flex items-center justify-center rounded hover:bg-yellow-100 ${ message.id === pinnedMessageId ? 'text-yellow-500' : 'text-[#8A8A8E]' }`} title="Pin message">
@@ -439,7 +439,7 @@ const AdminGroups = () => {
                                         <span className="text-[16px]">🚨</span>
                                       </div>
                                       <div>
-                                        <div className="font-bold text-[14px] text-[#273a5a]">{incidentCategory}</div>
+                                        <div className="font-semibold text-[14px] text-[#273a5a]">{incidentCategory}</div>
                                         <div className="text-[11px] text-[#8A8A8E]">Community Alert</div>
                                       </div>
                                     </div>
@@ -504,7 +504,7 @@ const AdminGroups = () => {
                {/* Right Drawer Popup for Members */}
                <div className={`absolute top-0 right-0 h-full bg-white border-l border-[#E5E5EA] shadow-2xl transition-all duration-300 z-10 flex flex-col ${isMembersDrawerOpen ? 'w-[320px] translate-x-0' : 'w-[320px] translate-x-full opacity-0 pointer-events-none'}`}>
                   <div className="h-[60px] px-4 border-b border-[#E5E5EA] flex justify-between items-center bg-[#FFFFFF] shrink-0">
-                    <h3 className="text-[13px] font-bold text-[#273a5a] uppercase tracking-wide">All Users ({groupMembers.length})</h3>
+                    <h3 className="text-[13px] font-semibold text-[#273a5a] uppercase tracking-wide">All Users ({groupMembers.length})</h3>
                     <button onClick={() => setIsMembersDrawerOpen(false)} className="w-7 h-7 rounded border border-[#E5E5EA] flex items-center justify-center text-[#8A8A8E] hover:bg-gray-50">
                       <X className="w-4 h-4" />
                     </button>
@@ -514,10 +514,10 @@ const AdminGroups = () => {
                       groupMembers.map((member) => (
                         <div key={member.id} className="flex items-center gap-3 p-2.5 rounded-xl bg-white border border-[#E5E5EA] shadow-[0_2px_8px_rgba(0,0,0,0.02)] hover:border-[#ef4523]/30 transition-colors group">
                           <div className="w-10 h-10 rounded-full bg-[#F2F4F7] flex items-center justify-center overflow-hidden shrink-0 border border-[#E5E5EA]">
-                            <span className="text-[#8A8A8E] font-bold text-[13px]">{member.username?.[0]?.toUpperCase() || 'U'}</span>
+                            <span className="text-[#8A8A8E] font-semibold text-[13px]">{member.username?.[0]?.toUpperCase() || 'U'}</span>
                           </div>
                           <div className="min-w-0 flex-1">
-                            <div className="font-bold text-[13px] text-[#273a5a] truncate">{member.username || 'Unknown User'}</div>
+                            <div className="font-semibold text-[13px] text-[#273a5a] truncate">{member.username || 'Unknown User'}</div>
                             <div className="text-[11px] text-[#8A8A8E] mt-0.5 truncate">Joined: {new Date(member.created_at).toLocaleDateString()}</div>
                           </div>
                           <button
@@ -541,7 +541,7 @@ const AdminGroups = () => {
             <div className="w-16 h-16 rounded-full bg-white shadow-sm border border-[#E5E5EA] flex items-center justify-center mb-4">
               <UsersRound className="w-8 h-8 text-[#8A8A8E]" />
             </div>
-            <h3 className="text-[18px] font-bold text-[#273a5a] mb-2">Select a Group</h3>
+            <h3 className="text-[18px] font-semibold text-[#273a5a] mb-2">Select a Group</h3>
             <p className="text-[13px] text-[#8A8A8E] max-w-[250px]">Choose a group from the list to view its chat history and member details.</p>
           </div>
         )}

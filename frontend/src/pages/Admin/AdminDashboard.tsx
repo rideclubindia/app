@@ -15,10 +15,10 @@ const StatBox = ({ title, value, trend, linkTo }: any) => {
       
       <div className="flex justify-between items-end mb-auto">
         <div>
-          <h2 className="text-[20px] font-bold tracking-tight leading-none mb-2">{value}</h2>
+          <h2 className="text-[20px] font-semibold tracking-tight leading-none mb-2">{value}</h2>
           <div className="flex items-center gap-1.5">
             <span className="text-[10px] font-medium text-[#8A8A8E]">vs previous period</span>
-            <span className={`text-[9px] font-bold px-1 py-0.5 rounded flex items-center gap-0.5 ${trend >= 0 ? 'bg-[#E5F9ED] text-[#34C759]' : 'bg-[#FFEBEE] text-[#FF3B30]'}`}>
+            <span className={`text-[9px] font-semibold px-1 py-0.5 rounded flex items-center gap-0.5 ${trend >= 0 ? 'bg-[#E5F9ED] text-[#34C759]' : 'bg-[#FFEBEE] text-[#FF3B30]'}`}>
               {trend >= 0 ? <ArrowUpRight className="w-2.5 h-2.5" /> : <ArrowDownRight className="w-2.5 h-2.5" />} {Math.abs(trend)}%
             </span>
           </div>
@@ -28,7 +28,7 @@ const StatBox = ({ title, value, trend, linkTo }: any) => {
       <div className="mt-4 pt-2 border-t border-[#E5E5EA]">
         <button 
           onClick={() => navigate(linkTo)}
-          className="text-[11px] font-bold flex items-center gap-1.5 hover:text-[#ef4523] transition-colors"
+          className="text-[11px] font-semibold flex items-center gap-1.5 hover:text-[#ef4523] transition-colors"
         >
           See Details <ChevronRight className="w-3 h-3" />
         </button>
@@ -317,7 +317,7 @@ const AdminDashboard = () => {
       {/* Header Area */}
       <div className="flex justify-between items-end mb-4">
         <div>
-          <h1 className="text-[16px] font-bold tracking-tight leading-tight">Dashboard</h1>
+          <h1 className="text-[16px] font-semibold tracking-tight leading-tight">Dashboard</h1>
           <p className="text-[11px] text-[#8A8A8E] mt-1">Track your incidents and performance of your strategy</p>
         </div>
         <div className="flex gap-2">
@@ -372,7 +372,7 @@ const AdminDashboard = () => {
           </div>
           
           <div className="flex items-baseline gap-1.5 mb-4">
-            <h2 className="text-[20px] font-bold tracking-tight">{incidentStats.total.toLocaleString()}</h2>
+            <h2 className="text-[20px] font-semibold tracking-tight">{incidentStats.total.toLocaleString()}</h2>
             <span className="text-[11px] font-medium text-[#8A8A8E]">Total incidents</span>
           </div>
 
@@ -385,8 +385,8 @@ const AdminDashboard = () => {
           </div>
           
           <div className="flex items-center rounded-md overflow-hidden h-5 w-full border border-[#E5E5EA] mt-auto">
-            <div className="h-full bg-[#ef4523] flex items-center justify-center text-white text-[9px] font-bold whitespace-nowrap overflow-hidden px-1 transition-all" style={{width: `${Math.max(15, (incidentStats.accidents / Math.max(1, incidentStats.total)) * 100)}%`}}>Accidents ({incidentStats.accidents})</div>
-            <div className="h-full bg-[#ef4523] flex items-center justify-center text-white text-[9px] font-bold whitespace-nowrap overflow-hidden px-1 transition-all" style={{width: `${Math.max(15, (incidentStats.hazards / Math.max(1, incidentStats.total)) * 100)}%`}}>Hazards ({incidentStats.hazards})</div>
+            <div className="h-full bg-[#ef4523] flex items-center justify-center text-white text-[9px] font-semibold whitespace-nowrap overflow-hidden px-1 transition-all" style={{width: `${Math.max(15, (incidentStats.accidents / Math.max(1, incidentStats.total)) * 100)}%`}}>Accidents ({incidentStats.accidents})</div>
+            <div className="h-full bg-[#ef4523] flex items-center justify-center text-white text-[9px] font-semibold whitespace-nowrap overflow-hidden px-1 transition-all" style={{width: `${Math.max(15, (incidentStats.hazards / Math.max(1, incidentStats.total)) * 100)}%`}}>Hazards ({incidentStats.hazards})</div>
           </div>
         </div>
 
@@ -399,10 +399,10 @@ const AdminDashboard = () => {
           
           <div className="flex justify-between items-end mb-auto">
             <div>
-              <h2 className="text-[20px] font-bold tracking-tight leading-none mb-2">{incidentStats.activeAlerts.toLocaleString()}</h2>
+              <h2 className="text-[20px] font-semibold tracking-tight leading-none mb-2">{incidentStats.activeAlerts.toLocaleString()}</h2>
               <div className="flex items-center gap-1.5">
                 <span className="text-[10px] font-medium text-[#8A8A8E]">vs prev period</span>
-                <span className={`text-[9px] font-bold px-1 py-0.5 rounded flex items-center gap-0.5 ${incidentStats.activeTrend >= 0 ? 'bg-[#E5F9ED] text-[#34C759]' : 'bg-[#FFEBEE] text-[#FF3B30]'}`}>
+                <span className={`text-[9px] font-semibold px-1 py-0.5 rounded flex items-center gap-0.5 ${incidentStats.activeTrend >= 0 ? 'bg-[#E5F9ED] text-[#34C759]' : 'bg-[#FFEBEE] text-[#FF3B30]'}`}>
                   {incidentStats.activeTrend >= 0 ? <ArrowUpRight className="w-2.5 h-2.5" /> : <ArrowDownRight className="w-2.5 h-2.5" />} {Math.abs(incidentStats.activeTrend)}%
                 </span>
               </div>
@@ -417,7 +417,7 @@ const AdminDashboard = () => {
           </div>
 
           <div className="mt-4 pt-2 border-t border-[#E5E5EA]">
-            <button onClick={() => navigate('/admin/incidents')} className="text-[11px] font-bold flex items-center gap-1.5 hover:text-[#ef4523] transition-colors">
+            <button onClick={() => navigate('/admin/incidents')} className="text-[11px] font-semibold flex items-center gap-1.5 hover:text-[#ef4523] transition-colors">
               See Details <ChevronRight className="w-3 h-3" />
             </button>
           </div>
@@ -432,10 +432,10 @@ const AdminDashboard = () => {
           
           <div className="flex justify-between items-end mb-auto">
             <div>
-              <h2 className="text-[20px] font-bold tracking-tight leading-none mb-2">{globalStats.confirmations.toLocaleString()}</h2>
+              <h2 className="text-[20px] font-semibold tracking-tight leading-none mb-2">{globalStats.confirmations.toLocaleString()}</h2>
               <div className="flex items-center gap-1.5">
                 <span className="text-[10px] font-medium text-[#8A8A8E]">vs prev period</span>
-                <span className={`text-[9px] font-bold px-1 py-0.5 rounded flex items-center gap-0.5 ${globalStats.cTrend >= 0 ? 'bg-[#E5F9ED] text-[#34C759]' : 'bg-[#FFEBEE] text-[#FF3B30]'}`}>
+                <span className={`text-[9px] font-semibold px-1 py-0.5 rounded flex items-center gap-0.5 ${globalStats.cTrend >= 0 ? 'bg-[#E5F9ED] text-[#34C759]' : 'bg-[#FFEBEE] text-[#FF3B30]'}`}>
                   {globalStats.cTrend >= 0 ? <ArrowUpRight className="w-2.5 h-2.5" /> : <ArrowDownRight className="w-2.5 h-2.5" />} {Math.abs(globalStats.cTrend)}%
                 </span>
               </div>
@@ -450,7 +450,7 @@ const AdminDashboard = () => {
           </div>
 
           <div className="mt-4 pt-2 border-t border-[#E5E5EA]">
-            <button onClick={() => navigate('/admin/users')} className="text-[11px] font-bold flex items-center gap-1.5 hover:text-[#ef4523] transition-colors">
+            <button onClick={() => navigate('/admin/users')} className="text-[11px] font-semibold flex items-center gap-1.5 hover:text-[#ef4523] transition-colors">
               See Details <ChevronRight className="w-3 h-3" />
             </button>
           </div>
@@ -484,14 +484,14 @@ const AdminDashboard = () => {
 
           <div className="flex justify-between items-end mb-4">
             <div className="flex items-center gap-2.5">
-              <h2 className="text-[20px] font-bold tracking-tight">{analyticsStats.reports.toLocaleString()}</h2>
+              <h2 className="text-[20px] font-semibold tracking-tight">{analyticsStats.reports.toLocaleString()}</h2>
               <span className="text-[11px] font-medium text-[#8A8A8E]">reports</span>
-              <span className="bg-[#E5F9ED] text-[#34C759] text-[9px] font-bold px-1 py-0.5 rounded flex items-center gap-0.5">
+              <span className="bg-[#E5F9ED] text-[#34C759] text-[9px] font-semibold px-1 py-0.5 rounded flex items-center gap-0.5">
                 <ArrowUpRight className="w-2.5 h-2.5" /> Active
               </span>
             </div>
             <div className="flex items-center gap-2.5">
-              <h2 className="text-[16px] font-bold tracking-tight">{analyticsStats.users.toLocaleString()}</h2>
+              <h2 className="text-[16px] font-semibold tracking-tight">{analyticsStats.users.toLocaleString()}</h2>
               <span className="text-[11px] font-medium text-[#8A8A8E]">users</span>
             </div>
           </div>
@@ -503,8 +503,8 @@ const AdminDashboard = () => {
               return (
                 <div key={i} className="flex-1 flex flex-col justify-end items-center h-full group relative">
                   <div className="w-full bg-[#ef4523] opacity-80 hover:opacity-100 transition-all rounded-t-sm" style={{ height: `${Math.max(5, heightPct)}%` }}></div>
-                  <span className="absolute -bottom-4 text-[9px] font-bold text-[#8A8A8E]">{d.name}</span>
-                  <div className="absolute -top-8 bg-gray-900 text-white text-[10px] font-bold px-1.5 py-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10 pointer-events-none">
+                  <span className="absolute -bottom-4 text-[9px] font-semibold text-[#8A8A8E]">{d.name}</span>
+                  <div className="absolute -top-8 bg-gray-900 text-white text-[10px] font-semibold px-1.5 py-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10 pointer-events-none">
                     {d.value} reports
                   </div>
                 </div>
@@ -527,7 +527,7 @@ const AdminDashboard = () => {
                  <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="#ef4523" strokeWidth="8" strokeDasharray={`${resolutionRate}, 100`} />
                </svg>
                <div className="flex flex-col items-center justify-center z-10 bg-white w-full h-full rounded-full">
-                 <h2 className="text-[20px] font-bold tracking-tight leading-none mb-1">{resolutionRate}%</h2>
+                 <h2 className="text-[20px] font-semibold tracking-tight leading-none mb-1">{resolutionRate}%</h2>
                  <span className="text-[9px] font-medium text-[#8A8A8E]">Resolution</span>
                </div>
             </div>
@@ -539,14 +539,14 @@ const AdminDashboard = () => {
                 <div className="w-1.5 h-1.5 rounded-full bg-[#ef4523]"></div>
                 <span className="text-[10px] font-medium text-[#8A8A8E]">Accurate</span>
               </div>
-              <p className="text-[13px] font-bold">{globalStats.confirmations.toLocaleString()}</p>
+              <p className="text-[13px] font-semibold">{globalStats.confirmations.toLocaleString()}</p>
             </div>
             <div>
               <div className="flex items-center gap-1.5 mb-1">
                 <div className="w-1.5 h-1.5 rounded-full bg-[#F2F4F7]"></div>
                 <span className="text-[10px] font-medium text-[#8A8A8E]">False / Rejected</span>
               </div>
-              <p className="text-[13px] font-bold">{globalStats.falseFlags.toLocaleString()}</p>
+              <p className="text-[13px] font-semibold">{globalStats.falseFlags.toLocaleString()}</p>
             </div>
           </div>
         </div>
@@ -555,7 +555,7 @@ const AdminDashboard = () => {
       {/* Analytics Extra Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
         <div className="bg-white rounded-lg border border-[#E5E5EA] shadow-sm p-4">
-          <h3 className="text-[12px] font-bold text-gray-900 mb-6">User Signups (Last 7 Days)</h3>
+          <h3 className="text-[12px] font-semibold text-gray-900 mb-6">User Signups (Last 7 Days)</h3>
           <div className="h-48 flex items-end justify-between gap-2">
             {miscStats.userGrowth.map((val, i) => (
               <div key={i} className="w-full bg-blue-50 rounded-t-lg relative group h-full flex items-end">
@@ -563,25 +563,25 @@ const AdminDashboard = () => {
                   className="w-full bg-blue-500 rounded-t-lg transition-all"
                   style={{ height: `${(val / maxGrowth) * 100}%` }}
                 ></div>
-                <div className="opacity-0 group-hover:opacity-100 absolute -top-8 left-1/2 -translate-x-1/2 bg-gray-900 text-white text-[10px] py-1 px-2 rounded font-bold z-10">
+                <div className="opacity-0 group-hover:opacity-100 absolute -top-8 left-1/2 -translate-x-1/2 bg-gray-900 text-white text-[10px] py-1 px-2 rounded font-semibold z-10">
                   {val}
                 </div>
               </div>
             ))}
           </div>
-          <div className="flex justify-between mt-4 text-[10px] font-bold text-gray-400 uppercase">
+          <div className="flex justify-between mt-4 text-[10px] font-semibold text-gray-400 uppercase">
             {miscStats.dayLabels.map((lbl, i) => <span key={i} className="flex-1 text-center">{lbl}</span>)}
           </div>
         </div>
 
         <div className="bg-white rounded-lg border border-[#E5E5EA] shadow-sm p-4">
-          <h3 className="text-[12px] font-bold text-gray-900 mb-6">Traffic Alerts by Category</h3>
+          <h3 className="text-[12px] font-semibold text-gray-900 mb-6">Traffic Alerts by Category</h3>
           <div className="space-y-4">
             {miscStats.categoryData.length > 0 ? miscStats.categoryData.map((cat, i) => (
               <div key={i}>
                 <div className="flex justify-between text-[11px] mb-1">
                   <span className="font-semibold text-gray-700">{cat.label}</span>
-                  <span className="font-bold text-gray-900">{cat.val}%</span>
+                  <span className="font-semibold text-gray-900">{cat.val}%</span>
                 </div>
                 <div className="w-full bg-gray-100 rounded-full h-2">
                   <div className={`h-2 rounded-full ${cat.color}`} style={{ width: `${cat.val}%` }}></div>
@@ -599,18 +599,18 @@ const AdminDashboard = () => {
         <div className="bg-white rounded-lg border border-[#E5E5EA] shadow-[0_2px_12px_rgba(0,0,0,0.02)] overflow-hidden flex flex-col">
           <div className="p-4 border-b border-[#E5E5EA] flex justify-between items-center">
             <div className="flex items-center gap-1.5">
-              <span className="text-[12px] font-bold">Recent Incidents</span>
-              <span className="bg-[#F2F4F7] text-[#8A8A8E] text-[10px] font-bold px-1.5 py-0.5 rounded">{recentIncidents.length}</span>
+              <span className="text-[12px] font-semibold">Recent Incidents</span>
+              <span className="bg-[#F2F4F7] text-[#8A8A8E] text-[10px] font-semibold px-1.5 py-0.5 rounded">{recentIncidents.length}</span>
             </div>
-            <button onClick={() => navigate('/admin/incidents')} className="text-[11px] font-bold text-[#ef4523] hover:text-[#ef4523]">View all</button>
+            <button onClick={() => navigate('/admin/incidents')} className="text-[11px] font-semibold text-[#ef4523] hover:text-[#ef4523]">View all</button>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr>
-                  <th className="px-4 py-2 border-b border-[#E5E5EA] text-[10px] font-bold text-[#8A8A8E] uppercase tracking-wider">Type</th>
-                  <th className="px-4 py-2 border-b border-[#E5E5EA] text-[10px] font-bold text-[#8A8A8E] uppercase tracking-wider">Date</th>
-                  <th className="px-4 py-2 border-b border-[#E5E5EA] text-[10px] font-bold text-[#8A8A8E] uppercase tracking-wider">Status</th>
+                  <th className="px-4 py-2 border-b border-[#E5E5EA] text-[10px] font-semibold text-[#8A8A8E] uppercase tracking-wider">Type</th>
+                  <th className="px-4 py-2 border-b border-[#E5E5EA] text-[10px] font-semibold text-[#8A8A8E] uppercase tracking-wider">Date</th>
+                  <th className="px-4 py-2 border-b border-[#E5E5EA] text-[10px] font-semibold text-[#8A8A8E] uppercase tracking-wider">Status</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#E5E5EA]">
@@ -626,7 +626,7 @@ const AdminDashboard = () => {
                       {new Date(incident.created_at).toLocaleDateString()}
                     </td>
                     <td className="px-4 py-2">
-                      <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${incident.status === 'active' ? 'bg-[#E5F9ED] text-[#34C759]' : 'bg-[#F2F2F7] text-[#8A8A8E]'}`}>
+                      <span className={`px-1.5 py-0.5 rounded text-[10px] font-semibold ${incident.status === 'active' ? 'bg-[#E5F9ED] text-[#34C759]' : 'bg-[#F2F2F7] text-[#8A8A8E]'}`}>
                         {incident.status}
                       </span>
                     </td>
@@ -646,9 +646,9 @@ const AdminDashboard = () => {
         <div className="bg-white rounded-lg border border-[#E5E5EA] shadow-[0_2px_12px_rgba(0,0,0,0.02)] overflow-hidden flex flex-col">
           <div className="p-4 border-b border-[#E5E5EA] flex justify-between items-center">
             <div className="flex items-center gap-1.5">
-              <span className="text-[12px] font-bold">Top Contributors</span>
+              <span className="text-[12px] font-semibold">Top Contributors</span>
             </div>
-            <button onClick={() => navigate('/admin/users')} className="text-[11px] font-bold text-[#ef4523] hover:text-[#ef4523]">View all</button>
+            <button onClick={() => navigate('/admin/users')} className="text-[11px] font-semibold text-[#ef4523] hover:text-[#ef4523]">View all</button>
           </div>
           <div className="p-6 flex flex-col items-center justify-center h-full text-center">
             <Users className="w-8 h-8 text-[#E5E5EA] mb-3" />

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { createRoot } from 'react-dom/client';
-import { ArrowLeft, MapPin, Map, Search, Navigation2, Clock, AlertTriangle, Crosshair, X, ChevronDown, ArrowUp, ArrowDown } from 'lucide-react';
+import { ArrowLeft, MapPin, Map, Search, Navigation2, Clock, AlertTriangle, Crosshair, X, ChevronDown } from 'lucide-react';
 import { useLocationStore } from '../store/useLocationStore';
 import { useNavigate, useLocation } from 'react-router-dom';
 import maplibregl from 'maplibre-gl';
@@ -12,11 +12,9 @@ import { onAuthStateChanged } from 'firebase/auth';
 import { getTravelModeIcon } from '../components/TravelIcons';
 import { IncidentDrawer } from '../components/IncidentDrawer';
 import { useIncidentCategories, incidentIconMap } from '../hooks/useIncidentCategories';
+import { filterActiveIncidents } from '../lib/incidentExpiry';
 import { useToast } from '../components/ToastContext';
-import { RiderCockpitLayout } from '../components/spatial/RiderCockpitLayout';
-import { EdgeRail } from '../components/spatial/EdgeRail';
-import { CommandDock } from '../components/spatial/CommandDock';
-import { SpatialMembrane } from '../components/spatial/SpatialMembrane';
+import { LeftNavigationRail } from '../components/LeftNavigationRail';
 import { Helmet } from 'react-helmet-async';
 
 const Routes = () => {
@@ -376,7 +374,8 @@ const Routes = () => {
       const twoHoursAgo = new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString();
       const { data } = await supabase.from('pins').select('*').eq('status', 'active').gte('created_at', twoHoursAgo);
       if (data) {
-        const filteredData = data.filter(pin => !pin.group_id || userGroups.some(g => g.id === pin.group_id));
+        const activePins = await filterActiveIncidents(data);
+        const filteredData = activePins.filter(pin => !pin.group_id || userGroups.some(g => g.id === pin.group_id));
         setRoutePins(filteredData);
         
         filteredData.forEach((pin: any) => {
@@ -419,33 +418,31 @@ const Routes = () => {
       <title>Route Planner | Ride Club</title>
     </Helmet>
 
-    <RiderCockpitLayout
-      topRail={<EdgeRail />}
-      mapChildren={
-        <div className="w-full h-full relative pointer-events-none">
-          <div ref={mapContainer} className="absolute inset-0 w-full h-full pointer-events-auto" />
-          <div className="absolute top-0 left-0 right-0 h-24 bg-gradient-to-b from-[var(--color-hmi-bg)] to-transparent pointer-events-none z-10" />
-        </div>
-      }
-      leftPanel={
-        <div className="flex flex-col gap-5 w-full h-full pointer-events-auto">
-          {/* Header */}
-          <div className="flex items-center gap-3 shrink-0 mb-2">
-            <button onClick={() => navigate(-1)} className="w-10 h-10 rounded-full bg-[var(--color-hmi-elevated)] hover:bg-[var(--color-hmi-text-muted)]/20 border border-[var(--color-hmi-text-muted)]/30 flex items-center justify-center transition-all active:scale-95">
-              <ArrowLeft className="w-5 h-5 text-[var(--color-hmi-text-primary)]" />
-            </button>
-            <div>
-              <h1 className="text-[24px] font-black text-[var(--color-hmi-text-primary)] tracking-tight leading-none uppercase">Plan Route</h1>
-            </div>
-          </div>
+    <div className="w-full h-full bg-[#E8F1F2] flex portrait:flex-col landscape:flex-row overflow-hidden">
 
-        <div className="flex-1 overflow-y-auto hide-scrollbar flex flex-col gap-6 pb-4">
-          
-          {/* Location Inputs Block */}
-          <div className="bg-white/5 border border-white/10 rounded-[20px] p-4 backdrop-blur-md flex flex-col gap-3">
+      {/* 1. Navigation Rail */}
+      <LeftNavigationRail />
+
+      {/* 2. Planner Panel */}
+      <div className="flex flex-col portrait:w-full portrait:h-[58%] portrait:order-3 portrait:border-t landscape:w-[340px] landscape:min-w-[300px] landscape:max-w-[380px] landscape:h-full landscape:order-2 landscape:border-r bg-[#F7F8FA] shrink-0 z-10 shadow-[4px_0_15px_rgba(0,0,0,0.05)] border-gray-200">
+
+        {/* Header */}
+        <div className="flex items-center gap-3 shrink-0 px-4 pt-3 pb-2">
+          <button onClick={() => navigate(-1)} className="w-9 h-9 rounded-full bg-white border border-gray-200 flex items-center justify-center text-[#111111] hover:bg-gray-50 active:scale-95 transition-all shadow-sm">
+            <ArrowLeft className="w-5 h-5" />
+          </button>
+          <h1 className="text-[#111111] font-semibold text-lg tracking-wide uppercase leading-tight">Plan Route</h1>
+        </div>
+
+        {/* Scrollable Content */}
+        <div className="flex-1 overflow-y-auto hide-scrollbar px-3 pb-3 flex flex-col gap-3">
+
+          {/* Location Inputs Card */}
+          <div className="bg-white rounded-[8px] border border-gray-100 p-3 flex flex-col gap-2.5 shadow-sm">
+
             {/* Origin */}
-            <div className="flex items-center gap-3">
-              <div className="w-3 h-3 rounded-full border-2 border-green-500 shrink-0" />
+            <div className="flex items-center gap-2.5">
+              <div className="w-2.5 h-2.5 rounded-full bg-[#34C759] border-2 border-white ring-1 ring-gray-200 shrink-0" />
               <div className="relative flex-1">
                 <input
                   type="text"
@@ -454,9 +451,9 @@ const Routes = () => {
                   onKeyDown={e => e.key === 'Enter' && handleGeocode(originText, 'origin')}
                   onBlur={() => originText.trim() && handleGeocode(originText, 'origin')}
                   placeholder="Start location..."
-                  className="w-full h-11 bg-black/20 border border-white/10 rounded-xl pl-3 pr-[80px] text-[14px] text-white font-medium outline-none focus:border-primary/50 focus:bg-black/40 transition-all"
+                  className="w-full h-10 bg-[#F7F8FA] border border-gray-200 rounded-xl pl-3 pr-[68px] text-[13px] text-[#111111] font-medium outline-none focus:border-[#FF5A00]/60 focus:bg-white transition-all placeholder-gray-400"
                 />
-                <div className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center gap-1">
+                <div className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center gap-0.5">
                   <button 
                     onClick={() => {
                       if (globalLocation) {
@@ -469,13 +466,15 @@ const Routes = () => {
                         });
                       }
                     }}
-                    className="w-[30px] h-[30px] rounded-lg flex items-center justify-center text-primary hover:bg-primary/10 active:scale-95 transition-all"
+                    className="w-[30px] h-[30px] rounded-lg flex items-center justify-center text-[#FF5A00] hover:bg-[#FF5A00]/10 active:scale-95 transition-all"
+                    title="Use my location"
                   >
                     <Crosshair className="w-4 h-4" />
                   </button>
                   <button 
                     onClick={() => setSelectingLocationFor('origin')}
-                    className={`w-[30px] h-[30px] rounded-lg flex items-center justify-center ${selectingLocationFor === 'origin' ? 'bg-primary text-white' : 'text-blue-400 hover:bg-blue-500/10'} active:scale-95 transition-all`}
+                    className={`w-[30px] h-[30px] rounded-lg flex items-center justify-center ${selectingLocationFor === 'origin' ? 'bg-[#FF5A00] text-white' : 'text-blue-500 hover:bg-blue-500/10'} active:scale-95 transition-all`}
+                    title="Pick on map"
                   >
                     <Map className="w-4 h-4" />
                   </button>
@@ -483,30 +482,37 @@ const Routes = () => {
               </div>
             </div>
 
+            {/* Connector line between origin and destination */}
+            <div className="flex items-center gap-2.5 -my-1.5">
+              <div className="w-[10px] flex justify-center">
+                <div className="w-0.5 h-5 border-l-2 border-dashed border-gray-300" />
+              </div>
+            </div>
+
             {/* Stops */}
             {stops.map((stop, index) => (
-              <div key={index} className="flex items-center gap-3">
-                <div className="w-3 h-3 rounded-full border-2 border-orange-500 shrink-0" />
-                <div className="flex-1 flex gap-2">
+              <div key={index} className="flex items-center gap-2.5">
+                <div className="w-2.5 h-2.5 rounded-full bg-[#FF8A4C] border-2 border-white ring-1 ring-gray-200 shrink-0" />
+                <div className="flex-1 flex gap-1.5">
                   <div className="relative">
                     <button 
                       onClick={() => setOpenDropdownIdx(openDropdownIdx === index ? null : index)}
-                      className="h-11 flex items-center justify-between gap-1 bg-black/20 border border-white/10 rounded-xl px-3 text-[12px] text-white/80 font-medium outline-none hover:bg-black/40 min-w-[95px]"
+                      className="h-10 flex items-center justify-between gap-1 bg-[#F7F8FA] border border-gray-200 rounded-xl px-2.5 text-[13px] text-[#111111] font-medium outline-none hover:bg-gray-100 min-w-[52px] transition-all"
                     >
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-1">
                         {getStopInfo(stop.type).emoji}
                       </div>
-                      <ChevronDown className="w-3 h-3 text-white/40" />
+                      <ChevronDown className="w-3 h-3 text-gray-400" />
                     </button>
                     {openDropdownIdx === index && (
-                      <div className="absolute top-[100%] left-0 mt-1 bg-[#1a1a1a] border border-white/10 rounded-xl shadow-xl z-[110] w-[140px] py-1 max-h-[200px] overflow-y-auto hide-scrollbar">
+                      <div className="absolute top-[100%] left-0 mt-1 bg-white border border-gray-100 rounded-xl shadow-xl z-[110] w-[140px] py-1 max-h-[200px] overflow-y-auto hide-scrollbar">
                         {['Pin', 'Food', 'Hospital', 'Mechanic', 'Tea', 'Fuel', 'Stay', 'Sightseeing'].map(t => (
                           <div key={t} onClick={() => { 
                             const newStops = [...stops];
                             newStops[index].type = t === 'Pin' ? 'Other' : t;
                             setStops(newStops);
                             setOpenDropdownIdx(null);
-                          }} className="px-3 py-2 text-[13px] font-medium text-white/80 hover:bg-white/10 cursor-pointer flex items-center gap-2">
+                          }} className="px-3 py-2 text-[13px] font-medium text-[#111111] hover:bg-gray-50 cursor-pointer flex items-center gap-2">
                             {getStopInfo(t === 'Pin' ? 'Other' : t).emoji} {t}
                           </div>
                         ))}
@@ -525,37 +531,36 @@ const Routes = () => {
                       onKeyDown={e => e.key === 'Enter' && handleGeocode(stop.text, `stop-${index}`)}
                       onBlur={() => stop.text.trim() && handleGeocode(stop.text, `stop-${index}`)}
                       placeholder={`Stop ${index + 1}...`}
-                      className="w-full h-11 bg-black/20 border border-white/10 rounded-xl pl-3 pr-[40px] text-[14px] text-white font-medium outline-none focus:border-primary/50 focus:bg-black/40 transition-all"
+                      className="w-full h-10 bg-[#F7F8FA] border border-gray-200 rounded-xl pl-3 pr-[38px] text-[13px] text-[#111111] font-medium outline-none focus:border-[#FF5A00]/60 focus:bg-white transition-all placeholder-gray-400"
                     />
                     <div className="absolute right-1 top-1/2 -translate-y-1/2">
                       <button 
                         onClick={() => setSelectingLocationFor(`stop-${index}`)}
-                        className={`w-[30px] h-[30px] rounded-lg flex items-center justify-center ${selectingLocationFor === `stop-${index}` ? 'bg-primary text-white' : 'text-blue-400 hover:bg-blue-500/10'} active:scale-95 transition-all`}
+                        className={`w-[30px] h-[30px] rounded-lg flex items-center justify-center ${selectingLocationFor === `stop-${index}` ? 'bg-[#FF5A00] text-white' : 'text-blue-500 hover:bg-blue-500/10'} active:scale-95 transition-all`}
+                        title="Pick on map"
                       >
                         <Map className="w-4 h-4" />
                       </button>
                     </div>
                   </div>
-                  <div className="flex items-center">
-                    <button 
-                      onClick={() => {
-                        const newStops = stops.filter((_, i) => i !== index);
-                        setStops(newStops);
-                      }}
-                      className="w-11 h-11 bg-red-500/10 text-red-400 hover:bg-red-500/20 border border-red-500/20 rounded-xl active:scale-95 transition-colors flex items-center justify-center"
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
-                  </div>
+                  <button 
+                    onClick={() => {
+                      const newStops = stops.filter((_, i) => i !== index);
+                      setStops(newStops);
+                    }}
+                    className="w-10 h-10 bg-red-50 text-red-500 hover:bg-red-100 rounded-xl active:scale-95 transition-colors flex items-center justify-center shrink-0"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
                 </div>
               </div>
             ))}
 
             {/* Destination */}
-            <div className="flex items-center gap-3">
-              <div className="w-3 h-3 rounded-full border-2 border-red-500 shrink-0" />
+            <div className="flex items-center gap-2.5">
+              <div className="w-2.5 h-2.5 rounded-full bg-[#FF3B30] border-2 border-white ring-1 ring-gray-200 shrink-0" />
               <div className="relative flex-1">
-                <Search className="w-4 h-4 text-white/40 absolute left-3 top-1/2 -translate-y-1/2" />
+                <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
                 <input
                   type="text"
                   value={destText}
@@ -563,12 +568,13 @@ const Routes = () => {
                   onKeyDown={e => e.key === 'Enter' && handleGeocode(destText, 'dest')}
                   onBlur={() => destText.trim() && handleGeocode(destText, 'dest')}
                   placeholder="Destination..."
-                  className="w-full h-11 bg-black/20 border border-white/10 rounded-xl pl-9 pr-[40px] text-[14px] text-white font-medium outline-none focus:border-primary/50 focus:bg-black/40 transition-all"
+                  className="w-full h-10 bg-[#F7F8FA] border border-gray-200 rounded-xl pl-9 pr-[38px] text-[13px] text-[#111111] font-medium outline-none focus:border-[#FF5A00]/60 focus:bg-white transition-all placeholder-gray-400"
                 />
                 <div className="absolute right-1 top-1/2 -translate-y-1/2">
                   <button 
                     onClick={() => setSelectingLocationFor('dest')}
-                    className={`w-[30px] h-[30px] rounded-lg flex items-center justify-center ${selectingLocationFor === 'dest' ? 'bg-primary text-white' : 'text-blue-400 hover:bg-blue-500/10'} active:scale-95 transition-all`}
+                    className={`w-[30px] h-[30px] rounded-lg flex items-center justify-center ${selectingLocationFor === 'dest' ? 'bg-[#FF5A00] text-white' : 'text-blue-500 hover:bg-blue-500/10'} active:scale-95 transition-all`}
+                    title="Pick on map"
                   >
                     <Map className="w-4 h-4" />
                   </button>
@@ -579,7 +585,7 @@ const Routes = () => {
             {stops.length < 5 && (
               <button 
                 onClick={() => setStops([...stops, { text: '', coords: null }])} 
-                className="text-[12px] font-bold text-primary hover:bg-primary/10 transition-colors w-fit px-3 py-1.5 rounded-lg border border-primary/20 mt-1 ml-6"
+                className="text-[12px] font-semibold text-[#FF5A00] hover:bg-[#FF5A00]/10 transition-colors w-fit px-3 py-1.5 rounded-lg border border-[#FF5A00]/20 mt-0.5 ml-5"
               >
                 + Add Stop
               </button>
@@ -587,89 +593,114 @@ const Routes = () => {
           </div>
 
           {/* Travel Modes */}
-          <div className="flex gap-2">
+          <div className="bg-white rounded-[8px] border border-gray-100 p-1.5 grid grid-cols-4 gap-1 shadow-sm">
             {TRAVEL_MODES.map(mode => (
               <button
                 key={mode.id}
                 onClick={() => setSelectedMode(mode)}
-                className={`flex-1 flex flex-col items-center justify-center py-3 rounded-xl border transition-all ${
+                className={`flex flex-col items-center justify-center py-2 rounded-lg transition-all ${
                   selectedMode.id === mode.id
-                    ? 'bg-primary border-primary text-white shadow-lg shadow-primary/20'
-                    : 'bg-white/5 border-white/10 text-white/40 hover:bg-white/10'
+                    ? 'bg-[#FF5A00] text-white shadow-md shadow-[#FF5A00]/25'
+                    : 'text-gray-400 hover:bg-gray-50'
                 }`}
               >
-                <span className="mb-1">{getTravelModeIcon(mode.id, 'w-5 h-5')}</span>
-                <span className="font-bold text-[11px] uppercase tracking-wider">{mode.label}</span>
+                <span className="mb-0.5">{getTravelModeIcon(mode.id, 'w-[18px] h-[18px]')}</span>
+                <span className="font-semibold text-[10px] uppercase tracking-wider">{mode.label}</span>
               </button>
             ))}
           </div>
 
-          {/* Route Info & Start Button */}
-          <div className="mt-auto flex flex-col gap-4">
-            {routeOptions.map((route) => (
-              <div 
-                key={route.id}
-                onClick={() => setSelectedRoute(route.id)}
-                className={`rounded-xl border-2 transition-all p-4 ${
-                  selectedRoute === route.id ? 'border-primary bg-primary/10' : 'border-white/10 bg-white/5'
-                }`}
-              >
-                <div className="flex justify-between items-start mb-4">
-                  <div>
-                    <h3 className={`text-[24px] font-black leading-none ${selectedRoute === route.id ? 'text-primary' : 'text-white'}`}>
-                      {route.eta}
-                    </h3>
-                  </div>
-                  <div className="text-right">
-                    <span className="text-[16px] font-bold text-white/80">{route.distance}</span>
-                  </div>
-                </div>
-                
-                <div className="flex gap-2">
-                  <div className="flex items-center gap-1.5 text-[11px] font-bold text-white/60 bg-black/40 px-3 py-1.5 rounded-lg uppercase tracking-wider">
-                    <Clock className="w-3.5 h-3.5" />
-                    {route.traffic} Traffic
-                  </div>
-                  {route.incidents > 0 && (
-                    <div className="flex items-center gap-1.5 text-[11px] font-bold text-red-400 bg-red-500/10 border border-red-500/20 px-3 py-1.5 rounded-lg uppercase tracking-wider">
-                      <AlertTriangle className="w-3.5 h-3.5" />
-                      {route.incidents} Incidents
-                    </div>
+          {/* Route Summary */}
+          {routeOptions.map((route) => (
+            <div 
+              key={route.id}
+              onClick={() => setSelectedRoute(route.id)}
+              className={`bg-white rounded-[8px] border p-3.5 transition-all shadow-sm cursor-pointer ${
+                selectedRoute === route.id ? 'border-[#FF5A00] ring-1 ring-[#FF5A00]/30' : 'border-gray-100'
+              }`}
+            >
+              <div className="flex justify-between items-start mb-3">
+                <div className="flex items-center gap-2">
+                  <span className="text-[9px] font-semibold text-gray-400 uppercase tracking-wider">Fastest Route</span>
+                  {selectedRoute === route.id && (
+                    <span className="bg-[#FF5A00] text-white text-[8px] font-semibold px-1.5 py-0.5 rounded-sm leading-none">SELECTED</span>
                   )}
                 </div>
               </div>
-            ))}
+              <div className="flex justify-between items-end mb-3">
+                <h3 className="text-[26px] font-semibold text-[#111111] leading-none tabular-nums">{route.eta}</h3>
+                <span className="text-[15px] font-semibold text-[#111111]">{route.distance}</span>
+              </div>
+              
+              <div className="flex gap-1.5">
+                <div className={`flex items-center gap-1 text-[10px] font-semibold px-2.5 py-1.5 rounded-lg uppercase tracking-wider ${
+                  route.traffic === 'Heavy' || route.traffic === 'Severe'
+                    ? 'bg-red-50 text-red-600'
+                    : route.traffic === 'Moderate'
+                    ? 'bg-amber-50 text-amber-600'
+                    : 'bg-green-50 text-green-600'
+                }`}>
+                  <Clock className="w-3 h-3" />
+                  {route.traffic} Traffic
+                </div>
+                {route.incidents > 0 && (
+                  <div className="flex items-center gap-1 text-[10px] font-semibold text-red-500 bg-red-50 border border-red-100 px-2.5 py-1.5 rounded-lg uppercase tracking-wider">
+                    <AlertTriangle className="w-3 h-3" />
+                    {route.incidents} Incidents
+                  </div>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
 
-            <button 
-              onClick={() => {
-                const selected = routeOptions.find(r => r.id === selectedRoute);
-                if (selected && (selected as any).feature) {
-                  navigate('/navigation', { 
-                    state: { 
-                      routeFeature: (selected as any).feature,
-                      eta: selected.eta,
-                      distance: selected.distance,
-                      destName: destText,
-                      destLat: destCoords.lat,
-                      destLng: destCoords.lng,
-                      travelMode: selectedMode,
-                      isGroupMode: isGroupMode
-                    } 
-                  });
-                } else {
-                  navigate('/navigation');
-                }
-              }} 
-              className="w-full py-4 bg-primary text-white font-bold text-[16px] rounded-xl flex items-center justify-center gap-2 shadow-lg shadow-primary/30 active:scale-95 transition-all uppercase tracking-wider"
-            >
-              <Navigation2 className="w-5 h-5 fill-white" />
-              Start Navigation
+        {/* Sticky Start Button */}
+        <div className="shrink-0 p-3 border-t border-gray-200 bg-[#F7F8FA]">
+          <button 
+            onClick={() => {
+              const selected = routeOptions.find(r => r.id === selectedRoute);
+              if (selected && (selected as any).feature) {
+                navigate('/navigation', { 
+                  state: { 
+                    routeFeature: (selected as any).feature,
+                    eta: selected.eta,
+                    distance: selected.distance,
+                    destName: destText,
+                    destLat: destCoords.lat,
+                    destLng: destCoords.lng,
+                    travelMode: selectedMode,
+                    isGroupMode: isGroupMode
+                  } 
+                });
+              } else {
+                navigate('/navigation');
+              }
+            }} 
+            className="w-full py-3.5 bg-[#FF5A00] text-white font-semibold text-[15px] rounded-xl flex items-center justify-center gap-2 shadow-lg shadow-[#FF5A00]/25 active:scale-95 hover:bg-[#ff6a1a] transition-all uppercase tracking-wider"
+          >
+            <Navigation2 className="w-5 h-5 fill-white" />
+            Start Navigation
+          </button>
+        </div>
+      </div>
+
+      {/* 3. Map Area */}
+      <div className="portrait:w-full portrait:flex-1 portrait:order-1 landscape:flex-1 landscape:h-full landscape:order-3 relative z-0 overflow-hidden">
+        <div ref={mapContainer} className="absolute inset-0 w-full h-full" />
+        <div className="absolute top-0 left-0 right-0 h-16 bg-gradient-to-b from-black/10 to-transparent pointer-events-none z-10" />
+
+        {/* Map hint banner when picking a location */}
+        {selectingLocationFor && (
+          <div className="absolute top-4 left-1/2 -translate-x-1/2 z-20 bg-[#111111]/90 backdrop-blur text-white text-[12px] font-semibold px-4 py-2 rounded-full flex items-center gap-2 shadow-lg animate-in fade-in duration-200">
+            <MapPin className="w-3.5 h-3.5 text-[#FF5A00]" />
+            Tap on the map to set {selectingLocationFor === 'origin' ? 'start' : selectingLocationFor === 'dest' ? 'destination' : 'stop'} location
+            <button onClick={() => { setSelectingLocationFor(null); selectingLocationForRef.current = null; }} className="ml-1 text-white/60 hover:text-white">
+              <X className="w-3.5 h-3.5" />
             </button>
           </div>
-        </div>
-        </div>
-      }
-    />
+        )}
+      </div>
+    </div>
 
       {selectedIncident && (
         <IncidentDrawer incident={selectedIncident} onClose={() => setSelectedIncident(null)} />

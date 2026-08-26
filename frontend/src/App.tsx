@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Link, Outlet, useLocation, Navigate, useN
 import { Map as MapIcon, Bell, User, Users, Navigation2, Home as HomeIcon } from 'lucide-react';
 import { ToastProvider, useToast } from './components/ToastContext';
 import { useLocationStore } from './store/useLocationStore';
+import { useNavigationStore } from './store/useNavigationStore';
 import { ConfirmProvider } from './components/ConfirmDialog';
 import ErrorBoundary from './components/ErrorBoundary';
 import { LoadingSpinner } from './components/LoadingSpinner';
@@ -28,6 +29,8 @@ import { MapControls } from './components/home/MapControls';
 import { LowerMapControl } from './components/home/LowerMapControl';
 import { HomeMap } from './components/home/HomeMap';
 import { renderRiderMarker } from './components/home/RiderMarker';
+import { LeftNavigationRail } from './components/LeftNavigationRail';
+import { getRealtime } from './realtime';
 const measurementId = import.meta.env.VITE_GA_MEASUREMENT_ID;
 if (measurementId) {
   ReactGA.initialize(measurementId);
@@ -216,8 +219,10 @@ const RequireAuth = ({ children }: { children: React.ReactNode }) => {
   useEffect(() => {
     if (user && !banned && !needsPolicyAcceptance) {
       useLocationStore.getState().startTracking();
+      getRealtime().connect(); // shared realtime connection for the whole app
     } else {
       useLocationStore.getState().stopTracking();
+      getRealtime().disconnect();
     }
   }, [user, banned, needsPolicyAcceptance]);
 
@@ -326,35 +331,48 @@ const Layout = () => {
   const now = new Date();
   const etaStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
 
-  const isCreateRideRoute = location.pathname.startsWith('/ride-plus/create');
   const isHomeRoute = location.pathname === '/home';
+  const isMapRoute = location.pathname === '/map';
+  const isRidePlusRoute = location.pathname.startsWith('/ride-plus');
+  const isProfileRoute = location.pathname === '/profile';
+  const isGroupsRoute = location.pathname === '/groups';
+  const isGroupDashRoute = location.pathname === '/group-ride-dashboard';
+  const isFullPageRoute = isHomeRoute || isRidePlusRoute || isProfileRoute || isGroupsRoute || isGroupDashRoute;
 
   return (
-    <RiderCockpitLayout
-      leftPanelWidth={isHomeRoute ? '100%' : (isCreateRideRoute ? '60%' : (isMapReporting ? '50%' : '32%'))}
-      mapChildren={
-        <div className="relative w-full h-full">
-          {(activeNavigation || currentRide) && (
-            <NavigationOverlay 
-              distanceToTurn={activeNavigation?.next_turn_distance || '--'}
-              streetName={activeNavigation?.next_street || locationName || 'Acquiring location...'}
-              turnDirection={activeNavigation?.next_turn_direction || 'straight'}
-              totalDistanceRemaining={activeNavigation?.remaining_distance || (currentRide ? `${currentRide.total_distance || '--'} km` : '--')}
-              timeRemaining={activeNavigation?.remaining_time || currentRide?.estimated_duration || '--'}
-              ridersNearby={nearbyRiderCount}
-              eta={etaStr}
-            />
-          )}
-          <MapControls map={mapInstance} />
-          <LowerMapControl />
-          <HomeMap 
-            userLocation={userLocation} 
-            onMapLoad={(map) => setMapInstance(map)} 
-          />
-        </div>
-      }
-      leftPanel={<Outlet context={{ map: mapInstance }} />}
-    />
+    <div className="w-full h-full flex portrait:flex-col landscape:flex-row overflow-hidden">
+      <LeftNavigationRail />
+      <div className="flex-1 min-w-0 min-h-0">
+        <RiderCockpitLayout
+          leftPanelWidth={isFullPageRoute ? '100%' : (isMapReporting ? '50%' : '32%')}
+          variant={isFullPageRoute ? 'light' : 'dark'}
+          mapChildren={
+            !isHomeRoute && (
+              <div className="relative w-full h-full">
+                {(activeNavigation || currentRide) && (
+                  <NavigationOverlay
+                    distanceToTurn={activeNavigation?.next_turn_distance || '--'}
+                    streetName={activeNavigation?.next_street || locationName || 'Acquiring location...'}
+                    turnDirection={activeNavigation?.next_turn_direction || 'straight'}
+                    totalDistanceRemaining={activeNavigation?.remaining_distance || (currentRide ? `${currentRide.total_distance || '--'} km` : '--')}
+                    timeRemaining={activeNavigation?.remaining_time || currentRide?.estimated_duration || '--'}
+                    ridersNearby={nearbyRiderCount}
+                    eta={etaStr}
+                  />
+                )}
+                <MapControls map={mapInstance} />
+                {!isMapRoute && <LowerMapControl />}
+                <HomeMap
+                  userLocation={userLocation}
+                  onMapLoad={(map) => setMapInstance(map)}
+                />
+              </div>
+            )
+          }
+          leftPanel={<Outlet context={{ map: mapInstance, currentRide }} />}
+        />
+      </div>
+    </div>
   );
 };
 
@@ -365,6 +383,25 @@ const MobileShell = () => (
     </div>
   </div>
 );
+
+// Dev-only: renders the home cockpit without auth for fast visual iteration
+const DevHomeShell = () => {
+  useEffect(() => {
+    useLocationStore.setState({ speed: 72 });
+  }, []);
+  return (
+    <div className="w-full h-full flex portrait:flex-col landscape:flex-row overflow-hidden">
+      <LeftNavigationRail />
+      <div className="flex-1 min-w-0 min-h-0">
+        <RiderCockpitLayout
+          leftPanelWidth="100%"
+          variant="light"
+          leftPanel={<Outlet context={{ map: null, currentRide: null }} />}
+        />
+      </div>
+    </div>
+  );
+};
 
 const MaintenanceGuard = ({ children, isAdminDomain, isWebsiteDomain, isSupportDomain }: { children: React.ReactNode, isAdminDomain: boolean, isWebsiteDomain: boolean, isSupportDomain: boolean }) => {
   const [isMaintenance, setIsMaintenance] = useState(false);
@@ -418,8 +455,15 @@ const MaintenanceGuard = ({ children, isAdminDomain, isWebsiteDomain, isSupportD
   if (loading) return <LoadingSpinner fullScreen />;
 
   const isAdminRoute = isAdminDomain || isSupportDomain || location.pathname.startsWith('/admin') || location.pathname.startsWith('/support-admin');
-  const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-  const isWebBlocked = blockWebAccess && !isAdminRoute && !isWebsiteDomain && !isSupportDomain && !isLocalhost;
+  const h = window.location.hostname;
+  const isLocalDev = import.meta.env.DEV
+    || h === 'localhost'
+    || h === '127.0.0.1'
+    || h === '::1'
+    || /^10\.\d+\.\d+\.\d+$/.test(h)
+    || /^192\.168\.\d+\.\d+$/.test(h)
+    || /^172\.(1[6-9]|2\d|3[01])\.\d+\.\d+$/.test(h);
+  const isWebBlocked = blockWebAccess && !isAdminRoute && !isWebsiteDomain && !isSupportDomain && !isLocalDev;
 
   if (isWebBlocked && !Capacitor.isNativePlatform()) {
      return (
@@ -432,16 +476,16 @@ const MaintenanceGuard = ({ children, isAdminDomain, isWebsiteDomain, isSupportD
               <line x1="2" y1="4" x2="22" y2="20" stroke="currentColor" strokeWidth="2" />
             </svg>
          </div>
-         <h1 className="text-2xl font-bold mb-3 text-[#273a5a]">App Access Restricted</h1>
+         <h1 className="text-2xl font-semibold mb-3 text-[#273a5a]">App Access Restricted</h1>
          <p className="text-[#8A8A8E] max-w-sm leading-relaxed mb-6">
            You are not allowed to access the Ride Club app via a web browser. Please download the official mobile app to continue.
          </p>
-         <a href="/" className="px-6 py-3 bg-[#ef4523] text-white rounded-lg font-bold">Back to Website</a>
+         <a href="/" className="px-6 py-3 bg-[#ef4523] text-white rounded-lg font-semibold">Back to Website</a>
        </div>
      );
   }
 
-  if (!isAdminRoute && !isLocalhost && comingSoonConfig) {
+  if (!isAdminRoute && !isLocalDev && comingSoonConfig) {
     return (
        <Suspense fallback={<LoadingSpinner fullScreen />}>
           <ComingSoonScreen 
@@ -459,7 +503,7 @@ const MaintenanceGuard = ({ children, isAdminDomain, isWebsiteDomain, isSupportD
     );
   }
 
-  if (isMaintenance && !isAdminRoute) {
+  if (isMaintenance && !isAdminRoute && !isLocalDev) {
     return (
       <div className="fixed inset-0 bg-white z-[9999] flex flex-col items-center justify-center p-6 text-center font-sans">
         <div className="w-24 h-24 mb-6 bg-[#FFF0E6] rounded-full flex items-center justify-center">
@@ -469,7 +513,7 @@ const MaintenanceGuard = ({ children, isAdminDomain, isWebsiteDomain, isSupportD
             <path d="M80.097,69.682L54.472,43.714c-0.84-0.855-1.898-1.527-3.148-1.996l-1.51-0.568l-4.578,4.58L21.023,21.518 l2.235-2.237c0.602-0.6,0.9-1.439,0.813-2.283c-0.086-0.846-0.547-1.607-1.258-2.074L9.72,6.321 C8.601,5.587,7.118,5.739,6.169,6.687l-4.482,4.49c-0.945,0.947-1.096,2.428-0.361,3.545l8.6,13.094 c0.465,0.711,1.227,1.174,2.072,1.26c0.096,0.01,0.191,0.014,0.287,0.014c0.746,0,1.465-0.295,1.998-0.826l2.02-2.021 l24.211,24.211l-4.588,4.59l0.572,1.512c0.459,1.207,1.119,2.25,1.965,3.105l25.645,25.984c1.688,1.688,4.006,2.617,6.527,2.617 h0.002c2.994,0,6.018-1.309,8.334-3.627l0.133-0.139c2.057-2.051,3.318-4.678,3.553-7.396 C82.907,74.219,81.993,71.582,80.097,69.682z M75.522,80.99l-0.137,0.145c-1.344,1.344-3.076,2.117-4.75,2.117 c-0.838,0-2.039-0.201-2.979-1.139L42.026,56.141c-0.02-0.02-0.039-0.039-0.059-0.059l8.893-8.895 c0.012,0.014,0.023,0.027,0.035,0.039L76.54,73.211c0.844,0.848,1.246,2.076,1.125,3.455C77.53,78.211,76.784,79.73,75.522,80.99z" fill="#ef4523"/>
           </svg>
         </div>
-        <h1 className="text-2xl font-bold mb-3 text-[#273a5a]">Under Maintenance</h1>
+        <h1 className="text-2xl font-semibold mb-3 text-[#273a5a]">Under Maintenance</h1>
         <p className="text-[#8A8A8E] max-w-sm leading-relaxed">
           We are currently upgrading our systems to bring you a better experience. We'll be back online shortly.
         </p>
@@ -485,6 +529,10 @@ function App() {
   const isAdminDomain = hostname.startsWith('admin');
   const isSupportDomain = hostname.startsWith('support');
   const isWebsiteDomain = hostname === 'rideclub.in' || hostname === 'www.rideclub.in';
+
+  useEffect(() => {
+    useNavigationStore.getState().init();
+  }, []);
 
   return (
     <ErrorBoundary>
@@ -614,6 +662,19 @@ function App() {
                   <Route path="/support" element={<SupportCenter />} />
                   <Route path="/support/:ticketId" element={<SupportChat />} />
                 </Route>
+
+                {/* Dev-only home preview (no auth) */}
+                {import.meta.env.DEV && (
+                  <Route path="/dev-home" element={<DevHomeShell />}>
+                    <Route index element={<Home />} />
+                  </Route>
+                )}
+                {import.meta.env.DEV && (
+                  <Route path="/dev-incident/:id" element={<IncidentDetail />} />
+                )}
+                {import.meta.env.DEV && (
+                  <Route path="/dev-create" element={<CreateRide />} />
+                )}
                 
                 <Route path="/incident/:id" element={<RequireAuth><IncidentDetail /></RequireAuth>} />
                 <Route path="/route-planner" element={<RequireAuth><RoutesScreen /></RequireAuth>} />

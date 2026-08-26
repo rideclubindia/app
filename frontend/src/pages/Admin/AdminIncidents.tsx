@@ -237,8 +237,8 @@ const AdminIncidents = () => {
         const popupNode = document.createElement('div');
         popupNode.innerHTML = `
           <div class="flex flex-col items-center gap-1.5 p-0.5">
-            <span class="text-[11px] font-bold text-[#273a5a]">New Incident?</span>
-            <button id="confirm-btn" class="h-7 px-3 bg-[#ef4523] text-white rounded text-[11px] font-bold hover:bg-[#ef4523] transition-colors whitespace-nowrap shadow-sm">
+            <span class="text-[11px] font-semibold text-[#273a5a]">New Incident?</span>
+            <button id="confirm-btn" class="h-7 px-3 bg-[#ef4523] text-white rounded text-[11px] font-semibold hover:bg-[#ef4523] transition-colors whitespace-nowrap shadow-sm">
               Confirm Location
             </button>
           </div>
@@ -260,8 +260,8 @@ const AdminIncidents = () => {
         const newPopupNode = document.createElement('div');
         newPopupNode.innerHTML = `
           <div class="flex flex-col items-center gap-1.5 p-0.5">
-            <span class="text-[11px] font-bold text-[#273a5a]">New Incident?</span>
-            <button id="confirm-btn" class="h-7 px-3 bg-[#ef4523] text-white rounded text-[11px] font-bold hover:bg-[#ef4523] transition-colors whitespace-nowrap shadow-sm">
+            <span class="text-[11px] font-semibold text-[#273a5a]">New Incident?</span>
+            <button id="confirm-btn" class="h-7 px-3 bg-[#ef4523] text-white rounded text-[11px] font-semibold hover:bg-[#ef4523] transition-colors whitespace-nowrap shadow-sm">
               Confirm Location
             </button>
           </div>
@@ -345,13 +345,13 @@ markersRef.current[pin.id] = marker;
           <div className="flex flex-col gap-2 mb-2">
             {/* Quick Filters */}
             <div className="flex gap-1 bg-gray-100 p-1 rounded-lg self-start">
-              <button onClick={() => setFilterType('all')} className={`px-2 py-1 text-[10px] font-bold rounded ${filterType === 'all' ? 'bg-white shadow text-[#273a5a]' : 'text-gray-500'}`}>All</button>
-              <button onClick={() => setFilterType('public')} className={`px-2 py-1 text-[10px] font-bold rounded flex items-center gap-1 ${filterType === 'public' ? 'bg-white shadow text-[#273a5a]' : 'text-gray-500'}`}><Globe className="w-3 h-3"/> Public</button>
-              <button onClick={() => setFilterType('group')} className={`px-2 py-1 text-[10px] font-bold rounded flex items-center gap-1 ${filterType === 'group' ? 'bg-white shadow text-[#273a5a]' : 'text-gray-500'}`}><Users className="w-3 h-3"/> Groups</button>
+              <button onClick={() => setFilterType('all')} className={`px-2 py-1 text-[10px] font-semibold rounded ${filterType === 'all' ? 'bg-white shadow text-[#273a5a]' : 'text-gray-500'}`}>All</button>
+              <button onClick={() => setFilterType('public')} className={`px-2 py-1 text-[10px] font-semibold rounded flex items-center gap-1 ${filterType === 'public' ? 'bg-white shadow text-[#273a5a]' : 'text-gray-500'}`}><Globe className="w-3 h-3"/> Public</button>
+              <button onClick={() => setFilterType('group')} className={`px-2 py-1 text-[10px] font-semibold rounded flex items-center gap-1 ${filterType === 'group' ? 'bg-white shadow text-[#273a5a]' : 'text-gray-500'}`}><Users className="w-3 h-3"/> Groups</button>
             </div>
 
             <div>
-              <h1 className="text-[18px] font-bold text-dark flex items-center gap-2">
+              <h1 className="text-[18px] font-semibold text-dark flex items-center gap-2">
                 <ShieldAlert className="w-5 h-5 text-[#ef4523]" />
                 {liveCount} Active Incidents
               </h1>
@@ -385,7 +385,7 @@ markersRef.current[pin.id] = marker;
                     {statusOptions.map(opt => (
                       <button
                         key={opt.value}
-                        className={`w-full text-left px-3 py-2 text-[12px] font-bold transition-colors ${statusFilter === opt.value ? 'text-[#ef4523] bg-[#FFF0E6]' : 'text-dark hover:bg-gray-50'}`}
+                        className={`w-full text-left px-3 py-2 text-[12px] font-semibold transition-colors ${statusFilter === opt.value ? 'text-[#ef4523] bg-[#FFF0E6]' : 'text-dark hover:bg-gray-50'}`}
                         onClick={() => {
                           setStatusFilter(opt.value as any);
                           setIsStatusDropdownOpen(false);
@@ -422,7 +422,7 @@ markersRef.current[pin.id] = marker;
                   <div className="flex-1 flex flex-col justify-between py-0">
                     <div className="flex justify-between items-start">
                       <div className="flex flex-col">
-                        <h3 className="text-[12px] font-bold leading-none pt-0.5">{pin.category.split(':')[0]}</h3>
+                        <h3 className="text-[12px] font-semibold leading-none pt-0.5">{pin.category.split(':')[0]}</h3>
                         <div className="flex items-center gap-1 text-[#8A8A8E] mt-0.5">
                           <MapPin className="w-2.5 h-2.5" />
                           <span className="text-[9px] font-medium truncate max-w-[130px]">{pin.location_name || `${pin.latitude.toFixed(4)}, ${pin.longitude.toFixed(4)}`}</span>
@@ -430,7 +430,7 @@ markersRef.current[pin.id] = marker;
                       </div>
                       <div className="flex items-center gap-1">
                         {pin.group_id && <span title="Group Incident"><Users className="w-2.5 h-2.5 text-[#ef4523]" /></span>}
-                        <span className={`text-[8px] font-bold px-1 py-0.5 rounded uppercase ${
+                        <span className={`text-[8px] font-semibold px-1 py-0.5 rounded uppercase ${
                           pin.displayStatus === 'hidden' ? 'bg-[#F2F4F7] text-[#8A8A8E]' : 
                           pin.displayStatus === 'expired' ? 'bg-yellow-50 text-yellow-600' :
                           'bg-[#E5F9ED] text-[#34C759]'
@@ -441,7 +441,7 @@ markersRef.current[pin.id] = marker;
                     </div>
                     
                     <div className="flex justify-between items-end mt-1">
-                      <div className="flex items-center gap-1.5 text-[9px] font-bold text-[#8A8A8E]">
+                      <div className="flex items-center gap-1.5 text-[9px] font-semibold text-[#8A8A8E]">
                         <span>{new Date(pin.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
                         <div className="w-0.5 h-0.5 bg-[#E5E5EA] rounded-full"></div>
                         <div className="flex items-center gap-1">
@@ -468,7 +468,7 @@ markersRef.current[pin.id] = marker;
             <>
               <div className="px-6 py-5 border-b border-[#E5E5EA] flex justify-between items-start shrink-0">
                 <div>
-                  <h2 className="text-[18px] font-bold text-[#273a5a] leading-tight">Add New Incident</h2>
+                  <h2 className="text-[18px] font-semibold text-[#273a5a] leading-tight">Add New Incident</h2>
                   <p className="text-[11px] text-[#ef4523] mt-1 font-semibold">Location Confirmed</p>
                 </div>
                 <button onClick={() => { setIsAdding(false); setTempLocation(null); if (newMarkerRef.current) newMarkerRef.current.remove(); newMarkerRef.current = null; }} className="text-[#8A8A8E] hover:text-[#273a5a] bg-gray-50 rounded p-1">
@@ -478,14 +478,14 @@ markersRef.current[pin.id] = marker;
               <div className="flex-1 overflow-y-auto px-5 py-6 flex flex-col gap-8">
                 
                 {/* Location Confirmed Text */}
-                <div className="w-full bg-green-50 text-green-700 font-bold p-4 rounded-lg flex items-center gap-3">
+                <div className="w-full bg-green-50 text-green-700 font-semibold p-4 rounded-lg flex items-center gap-3">
                   <MapPin className="w-5 h-5" />
                   Location Confirmed on Map
                 </div>
                 
                 {/* Select Type Grid */}
                 <div className="flex-shrink-0">
-                  <h3 className="font-bold text-[16px] text-dark mb-4">Select Type</h3>
+                  <h3 className="font-semibold text-[16px] text-dark mb-4">Select Type</h3>
                   <div className="grid grid-cols-4 gap-y-6 gap-x-2">
                     {categories.map((type) => {
                       const IconComp = incidentIconMap[type.iconName as keyof typeof incidentIconMap] || MapPin;
@@ -507,7 +507,7 @@ markersRef.current[pin.id] = marker;
                 {/* Custom Name (if Other) */}
                 {formData.category === 'Other' && (
                   <div className="flex-shrink-0 animate-in fade-in slide-in-from-top-2">
-                    <h3 className="font-bold text-[16px] text-dark mb-3">Custom Name</h3>
+                    <h3 className="font-semibold text-[16px] text-dark mb-3">Custom Name</h3>
                     <input 
                       type="text" 
                       className="w-full bg-white border border-gray-200 rounded-lg p-4 outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all text-[15px]" 
@@ -520,7 +520,7 @@ markersRef.current[pin.id] = marker;
                 
                 {/* Description Area */}
                 <div className="flex-shrink-0">
-                  <h3 className="font-bold text-[16px] text-dark mb-3">
+                  <h3 className="font-semibold text-[16px] text-dark mb-3">
                     Description <span className="text-gray-400 font-normal text-[14px]">(optional)</span>
                   </h3>
                   <div className="relative">
@@ -536,7 +536,7 @@ markersRef.current[pin.id] = marker;
 
                 {/* Photo Area */}
                 <div className="flex-shrink-0">
-                  <h3 className="font-bold text-[16px] text-dark mb-3">
+                  <h3 className="font-semibold text-[16px] text-dark mb-3">
                     Add Photos ({selectedFiles.length}/3) <span className="text-gray-400 font-normal text-[14px]">(optional)</span>
                   </h3>
                   
@@ -591,7 +591,7 @@ markersRef.current[pin.id] = marker;
                 
                 {/* Post To Selection */}
                 <div className="flex-shrink-0 relative">
-                  <h3 className="font-bold text-[16px] text-dark mb-3">Post To</h3>
+                  <h3 className="font-semibold text-[16px] text-dark mb-3">Post To</h3>
                   <div 
                     onClick={() => setShowGroupDropdown(!showGroupDropdown)}
                     className="w-full bg-white border border-gray-200 rounded-lg p-4 flex items-center justify-between cursor-pointer outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"
@@ -614,7 +614,7 @@ markersRef.current[pin.id] = marker;
                         <div className="flex items-center gap-3">
                           <Globe className={`w-5 h-5 ${selectedGroupForReport === null ? 'text-primary' : 'text-gray-400'}`} />
                           <div>
-                            <p className={`font-bold text-[15px] ${selectedGroupForReport === null ? 'text-primary' : 'text-dark'}`}>Public (Everyone)</p>
+                            <p className={`font-semibold text-[15px] ${selectedGroupForReport === null ? 'text-primary' : 'text-dark'}`}>Public (Everyone)</p>
                             <p className="text-[12px] text-gray-500">Anyone nearby can see this</p>
                           </div>
                         </div>
@@ -631,7 +631,7 @@ markersRef.current[pin.id] = marker;
                             <div className="flex items-center gap-3">
                               <Users className={`w-5 h-5 ${selectedGroupForReport === g.id ? 'text-primary' : 'text-gray-400'}`} />
                               <div>
-                                <p className={`font-bold text-[15px] ${selectedGroupForReport === g.id ? 'text-primary' : 'text-dark'}`}>{g.name}</p>
+                                <p className={`font-semibold text-[15px] ${selectedGroupForReport === g.id ? 'text-primary' : 'text-dark'}`}>{g.name}</p>
                                 <p className="text-[12px] text-gray-500">Only group members can see this</p>
                               </div>
                             </div>
@@ -648,7 +648,7 @@ markersRef.current[pin.id] = marker;
                 <button 
                   onClick={handleSave} 
                   disabled={isSubmitting}
-                  className={`w-full h-[56px] text-white font-bold text-[16px] rounded-lg flex items-center justify-center transition-all ${isSubmitting ? 'bg-gray-400 cursor-not-allowed' : 'bg-[#ef4523] shadow-[0_8px_20px_rgba(241,90,36,0.3)] active:scale-95'}`}
+                  className={`w-full h-[56px] text-white font-semibold text-[16px] rounded-lg flex items-center justify-center transition-all ${isSubmitting ? 'bg-gray-400 cursor-not-allowed' : 'bg-[#ef4523] shadow-[0_8px_20px_rgba(241,90,36,0.3)] active:scale-95'}`}
                 >
                   {isSubmitting ? 'Submitting...' : 'Submit Report'}
                 </button>
@@ -658,7 +658,7 @@ markersRef.current[pin.id] = marker;
             <>
               <div className="px-6 py-5 border-b border-[#E5E5EA] flex justify-between items-start shrink-0">
                 <div>
-                  <h2 className="text-[18px] font-bold text-[#273a5a] leading-tight">Edit Incident</h2>
+                  <h2 className="text-[18px] font-semibold text-[#273a5a] leading-tight">Edit Incident</h2>
                   <p className="text-[11px] text-[#8A8A8E] font-mono mt-1">ID: {selectedPin.id}</p>
                 </div>
                 <button onClick={() => setIsEditing(false)} className="text-[#8A8A8E] hover:text-[#273a5a] bg-gray-50 rounded p-1">
@@ -667,28 +667,28 @@ markersRef.current[pin.id] = marker;
               </div>
               <div className="flex-1 overflow-y-auto p-6 space-y-4">
                 <div>
-                  <label className="text-[11px] font-bold text-[#8A8A8E] uppercase mb-1 block">Category</label>
+                  <label className="text-[11px] font-semibold text-[#8A8A8E] uppercase mb-1 block">Category</label>
                   <select value={formData.category} onChange={e => setFormData({...formData, category: e.target.value})} className="w-full border rounded p-2 text-sm bg-white">
                     {categories.map(c => <option key={c.id} value={c.id}>{c.id}</option>)}
                   </select>
                 </div>
                 <div>
-                  <label className="text-[11px] font-bold text-[#8A8A8E] uppercase mb-1 block">Severity (1-3)</label>
+                  <label className="text-[11px] font-semibold text-[#8A8A8E] uppercase mb-1 block">Severity (1-3)</label>
                   <input type="number" min="1" max="3" value={formData.severity} onChange={e => setFormData({...formData, severity: parseInt(e.target.value)})} className="w-full border rounded p-2 text-sm bg-white" />
                 </div>
                 <div>
-                  <label className="text-[11px] font-bold text-[#8A8A8E] uppercase mb-1 block">Status</label>
+                  <label className="text-[11px] font-semibold text-[#8A8A8E] uppercase mb-1 block">Status</label>
                   <select value={formData.status} onChange={e => setFormData({...formData, status: e.target.value})} className="w-full border rounded p-2 text-sm bg-white">
                     <option value="active">Active</option>
                     <option value="hidden">Hidden</option>
                   </select>
                 </div>
                 <div>
-                  <label className="text-[11px] font-bold text-[#8A8A8E] uppercase mb-1 block">Description</label>
+                  <label className="text-[11px] font-semibold text-[#8A8A8E] uppercase mb-1 block">Description</label>
                   <textarea value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} rows={3} className="w-full border rounded p-2 text-sm bg-white"></textarea>
                 </div>
                 <div>
-                  <label className="text-[11px] font-bold text-[#8A8A8E] uppercase mb-1 block">Add Photo (Optional)</label>
+                  <label className="text-[11px] font-semibold text-[#8A8A8E] uppercase mb-1 block">Add Photo (Optional)</label>
                   <button className="w-full h-20 border-[2px] border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center text-gray-400 hover:text-[#ef4523] hover:border-[#ef4523] hover:bg-[#ef4523]/5 transition-all">
                     <span className="text-[24px] mb-1">📷</span>
                     <span className="text-[11px] font-medium">Upload</span>
@@ -696,7 +696,7 @@ markersRef.current[pin.id] = marker;
                 </div>
               </div>
               <div className="p-6 border-t border-[#E5E5EA] shrink-0">
-                <button onClick={handleSave} className="w-full h-10 rounded bg-[#273a5a] text-white font-bold text-[12px] hover:bg-gray-800">
+                <button onClick={handleSave} className="w-full h-10 rounded bg-[#273a5a] text-white font-semibold text-[12px] hover:bg-gray-800">
                   Save Changes
                 </button>
               </div>
@@ -706,20 +706,20 @@ markersRef.current[pin.id] = marker;
               <div className="px-6 py-5 border-b border-[#E5E5EA] flex justify-between items-start shrink-0">
                 <div>
                   <div className="flex items-center gap-2 mb-1">
-                    <h2 className="text-[18px] font-bold text-[#273a5a] leading-tight">{selectedPin.category}</h2>
-                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${
+                    <h2 className="text-[18px] font-semibold text-[#273a5a] leading-tight">{selectedPin.category}</h2>
+                    <span className={`px-2 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wider ${
                       selectedPin.displayStatus === 'hidden' ? 'bg-[#F2F4F7] text-[#8A8A8E]' : 
                       selectedPin.displayStatus === 'expired' ? 'bg-yellow-50 text-yellow-600' : 
                       'bg-[#E5F9ED] text-[#34C759]'
                     }`}>
                       {selectedPin.displayStatus}
                     </span>
-                    {selectedPin.group_id && <span className="text-[9px] font-bold px-1.5 py-0.5 rounded uppercase bg-orange-100 text-[#ef4523] flex items-center gap-1"><Users className="w-3 h-3"/> Group</span>}
+                    {selectedPin.group_id && <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded uppercase bg-orange-100 text-[#ef4523] flex items-center gap-1"><Users className="w-3 h-3"/> Group</span>}
                   </div>
                   <p className="text-[11px] text-[#8A8A8E] font-mono">ID: {selectedPin.id}</p>
                 </div>
                 <div className="flex gap-2">
-                  <button onClick={() => { setIsEditing(true); setFormData({ category: selectedPin.category, description: selectedPin.description, severity: selectedPin.severity, status: selectedPin.status }); }} className="text-[#ef4523] text-[11px] font-bold hover:underline">
+                  <button onClick={() => { setIsEditing(true); setFormData({ category: selectedPin.category, description: selectedPin.description, severity: selectedPin.severity, status: selectedPin.status }); }} className="text-[#ef4523] text-[11px] font-semibold hover:underline">
                     Edit
                   </button>
                   <button onClick={() => setSelectedPin(null)} className="text-[#8A8A8E] hover:text-[#273a5a] bg-gray-50 rounded p-1">
@@ -732,14 +732,14 @@ markersRef.current[pin.id] = marker;
                 
                 {/* Creator */}
                 <div>
-                  <h3 className="text-[11px] font-bold text-[#8A8A8E] uppercase tracking-wider mb-3">Reported By</h3>
+                  <h3 className="text-[11px] font-semibold text-[#8A8A8E] uppercase tracking-wider mb-3">Reported By</h3>
                   <div className="p-4 bg-gray-50 rounded mb-4">
                     <div className="flex items-center gap-3 mb-2">
-                      <div className="w-10 h-10 bg-orange-100 rounded-full flex items-center justify-center font-bold text-[#ef4523]">
+                      <div className="w-10 h-10 bg-orange-100 rounded-full flex items-center justify-center font-semibold text-[#ef4523]">
                         {(selectedPin.reporter_name || 'U').charAt(0).toUpperCase()}
                       </div>
                       <div>
-                        <h4 className="font-bold text-[14px] text-dark">
+                        <h4 className="font-semibold text-[14px] text-dark">
                           {selectedPin.reporter_name || 'Anonymous User'}
                         </h4>
                         <p className="text-[11px] text-[#8A8A8E]">{new Date(selectedPin.created_at).toLocaleString()}</p>
@@ -750,25 +750,25 @@ markersRef.current[pin.id] = marker;
 
                 {/* Details */}
                 <div>
-                  <h3 className="text-[11px] font-bold text-[#8A8A8E] uppercase tracking-wider mb-3">Incident Details</h3>
+                  <h3 className="text-[11px] font-semibold text-[#8A8A8E] uppercase tracking-wider mb-3">Incident Details</h3>
                   <div className="bg-[#F8F9FB] rounded-lg p-3 text-[12px] text-gray-700 whitespace-pre-wrap">
                     {selectedPin.description || 'No description provided.'}
                   </div>
                   <div className="grid grid-cols-2 gap-3 mt-3">
                     <div className="bg-[#F8F9FB] rounded-lg p-3">
                       <div className="text-[10px] text-[#8A8A8E] mb-1">Confirmations</div>
-                      <div className="font-bold text-[13px] text-[#34C759]">{selectedPin.confirms || 0} Users</div>
+                      <div className="font-semibold text-[13px] text-[#34C759]">{selectedPin.confirms || 0} Users</div>
                     </div>
                     <div className="bg-[#F8F9FB] rounded-lg p-3">
                       <div className="text-[10px] text-[#8A8A8E] mb-1">Rejections (Fake Reports)</div>
-                      <div className="font-bold text-[13px] text-[#FF3B30]">{selectedPin.rejects || 0} Users</div>
+                      <div className="font-semibold text-[13px] text-[#FF3B30]">{selectedPin.rejects || 0} Users</div>
                     </div>
                   </div>
                 </div>
 
                 {/* Location */}
                 <div>
-                  <h3 className="text-[11px] font-bold text-[#8A8A8E] uppercase tracking-wider mb-3">Coordinates</h3>
+                  <h3 className="text-[11px] font-semibold text-[#8A8A8E] uppercase tracking-wider mb-3">Coordinates</h3>
                   <div className="flex items-center gap-2 bg-[#F8F9FB] rounded-lg p-3 font-mono text-[11px]">
                     <MapPin className="w-3.5 h-3.5 text-[#ef4523]" />
                     {selectedPin.latitude.toFixed(6)}, {selectedPin.longitude.toFixed(6)}
@@ -778,7 +778,7 @@ markersRef.current[pin.id] = marker;
                 {/* Images */}
                 {selectedPin.photo_url && (
                   <div className="col-span-2 mt-4">
-                    <p className="text-[11px] font-bold text-[#8A8A8E] uppercase mb-2">Attached Photos</p>
+                    <p className="text-[11px] font-semibold text-[#8A8A8E] uppercase mb-2">Attached Photos</p>
                     <div className="flex gap-2 overflow-x-auto pb-2">
                       {selectedPin.photo_url.split(',').map((url: string, idx: number) => (
                         <img key={idx} src={url.trim()} className="w-24 h-24 object-cover rounded-lg border" />
@@ -793,13 +793,13 @@ markersRef.current[pin.id] = marker;
                 <button 
                   onClick={() => handleAction('hide')}
                   disabled={selectedPin.status === 'hidden'}
-                  className="flex-1 h-10 rounded bg-[#273a5a] text-white font-bold text-[12px] hover:bg-gray-800 disabled:opacity-50 transition-colors"
+                  className="flex-1 h-10 rounded bg-[#273a5a] text-white font-semibold text-[12px] hover:bg-gray-800 disabled:opacity-50 transition-colors"
                 >
                   Mark as Hide
                 </button>
                 <button 
                   onClick={() => handleAction('delete')}
-                  className="flex-1 h-10 rounded border border-[#FF3B30] text-[#FF3B30] font-bold text-[12px] hover:bg-[#FFF0F0] transition-colors"
+                  className="flex-1 h-10 rounded border border-[#FF3B30] text-[#FF3B30] font-semibold text-[12px] hover:bg-[#FFF0F0] transition-colors"
                 >
                   Delete Record
                 </button>

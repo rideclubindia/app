@@ -95,11 +95,11 @@ const ComingSoonScreen: React.FC<ComingSoonProps> = ({
             ].map((item, index) => (
               <div key={index} className="flex flex-col items-center">
                 <div className="w-16 h-16 md:w-20 md:h-20 bg-white dark:bg-[#1E1E1E] rounded-xl shadow-sm border border-gray-100 dark:border-gray-800 flex items-center justify-center mb-2">
-                  <span className="text-2xl md:text-3xl font-bold text-[#273a5a] dark:text-white">
+                  <span className="text-2xl md:text-3xl font-semibold text-[#273a5a] dark:text-white">
                     {item.value.toString().padStart(2, '0')}
                   </span>
                 </div>
-                <span className="text-[11px] font-bold text-[#8A8A8E] uppercase tracking-wider">
+                <span className="text-[11px] font-semibold text-[#8A8A8E] uppercase tracking-wider">
                   {item.label}
                 </span>
               </div>
@@ -110,7 +110,7 @@ const ComingSoonScreen: React.FC<ComingSoonProps> = ({
         {buttonText && (
           <a
             href={buttonAction || '#'}
-            className="px-8 py-4 bg-[#ef4523] text-white rounded-full font-bold text-[15px] shadow-[0_8px_20px_rgba(239,69,35,0.3)] hover:bg-[#d83c1d] hover:shadow-[0_10px_25px_rgba(239,69,35,0.4)] transition-all transform hover:-translate-y-1"
+            className="px-8 py-4 bg-[#ef4523] text-white rounded-full font-semibold text-[15px] shadow-[0_8px_20px_rgba(239,69,35,0.3)] hover:bg-[#d83c1d] hover:shadow-[0_10px_25px_rgba(239,69,35,0.4)] transition-all transform hover:-translate-y-1"
           >
             {buttonText}
           </a>

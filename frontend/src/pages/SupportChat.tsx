@@ -178,13 +178,13 @@ const SupportChat = () => {
             <ArrowLeft className="w-5 h-5" />
           </button>
           <div className="flex flex-col">
-            <h1 className="text-[16px] font-bold text-[#273a5a] leading-tight flex items-center gap-2">
+            <h1 className="text-[16px] font-semibold text-[#273a5a] leading-tight flex items-center gap-2">
               {ticket?.category}
             </h1>
             <div className="flex items-center gap-2 text-[11px] text-[#8A8A8E] mt-0.5">
               <span className="font-mono">#{ticket?.id?.slice(0,6).toUpperCase()}</span>
               <span className="w-1 h-1 bg-[#E5E5EA] rounded-full"></span>
-              <span className={`font-bold ${isClosed ? 'text-green-500' : 'text-orange-500'}`}>
+              <span className={`font-semibold ${isClosed ? 'text-green-500' : 'text-orange-500'}`}>
                 {ticket?.status}
               </span>
             </div>
@@ -197,7 +197,7 @@ const SupportChat = () => {
         {/* Initial Ticket Description */}
         <div className="flex justify-center mb-6">
           <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 max-w-[85%] text-center">
-            <p className="text-[12px] font-bold text-[#8A8A8E] uppercase tracking-wider mb-2">Ticket Created</p>
+            <p className="text-[12px] font-semibold text-[#8A8A8E] uppercase tracking-wider mb-2">Ticket Created</p>
             <p className="text-[13px] text-[#273a5a] font-medium">{ticket?.description}</p>
             <p className="text-[10px] text-[#8A8A8E] mt-2">{new Date(ticket?.created_at).toLocaleString()}</p>
           </div>
@@ -211,7 +211,7 @@ const SupportChat = () => {
                 isMe ? 'bg-[#ef4523] text-white rounded-tr-sm' : 'bg-white border border-[#E5E5EA] text-[#273a5a] rounded-tl-sm'
               }`}>
                 {!isMe && (
-                  <p className="text-[11px] font-bold text-[#8A8A8E] mb-1">Support Agent</p>
+                  <p className="text-[11px] font-semibold text-[#8A8A8E] mb-1">Support Agent</p>
                 )}
                 
                 {msg.image_url && (
@@ -240,7 +240,7 @@ const SupportChat = () => {
       {isClosed ? (
         <div className="shrink-0 p-4 bg-white border-t border-[#E5E5EA] flex items-center justify-center gap-2">
           <CheckCircle2 className="w-5 h-5 text-green-500" />
-          <span className="text-[13px] font-bold text-[#273a5a]">This ticket has been resolved.</span>
+          <span className="text-[13px] font-semibold text-[#273a5a]">This ticket has been resolved.</span>
         </div>
       ) : (
         <div className="shrink-0 bg-white border-t border-[#E5E5EA]">

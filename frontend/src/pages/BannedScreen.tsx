@@ -10,7 +10,7 @@ const BannedScreen = () => {
         <div className="mx-auto mb-5 w-16 h-16 rounded-full bg-[#FFF0F0] flex items-center justify-center text-[#D92D20]">
           <ShieldAlert className="w-8 h-8" />
         </div>
-        <h1 className="text-[24px] font-bold text-[#273a5a] mb-3">Account Permanently Banned</h1>
+        <h1 className="text-[24px] font-semibold text-[#273a5a] mb-3">Account Permanently Banned</h1>
         <p className="text-[15px] text-[#6B7280] leading-relaxed mb-6">
           Your account has been permanently banned due to repeated policy violations. You cannot access app features or submit reports.
         </p>

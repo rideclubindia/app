@@ -1,16 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Search, Users, MessageSquare, Plus, ArrowLeft, Check, X, Send, Lock, Globe, MapPin, Clock, Copy, AlertTriangle, Flag, Loader2 } from 'lucide-react';
+import { Search, Users, Plus, ArrowLeft, X, Send, Lock, Globe, Copy, Clock, Loader2, MessageSquare, Shield } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useNavigate } from 'react-router-dom';
 import { auth } from '../lib/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 import { useToast } from '../components/ToastContext';
-import { SearchInput } from '../components/ui/SearchInput';
 import { useConfirm } from '../components/ConfirmDialog';
 import { getDeterministicUuid } from '../lib/user';
-import { RiderCockpitLayout } from '../components/spatial/RiderCockpitLayout';
-import { EdgeRail } from '../components/spatial/EdgeRail';
-import { SpatialMembrane } from '../components/spatial/SpatialMembrane';
 
 const Groups = () => {
   const confirm = useConfirm();
@@ -381,320 +377,319 @@ const Groups = () => {
 
   if (loadingAuth || !user) {
     return (
-      <div className="w-full h-full bg-[#0a0a0a] flex items-center justify-center">
-        <Loader2 className="w-8 h-8 text-primary animate-spin" />
+      <div className="w-full h-full bg-[#F2F4F7] flex items-center justify-center">
+        <Loader2 className="w-8 h-8 text-[#FF5A00] animate-spin" />
       </div>
     );
   }
 
+  const groupInitials = (name: string) => name.split(' ').map((n: string) => n[0]).join('').substring(0, 2).toUpperCase();
+
   return (
     <React.Fragment>
-    <RiderCockpitLayout
-      topRail={<EdgeRail />}
-      leftPanelWidth="100%"
-      leftPanel={
-        !activeGroup ? (
-          <div className="flex flex-col gap-6 w-full h-full pointer-events-auto bg-[var(--color-hmi-bg)] landscape:bg-transparent rounded-[24px] landscape:rounded-none p-5 landscape:p-0 overflow-hidden shadow-2xl landscape:shadow-none">
-          <div className="flex items-center justify-between shrink-0 mb-2">
-            <div>
-              <h1 className="text-[28px] font-bold text-white tracking-tight leading-none">Groups</h1>
-              <p className="text-[14px] text-white/50 mt-1">Join the community</p>
-            </div>
-            <button aria-label="Create new group" onClick={() => setShowCreateModal(true)} className="w-10 h-10 bg-primary hover:bg-primary/90 text-white rounded-full flex items-center justify-center transition-all shadow-lg shadow-primary/30 active:scale-95">
-              <Plus className="w-5 h-5" strokeWidth={2.5} />
-            </button>
-          </div>
+    <div className="w-full h-full bg-[#F2F4F7] flex flex-row overflow-hidden font-sans">
 
+      {/* ===== LEFT: Group List (always visible) ===== */}
+      <div className="w-[320px] min-w-[280px] max-w-[360px] shrink-0 bg-white border-r border-gray-100 flex flex-col">
+        <div className="flex items-center justify-between shrink-0 px-4 pt-4 pb-2">
+          <div>
+            <h1 className="text-[#111111] font-semibold text-lg tracking-wide uppercase leading-tight">Groups</h1>
+            <p className="text-[12px] text-gray-400 font-medium mt-0.5">Join the community</p>
+          </div>
+          <button aria-label="Create new group" onClick={() => setShowCreateModal(true)} className="w-9 h-9 bg-[#FF5A00] hover:bg-[#ff6a1a] text-white rounded-full flex items-center justify-center transition-all shadow-md shadow-[#FF5A00]/25 active:scale-95">
+            <Plus className="w-5 h-5" strokeWidth={2.5} />
+          </button>
+        </div>
+
+        <div className="px-4 pb-2 shrink-0">
           <div className="relative">
-             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/40" />
-             <input 
-               type="text" 
-               placeholder="Search groups..." 
-               value={searchQuery}
-               onChange={(e) => handleSearch(e.target.value)}
-               className="w-full bg-white/5 border border-white/10 rounded-xl pl-10 pr-4 py-3 text-[14px] text-white placeholder-white/40 focus:outline-none focus:border-primary/50 transition-all backdrop-blur-md"
-             />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+            <input 
+              type="text" 
+              placeholder="Search groups or ID..." 
+              value={searchQuery}
+              onChange={(e) => handleSearch(e.target.value)}
+              className="w-full h-10 bg-[#F7F8FA] border border-gray-200 rounded-xl pl-9 pr-3 text-[13px] text-[#111111] placeholder-gray-400 font-medium focus:outline-none focus:border-[#FF5A00]/60 focus:bg-white transition-all"
+            />
           </div>
+        </div>
 
-          <div className="flex-1 overflow-y-auto hide-scrollbar flex flex-col gap-3 pb-8">
-            {filteredGroups.length === 0 ? (
-              <div className="text-center text-white/40 mt-10 text-[14px]">No groups found. Create one!</div>
-            ) : (
-              filteredGroups.map(group => {
-                const initials = group.name.split(' ').map((n: string) => n[0]).join('').substring(0, 2).toUpperCase();
-                return (
-                  <div key={group.id} onClick={() => setActiveGroup(group)} className="bg-white/5 border border-white/10 p-4 rounded-[20px] flex items-center gap-4 cursor-pointer hover:bg-white/10 transition-all backdrop-blur-md">
-                    <div className="w-[52px] h-[52px] bg-primary/20 border border-primary/30 rounded-full flex items-center justify-center shrink-0">
-                      <span className="text-primary font-black text-[18px]">{initials}</span>
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <h3 className="font-bold text-white text-[16px] leading-tight truncate">{group.name}</h3>
-                      <div className="flex items-center gap-2 mt-1.5">
-                        <span className="bg-white/10 text-white/60 px-2.5 py-0.5 rounded-full text-[10px] font-bold tracking-wider">{group.radius} km</span>
-                        {group.is_private && <Lock className="w-3 h-3 text-white/40" />}
-                      </div>
-                    </div>
-                    <div className="flex flex-col items-end justify-center shrink-0">
-                      <div className="flex items-center gap-1.5 text-white/40 mb-1">
-                        <Users className="w-3.5 h-3.5" />
-                      </div>
-                      <span className="text-[12px] font-bold text-white/60">
-                        {group.is_private ? 'Private' : group.group_members?.[0]?.count || 0}
-                      </span>
-                    </div>
+        <div className="flex-1 overflow-y-auto hide-scrollbar px-3 pb-3 flex flex-col gap-2">
+          {filteredGroups.length === 0 ? (
+            <div className="text-center text-gray-400 mt-10 text-[13px] font-medium px-4">No groups found.<br/>Create one or search by ID.</div>
+          ) : (
+            filteredGroups.map(group => (
+              <div 
+                key={group.id} 
+                onClick={() => setActiveGroup(group)} 
+                className={`p-3 rounded-[8px] flex items-center gap-3 cursor-pointer border transition-all ${
+                  activeGroup?.id === group.id 
+                    ? 'bg-[#FFF0E6] border-[#FF5A00]/40' 
+                    : 'bg-white border-gray-100 hover:border-gray-200 shadow-sm'
+                }`}
+              >
+                <div className={`w-11 h-11 rounded-full flex items-center justify-center shrink-0 ${activeGroup?.id === group.id ? 'bg-[#FF5A00] text-white' : 'bg-[#FFF0E6]'}`}>
+                  <span className={`font-semibold text-[15px] ${activeGroup?.id === group.id ? 'text-white' : 'text-[#FF5A00]'}`}>{groupInitials(group.name)}</span>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h3 className="font-semibold text-[#111111] text-[14px] leading-tight truncate">{group.name}</h3>
+                  <div className="flex items-center gap-1.5 mt-1">
+                    <span className="bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full text-[10px] font-semibold">{group.radius} km</span>
+                    <span className="text-[10px] font-semibold text-gray-400">
+                      {group.is_private ? 'Private' : `${group.group_members?.[0]?.count || 0} members`}
+                    </span>
+                    {group.is_private && <Lock className="w-3 h-3 text-gray-400" />}
                   </div>
-                );
-              })
-            )}
-          </div>
-          </div>
-        ) : showMembers ? (
-          // Group Members & Settings View
-          <div className="flex flex-col gap-6 w-full h-full pointer-events-auto bg-[var(--color-hmi-bg)] landscape:bg-transparent rounded-[24px] landscape:rounded-none p-5 landscape:p-0 overflow-hidden shadow-2xl landscape:shadow-none">
-          <div className="flex items-center justify-between shrink-0 mb-2">
-            <button onClick={() => setShowMembers(false)} className="w-10 h-10 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 flex items-center justify-center transition-all active:scale-95">
-              <ArrowLeft className="w-5 h-5 text-white/80" strokeWidth={1.5} />
-            </button>
-            <div className="flex gap-2">
-              <button onClick={copyGroupInvite} className="w-10 h-10 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 flex items-center justify-center transition-all active:scale-95">
-                <Copy className="w-5 h-5 text-white/80" strokeWidth={1.5} />
-              </button>
-            </div>
-          </div>
-
-          <div className="flex-1 overflow-y-auto hide-scrollbar flex flex-col gap-5 pb-8">
-            {/* Group Header Info */}
-            <div className="flex items-center gap-4">
-              <div className="w-[72px] h-[72px] bg-primary/20 border border-primary/30 rounded-full flex items-center justify-center shrink-0">
-                <span className="text-primary font-black text-[24px]">
-                  {activeGroup.name.split(' ').map((n:string)=>n[0]).join('').substring(0,2).toUpperCase()}
-                </span>
-              </div>
-              <div>
-                <h1 className="font-bold text-[22px] text-white leading-tight mb-2">{activeGroup.name}</h1>
-                <div className="flex items-center gap-2">
-                  <span className="bg-white/10 text-white/60 px-2.5 py-1 rounded-full text-[11px] font-bold uppercase">GRP-{activeGroup.id.substring(0, 4)}</span>
-                  <span className="bg-white/10 text-white/60 px-2.5 py-1 rounded-full text-[11px] font-bold">
-                    {activeGroup.radius} km
-                  </span>
                 </div>
               </div>
+            ))
+          )}
+        </div>
+      </div>
+
+      {/* ===== RIGHT: Chat / Members / Empty ===== */}
+      <div className="flex-1 min-w-0 flex flex-col">
+        {!activeGroup ? (
+          /* Empty State */
+          <div className="flex-1 flex flex-col items-center justify-center p-8 text-center">
+            <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center mb-4 border border-gray-200 shadow-sm">
+              <MessageSquare className="w-7 h-7 text-gray-300" />
+            </div>
+            <h3 className="text-[16px] font-semibold text-[#111111] mb-1">Select a group</h3>
+            <p className="text-[13px] text-gray-400 font-medium max-w-[240px]">Pick a group from the list to open its chat, or create a new one.</p>
+          </div>
+        ) : showMembers ? (
+          /* Members & Settings View */
+          <div className="flex-1 flex flex-col min-h-0">
+            <div className="flex items-center justify-between shrink-0 px-4 pt-4 pb-2">
+              <button onClick={() => setShowMembers(false)} className="w-9 h-9 rounded-full bg-white border border-gray-200 flex items-center justify-center text-[#111111] hover:bg-gray-50 active:scale-95 transition-all shadow-sm">
+                <ArrowLeft className="w-5 h-5" />
+              </button>
+              <h2 className="font-semibold text-[15px] text-[#111111] uppercase tracking-wide">Group Info</h2>
+              <button onClick={copyGroupInvite} title="Copy invite" className="w-9 h-9 rounded-full bg-white border border-gray-200 flex items-center justify-center text-[#111111] hover:bg-gray-50 active:scale-95 transition-all shadow-sm">
+                <Copy className="w-4 h-4" />
+              </button>
             </div>
 
-            {/* Stats */}
-            <div className="grid grid-cols-4 gap-2">
-              <div className="bg-white/5 border border-white/10 rounded-lg py-3 flex flex-col items-center justify-center">
-                <span className="text-primary font-bold text-[20px]">{groupMembers.length}</span>
-                <span className="text-white/40 text-[11px] font-medium">Members</span>
-              </div>
-              <div className="bg-white/5 border border-white/10 rounded-lg py-3 flex flex-col items-center justify-center">
-                <span className="text-white font-bold text-[20px]">{Math.max(0, groupMembers.length - 1)}</span>
-                <span className="text-white/40 text-[11px] font-medium">Active</span>
-              </div>
-              <div className="bg-white/5 border border-white/10 rounded-lg py-3 flex flex-col items-center justify-center">
-                <span className="text-white font-bold text-[20px]">
-                  {groupAlerts.filter(a => !(viewedAlerts.has(a.id) && Date.now() - viewedAlerts.get(a.id)! > 12 * 60 * 60 * 1000)).length}
-                </span>
-                <span className="text-white/40 text-[11px] font-medium">Alerts</span>
-              </div>
-              <div className="bg-white/5 border border-white/10 rounded-lg py-3 flex flex-col items-center justify-center">
-                <span className="text-white font-bold text-[20px]">{1 + groupMembers.filter(m => m.status === 'admin' && m.user_id !== activeGroup.admin_id).length}</span>
-                <span className="text-white/40 text-[11px] font-medium">Admin</span>
-              </div>
-            </div>
+            <div className="flex-1 overflow-y-auto hide-scrollbar px-4 pb-4 flex flex-col gap-4">
 
-            {/* Members List */}
-            <div>
-              <div className="flex justify-between items-center mb-3">
-                <span className="text-[12px] font-bold text-white/40 uppercase tracking-wider">Members</span>
+              {/* Group Header */}
+              <div className="bg-white rounded-[8px] border border-gray-100 shadow-sm p-4 flex items-center gap-4">
+                <div className="w-14 h-14 bg-[#FFF0E6] rounded-full flex items-center justify-center shrink-0">
+                  <span className="text-[#FF5A00] font-semibold text-[18px]">{groupInitials(activeGroup.name)}</span>
+                </div>
+                <div className="min-w-0">
+                  <h1 className="font-semibold text-[18px] text-[#111111] leading-tight truncate">{activeGroup.name}</h1>
+                  <div className="flex items-center gap-2 mt-1.5">
+                    <span className="bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase">GRP-{activeGroup.id.substring(0, 4)}</span>
+                    <span className="bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full text-[10px] font-semibold">{activeGroup.radius} km</span>
+                  </div>
+                </div>
               </div>
-              <div className="flex flex-col gap-2">
-                {groupMembers.map(member => (
-                  <div key={member.id} className="bg-white/5 border border-white/10 p-3 rounded-xl flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="relative w-10 h-10 bg-white/10 rounded-full flex items-center justify-center shrink-0">
-                        <span className="text-white/60 font-bold">{member.username.substring(0,2).toUpperCase()}</span>
-                        <div className={`absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-[#1a1a1a] ${member.user_id === activeGroup.admin_id ? 'bg-green-500' : 'bg-red-500'}`}></div>
-                      </div>
-                      <div>
-                        <span className="font-bold text-white text-[15px]">{member.username}</span>
-                        {member.user_id === activeGroup.admin_id && (
-                          <span className="block text-primary text-[10px] font-bold uppercase mt-0.5">Admin</span>
-                        )}
-                      </div>
-                    </div>
+
+              {/* Stats */}
+              <div className="grid grid-cols-4 gap-2">
+                {[
+                  { value: groupMembers.length, label: 'Members' },
+                  { value: Math.max(0, groupMembers.length - 1), label: 'Others' },
+                  { value: groupAlerts.filter(a => !(viewedAlerts.has(a.id) && Date.now() - viewedAlerts.get(a.id)! > 12 * 60 * 60 * 1000)).length, label: 'Alerts' },
+                  { value: 1 + groupMembers.filter(m => m.status === 'admin' && m.user_id !== activeGroup.admin_id).length, label: 'Admins' }
+                ].map((stat, i) => (
+                  <div key={i} className="bg-white border border-gray-100 rounded-[8px] py-3 flex flex-col items-center justify-center shadow-sm">
+                    <span className="text-[#111111] font-semibold text-[18px] tabular-nums">{stat.value}</span>
+                    <span className="text-gray-400 text-[10px] font-semibold uppercase tracking-wider mt-0.5">{stat.label}</span>
                   </div>
                 ))}
               </div>
-            </div>
 
-            {isAdmin && (
-              <div className="mt-4">
-                <button onClick={deleteGroup} className="w-full py-4 bg-red-500/10 hover:bg-red-500/20 rounded-xl font-bold text-red-400 transition-colors uppercase">
-                  DELETE
-                </button>
-              </div>
-            )}
-          </div>
-          </div>
-        ) : (
-          // Chat View
-          <div className="flex flex-col w-full h-full pointer-events-auto overflow-hidden bg-[var(--color-hmi-bg)] landscape:bg-transparent rounded-[24px] landscape:rounded-none shadow-2xl landscape:shadow-none">
-          {/* Chat Header */}
-          <div className="h-[76px] shrink-0 border-b border-white/10 flex items-center justify-between px-5 backdrop-blur-md bg-black/40">
-            <div className="flex items-center gap-3">
-              <button aria-label="Go back" onClick={() => { setActiveGroup(null); setShowRequests(false); }} className="w-10 h-10 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center transition-colors">
-                <ArrowLeft className="w-5 h-5 text-white" />
-              </button>
-              <div className="flex items-center gap-3 cursor-pointer" onClick={() => setShowMembers(true)}>
-                <div className="w-10 h-10 bg-primary/20 rounded-full flex items-center justify-center shrink-0 border border-primary/30">
-                  <span className="text-primary font-bold text-[14px]">
-                    {activeGroup.name.split(' ').map((n:string)=>n[0]).join('').substring(0,2).toUpperCase()}
-                  </span>
-                </div>
-                <div>
-                  <h2 className="font-bold text-[16px] text-white leading-tight">{activeGroup.name}</h2>
-                  <p className="text-[12px] font-medium text-white/50">{groupMembers.length} members</p>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Messages Area */}
-          <div className="flex-1 overflow-y-auto px-4 pt-4 pb-20 flex flex-col gap-4 bg-black/20 hide-scrollbar">
-            {!(memberStatus === 'accepted' || isAdmin) ? (
-              <div className="flex-1 flex flex-col items-center justify-center p-8 text-center">
-                {memberStatus === 'pending' ? (
-                  <>
-                    <div className="w-20 h-20 bg-primary/20 rounded-full flex items-center justify-center mb-6">
-                      <Clock className="w-10 h-10 text-primary" strokeWidth={2} />
-                    </div>
-                    <h3 className="text-[22px] font-bold text-white mb-2">Request Pending</h3>
-                    <p className="text-[15px] text-white/50">Waiting for admin approval.</p>
-                  </>
-                ) : (
-                  <>
-                    <div className="w-20 h-20 bg-primary/20 rounded-full flex items-center justify-center mb-6">
-                      <Users className="w-10 h-10 text-primary" strokeWidth={2} />
-                    </div>
-                    <h3 className="text-[22px] font-bold text-white mb-2">Join {activeGroup.name}</h3>
-                    <p className="text-[15px] text-white/50 mb-6">Join to see the chat.</p>
-                    <button disabled={isJoining} onClick={joinGroup} className="w-full py-4 bg-primary text-white font-bold text-[16px] rounded-xl hover:bg-primary/90 transition-colors disabled:opacity-50 uppercase">
-                      {isJoining ? <Loader2 className="w-5 h-5 animate-spin mx-auto" /> : "JOIN"}
-                    </button>
-                  </>
-                )}
-              </div>
-            ) : (
-              <>
-                {messages.map(msg => {
-                  const isMe = msg.user_id === user.uid;
-                  return (
-                    <div key={msg.id} className={`flex w-full ${isMe ? 'justify-end' : 'justify-start'}`}>
-                      {!isMe && (
-                        <div className="w-8 h-8 bg-white/10 rounded-full flex items-center justify-center mr-2 shrink-0 self-end mb-4">
-                          <span className="text-[12px] font-bold text-white/60">{msg.username.substring(0,1).toUpperCase()}</span>
+              {/* Members List */}
+              <div>
+                <span className="text-[12px] font-semibold text-gray-400 uppercase tracking-wider">Members</span>
+                <div className="mt-2 bg-white border border-gray-100 rounded-[8px] shadow-sm flex flex-col overflow-hidden">
+                  {groupMembers.map(member => (
+                    <div key={member.id} className="p-3 flex items-center justify-between border-b border-gray-50 last:border-0">
+                      <div className="flex items-center gap-3">
+                        <div className="relative w-9 h-9 bg-gray-100 rounded-full flex items-center justify-center shrink-0">
+                          <span className="text-gray-500 font-semibold text-[13px]">{member.username.substring(0,2).toUpperCase()}</span>
+                          {member.user_id === activeGroup.admin_id && (
+                            <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-white bg-green-500"></div>
+                          )}
                         </div>
-                      )}
-                      <div className={`flex flex-col max-w-[75%] ${isMe ? 'items-end' : 'items-start'}`}>
-                        {!isMe && <span className="text-[11px] font-bold text-white/40 mb-1 ml-1">{msg.username}</span>}
-                        <div className={`px-4 py-3 text-[14px] leading-snug backdrop-blur-md ${isMe ? 'bg-primary/90 text-white rounded-t-2xl rounded-bl-2xl rounded-br-sm' : 'bg-white/10 text-white border border-white/10 rounded-t-2xl rounded-br-2xl rounded-bl-sm'}`}>
-                          {msg.content}
+                        <div>
+                          <span className="font-semibold text-[#111111] text-[14px]">{member.username}</span>
+                          {member.user_id === activeGroup.admin_id && (
+                            <span className="ml-2 bg-[#FFF0E6] text-[#FF5A00] text-[9px] font-semibold px-1.5 py-0.5 rounded uppercase tracking-wider">Admin</span>
+                          )}
                         </div>
-                        <span className={`text-[10px] font-medium text-white/30 mt-1 ${isMe ? 'mr-1' : 'ml-1'}`}>
-                          {new Date(msg.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
-                        </span>
                       </div>
                     </div>
-                  );
-                })}
-                <div ref={messagesEndRef} />
-              </>
+                  ))}
+                </div>
+              </div>
+
+              {isAdmin && (
+                <button onClick={deleteGroup} className="w-full py-3 bg-white border border-red-100 hover:bg-red-50 rounded-[8px] font-semibold text-red-500 transition-colors uppercase text-[13px] tracking-wider shadow-sm flex items-center justify-center gap-2">
+                  <X className="w-4 h-4" /> Delete Group
+                </button>
+              )}
+            </div>
+          </div>
+        ) : (
+          /* Chat View */
+          <div className="flex-1 flex flex-col min-h-0">
+            {/* Chat Header */}
+            <div className="h-[64px] shrink-0 border-b border-gray-200 bg-white flex items-center justify-between px-4">
+              <div className="flex items-center gap-3">
+                <button aria-label="Go back" onClick={() => { setActiveGroup(null); setShowRequests(false); }} className="w-9 h-9 rounded-full bg-gray-50 hover:bg-gray-100 flex items-center justify-center transition-colors">
+                  <ArrowLeft className="w-5 h-5 text-[#111111]" />
+                </button>
+                <div className="flex items-center gap-3 cursor-pointer" onClick={() => setShowMembers(true)}>
+                  <div className="w-9 h-9 bg-[#FFF0E6] rounded-full flex items-center justify-center shrink-0">
+                    <span className="text-[#FF5A00] font-semibold text-[13px]">{groupInitials(activeGroup.name)}</span>
+                  </div>
+                  <div>
+                    <h2 className="font-semibold text-[15px] text-[#111111] leading-tight">{activeGroup.name}</h2>
+                    <p className="text-[11px] font-medium text-gray-400">{groupMembers.length} members &middot; Tap for info</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Messages Area */}
+            <div className="flex-1 overflow-y-auto hide-scrollbar px-4 py-4 flex flex-col gap-3 bg-[#F2F4F7]">
+              {!(memberStatus === 'accepted' || isAdmin) ? (
+                <div className="flex-1 flex flex-col items-center justify-center p-8 text-center">
+                  {memberStatus === 'pending' ? (
+                    <>
+                      <div className="w-16 h-16 bg-[#FFF0E6] rounded-full flex items-center justify-center mb-4">
+                        <Clock className="w-7 h-7 text-[#FF5A00]" strokeWidth={2} />
+                      </div>
+                      <h3 className="text-[17px] font-semibold text-[#111111] mb-1">Request Pending</h3>
+                      <p className="text-[13px] text-gray-400 font-medium">Waiting for admin approval.</p>
+                    </>
+                  ) : (
+                    <>
+                      <div className="w-16 h-16 bg-[#FFF0E6] rounded-full flex items-center justify-center mb-4">
+                        <Users className="w-7 h-7 text-[#FF5A00]" strokeWidth={2} />
+                      </div>
+                      <h3 className="text-[17px] font-semibold text-[#111111] mb-1">Join {activeGroup.name}</h3>
+                      <p className="text-[13px] text-gray-400 font-medium mb-5">Join to see the chat.</p>
+                      <button disabled={isJoining} onClick={joinGroup} className="px-8 py-3 bg-[#FF5A00] text-white font-semibold text-[14px] rounded-xl hover:bg-[#ff6a1a] transition-colors disabled:opacity-50 shadow-lg shadow-[#FF5A00]/25 active:scale-95">
+                        {isJoining ? <Loader2 className="w-5 h-5 animate-spin mx-auto" /> : "Join Group"}
+                      </button>
+                    </>
+                  )}
+                </div>
+              ) : (
+                <>
+                  {messages.map(msg => {
+                    const isMe = msg.user_id === user.uid;
+                    return (
+                      <div key={msg.id} className={`flex w-full ${isMe ? 'justify-end' : 'justify-start'}`}>
+                        {!isMe && (
+                          <div className="w-7 h-7 bg-gray-200 rounded-full flex items-center justify-center mr-2 shrink-0 self-end mb-4">
+                            <span className="text-[11px] font-semibold text-gray-500">{msg.username.substring(0,1).toUpperCase()}</span>
+                          </div>
+                        )}
+                        <div className={`flex flex-col max-w-[70%] ${isMe ? 'items-end' : 'items-start'}`}>
+                          {!isMe && <span className="text-[11px] font-semibold text-gray-400 mb-1 ml-1">{msg.username}</span>}
+                          <div className={`px-3.5 py-2.5 text-[13px] leading-snug shadow-sm ${isMe ? 'bg-[#FF5A00] text-white rounded-t-2xl rounded-bl-2xl rounded-br-sm' : 'bg-white text-[#111111] border border-gray-100 rounded-t-2xl rounded-br-2xl rounded-bl-sm'}`}>
+                            {msg.content}
+                          </div>
+                          <span className={`text-[10px] font-medium text-gray-400 mt-1 ${isMe ? 'mr-1' : 'ml-1'}`}>
+                            {new Date(msg.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                  <div ref={messagesEndRef} />
+                </>
+              )}
+            </div>
+
+            {/* Chat Input */}
+            {(memberStatus === 'accepted' || isAdmin) && (
+              <div className="shrink-0 p-3 bg-white border-t border-gray-200">
+                <form onSubmit={sendMessage} className="flex items-center gap-2">
+                  <input 
+                    type="text" 
+                    value={newMessage}
+                    onChange={e => setNewMessage(e.target.value)}
+                    placeholder="Type a message..." 
+                    className="flex-1 h-11 bg-[#F7F8FA] border border-gray-200 rounded-xl px-4 outline-none text-[14px] text-[#111111] placeholder-gray-400 font-medium focus:border-[#FF5A00]/60 focus:bg-white transition-all"
+                  />
+                  <button type="submit" disabled={!newMessage.trim()} className="w-11 h-11 bg-[#FF5A00] rounded-xl flex items-center justify-center text-white shrink-0 disabled:opacity-40 transition-all active:scale-95 shadow-md shadow-[#FF5A00]/25">
+                    <Send className="w-5 h-5 ml-0.5" strokeWidth={2} />
+                  </button>
+                </form>
+              </div>
             )}
           </div>
-
-          {/* Chat Input */}
-          {(memberStatus === 'accepted' || isAdmin) && (
-            <div className="absolute bottom-4 left-4 right-4">
-              <form onSubmit={sendMessage} className="bg-black/60 backdrop-blur-xl border border-white/10 rounded-xl p-2 flex items-center gap-2">
-                <input 
-                  type="text" 
-                  value={newMessage}
-                  onChange={e => setNewMessage(e.target.value)}
-                  placeholder="Message..." 
-                  className="flex-1 h-10 bg-transparent px-4 outline-none text-[15px] text-white placeholder-white/40"
-                />
-                <button type="submit" disabled={!newMessage.trim()} className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center text-white shrink-0 disabled:opacity-50 transition-all active:scale-95 shadow-lg shadow-primary/20">
-                  <Send className="w-5 h-5 ml-0.5" strokeWidth={2} />
-                </button>
-              </form>
-            </div>
-          )}
-          </div>
-        )
-      }
-    />
+        )}
+      </div>
+    </div>
 
       {/* Create Modal */}
       {showCreateModal && (
-        <div className="absolute inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="w-full max-w-[400px] bg-[#1a1a1a] border border-white/10 rounded-[24px] p-6 shadow-2xl">
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="text-xl font-bold text-white">Create Group</h2>
-              <button onClick={() => setShowCreateModal(false)} className="p-2 hover:bg-white/10 rounded-full transition-colors">
-                <X className="w-5 h-5 text-white/60" />
+        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="w-full max-w-[400px] bg-white rounded-[8px] p-5 shadow-2xl">
+            <div className="flex justify-between items-center mb-5">
+              <h2 className="text-lg font-semibold text-[#111111]">Create Group</h2>
+              <button onClick={() => setShowCreateModal(false)} className="w-8 h-8 hover:bg-gray-100 rounded-full transition-colors flex items-center justify-center">
+                <X className="w-5 h-5 text-gray-500" />
               </button>
             </div>
 
             <div className="space-y-4">
               <div>
-                <label className="text-sm font-bold text-white/60 mb-1 block">Group Name</label>
+                <label className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-1 block">Group Name</label>
                 <input 
                   type="text" 
                   value={newGroupParams.name}
                   onChange={e => setNewGroupParams({...newGroupParams, name: e.target.value})}
-                  className="w-full h-12 bg-white/5 border border-white/10 rounded-xl px-4 outline-none text-white focus:border-primary/50 transition-colors"
+                  className="w-full h-11 bg-[#F7F8FA] border border-gray-200 rounded-xl px-4 outline-none text-[14px] text-[#111111] placeholder-gray-400 font-medium focus:border-[#FF5A00]/60 focus:bg-white transition-all"
                   placeholder="Night Riders"
                 />
               </div>
 
               <div>
-                <label className="text-sm font-bold text-white/60 mb-1 flex justify-between">
+                <label className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-1 flex justify-between">
                   <span>Coverage Radius</span>
-                  <span className="text-primary">{newGroupParams.radius} km</span>
+                  <span className="text-[#FF5A00]">{newGroupParams.radius} km</span>
                 </label>
                 <input 
                   type="range" 
                   min="1" max="100" 
                   value={newGroupParams.radius}
                   onChange={e => setNewGroupParams({...newGroupParams, radius: parseInt(e.target.value)})}
-                  className="w-full h-2 bg-white/10 rounded-lg appearance-none cursor-pointer accent-primary"
+                  className="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-[#FF5A00]"
                 />
               </div>
 
-              <div className="flex gap-4 pt-2">
+              <div className="flex gap-3 pt-1">
                 <button 
                   onClick={() => setNewGroupParams({...newGroupParams, isPrivate: false})}
-                  className={`flex-1 p-3 rounded-xl border flex items-center justify-center gap-2 font-bold transition-all ${!newGroupParams.isPrivate ? 'border-primary bg-primary/20 text-primary' : 'border-white/10 text-white/40 hover:bg-white/5'}`}
+                  className={`flex-1 p-3 rounded-xl border flex items-center justify-center gap-2 font-semibold text-[13px] transition-all ${!newGroupParams.isPrivate ? 'border-[#FF5A00] bg-[#FFF0E6] text-[#FF5A00]' : 'border-gray-200 text-gray-400 hover:bg-gray-50'}`}
                 >
-                  <Globe className="w-5 h-5" /> Public
+                  <Globe className="w-4 h-4" /> Public
                 </button>
                 <button 
                   onClick={() => setNewGroupParams({...newGroupParams, isPrivate: true})}
-                  className={`flex-1 p-3 rounded-xl border flex items-center justify-center gap-2 font-bold transition-all ${newGroupParams.isPrivate ? 'border-primary bg-primary/20 text-primary' : 'border-white/10 text-white/40 hover:bg-white/5'}`}
+                  className={`flex-1 p-3 rounded-xl border flex items-center justify-center gap-2 font-semibold text-[13px] transition-all ${newGroupParams.isPrivate ? 'border-[#FF5A00] bg-[#FFF0E6] text-[#FF5A00]' : 'border-gray-200 text-gray-400 hover:bg-gray-50'}`}
                 >
-                  <Lock className="w-5 h-5" /> Private
+                  <Lock className="w-4 h-4" /> Private
                 </button>
               </div>
 
               {newGroupParams.isPrivate && (
-                <div className="pt-2">
-                  <label className="text-sm font-bold text-white/60 mb-1 block">Passcode</label>
+                <div className="pt-1">
+                  <label className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-1 block">Passcode</label>
                   <input 
                     type="text" 
                     value={newGroupParams.passcode}
                     onChange={e => setNewGroupParams({...newGroupParams, passcode: e.target.value})}
-                    className="w-full h-12 bg-white/5 border border-white/10 rounded-xl px-4 outline-none text-white focus:border-primary/50 transition-colors"
+                    className="w-full h-11 bg-[#F7F8FA] border border-gray-200 rounded-xl px-4 outline-none text-[14px] text-[#111111] placeholder-gray-400 font-medium focus:border-[#FF5A00]/60 focus:bg-white transition-all"
                     placeholder="Enter secret code"
                   />
                 </div>
@@ -703,9 +698,9 @@ const Groups = () => {
               <button 
                 onClick={createGroup}
                 disabled={isCreating || !newGroupParams.name.trim() || (newGroupParams.isPrivate && !newGroupParams.passcode.trim())}
-                className="w-full h-14 bg-primary text-white font-bold rounded-xl mt-6 disabled:opacity-50 active:scale-95 transition-all flex items-center justify-center"
+                className="w-full h-12 bg-[#FF5A00] text-white font-semibold rounded-xl mt-2 disabled:opacity-40 active:scale-95 transition-all flex items-center justify-center gap-2 shadow-lg shadow-[#FF5A00]/25"
               >
-                {isCreating ? <Loader2 className="w-5 h-5 animate-spin" /> : "Create Group"}
+                {isCreating ? <Loader2 className="w-5 h-5 animate-spin" /> : <><Shield className="w-4 h-4" /> Create Group</>}
               </button>
             </div>
           </div>

@@ -83,7 +83,7 @@ const MyIncidents = () => {
           <div className="absolute inset-0 bg-gradient-to-br from-primary/10 to-transparent"></div>
           <div className="absolute w-[800px] h-[800px] bg-primary/5 rounded-full blur-[100px] -top-[400px] -right-[400px]"></div>
           <div className="absolute w-[600px] h-[600px] bg-blue-500/5 rounded-full blur-[100px] -bottom-[300px] -left-[300px]"></div>
-          <div className="z-10 text-white/10 font-bold text-4xl select-none uppercase tracking-[1em]">
+          <div className="z-10 text-white/10 font-semibold text-4xl select-none uppercase tracking-[1em]">
             RIDECLUB
           </div>
         </div>
@@ -103,7 +103,7 @@ const MyIncidents = () => {
             <ArrowLeft className="w-5 h-5 text-white" />
           </button>
           <div>
-            <h1 className="text-[20px] font-bold text-white tracking-tight">My Incidents</h1>
+            <h1 className="text-[20px] font-semibold text-white tracking-tight">My Incidents</h1>
             <p className="text-[13px] text-white/50">Your reported history</p>
           </div>
         </div>
@@ -126,7 +126,7 @@ const MyIncidents = () => {
                       <IconComp className={`w-5 h-5 ${typeObj?.color || 'text-gray-400'}`} strokeWidth={2} />
                     </div>
                     <div>
-                      <p className="text-[15px] font-bold text-white capitalize">{incident.category || 'Incident'}</p>
+                      <p className="text-[15px] font-semibold text-white capitalize">{incident.category || 'Incident'}</p>
                       <p className="text-[12px] text-white/50">{new Date(incident.created_at).toLocaleString()}</p>
                     </div>
                   </div>
@@ -139,7 +139,7 @@ const MyIncidents = () => {
               <div className="w-16 h-16 rounded-full bg-white/5 flex items-center justify-center mb-4 border border-white/10">
                 <AlertTriangle className="w-8 h-8 text-white/30" strokeWidth={2} />
               </div>
-              <h4 className="text-[17px] font-bold text-white mb-2">No incidents</h4>
+              <h4 className="text-[17px] font-semibold text-white mb-2">No incidents</h4>
               <p className="text-[14px] text-white/50 max-w-[200px] mx-auto leading-relaxed">You haven't reported any incidents yet.</p>
             </div>
           )}

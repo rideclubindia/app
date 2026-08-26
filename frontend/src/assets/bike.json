@@ -202,7 +202,7 @@
                                 {
                                     "s": {
                                         "s": 36,
-                                        "f": "FuturaNDAlt-BoldOblique",
+                                        "f": "FuturaNDAlt-semiboldOblique",
                                         "t": "R",
                                         "ca": 0,
                                         "j": 0,
@@ -405,7 +405,7 @@
                                 {
                                     "s": {
                                         "s": 36,
-                                        "f": "FuturaNDAlt-BoldOblique",
+                                        "f": "FuturaNDAlt-semiboldOblique",
                                         "t": "E",
                                         "ca": 0,
                                         "j": 0,
@@ -556,7 +556,7 @@
                                 {
                                     "s": {
                                         "s": 36,
-                                        "f": "FuturaNDAlt-BoldOblique",
+                                        "f": "FuturaNDAlt-semiboldOblique",
                                         "t": "D",
                                         "ca": 0,
                                         "j": 0,
@@ -759,7 +759,7 @@
                                 {
                                     "s": {
                                         "s": 36,
-                                        "f": "FuturaNDAlt-BoldOblique",
+                                        "f": "FuturaNDAlt-semiboldOblique",
                                         "t": "I",
                                         "ca": 0,
                                         "j": 0,
@@ -962,7 +962,7 @@
                                 {
                                     "s": {
                                         "s": 36,
-                                        "f": "FuturaNDAlt-BoldOblique",
+                                        "f": "FuturaNDAlt-semiboldOblique",
                                         "t": "R",
                                         "ca": 0,
                                         "j": 0,
@@ -1004,8 +1004,8 @@
     "fonts": {
         "list": [
             {
-                "fName": "FuturaNDAlt-BoldOblique",
-                "fFamily": "FuturaNDAlt-BoldOblique",
+                "fName": "FuturaNDAlt-semiboldOblique",
+                "fFamily": "FuturaNDAlt-semiboldOblique",
                 "fStyle": "?",
                 "ascent": 82.4996948242188
             }
@@ -2512,7 +2512,7 @@
                     }
                 ]
             },
-            "fFamily": "FuturaNDAlt-BoldOblique"
+            "fFamily": "FuturaNDAlt-semiboldOblique"
         },
         {
             "ch": "I",
@@ -2604,7 +2604,7 @@
                     }
                 ]
             },
-            "fFamily": "FuturaNDAlt-BoldOblique"
+            "fFamily": "FuturaNDAlt-semiboldOblique"
         },
         {
             "ch": "D",
@@ -2873,7 +2873,7 @@
                     }
                 ]
             },
-            "fFamily": "FuturaNDAlt-BoldOblique"
+            "fFamily": "FuturaNDAlt-semiboldOblique"
         },
         {
             "ch": "E",
@@ -3061,7 +3061,7 @@
                     }
                 ]
             },
-            "fFamily": "FuturaNDAlt-BoldOblique"
+            "fFamily": "FuturaNDAlt-semiboldOblique"
         }
     ]
 }

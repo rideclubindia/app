@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState, lazy, Suspense } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
@@ -8,7 +8,6 @@ import {
   Edit2, History
 } from 'lucide-react';
 
-const EditRideModal = lazy(() => import('./EditRideModal'));
 import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { getTravelModeIcon } from '../../components/TravelIcons';
@@ -27,6 +26,8 @@ import { useLocationStore } from '../../store/useLocationStore';
 import { useIncidentCategories, incidentIconMap } from '../../hooks/useIncidentCategories';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import { getDeterministicUuid } from '../../lib/user';
+import { SpeedometerCluster } from '../../hmi/components/Speedometer';
+import { getRealtime, EV_LOC, EV_RIDE_EVENT, EV_RIDE_SNAPSHOT, type LocationTuple } from '../../realtime';
 
 const ORS_API_KEY = 'eyJvcmciOiI1YjNjZTM1OTc4NTExMTAwMDFjZjYyNDgiLCJpZCI6IjZlZTI0N2U2NGIwNjQwYTY5N2E0ZGJkMzVlZmYyMDI5IiwiaCI6Im11cm11cjY0In0=';
 
@@ -55,7 +56,6 @@ const LiveRide = () => {
   const [mapStyle, setMapStyle] = useState<'dark' | 'satellite' | 'light'>('light');
   const [showTraffic, setShowTraffic] = useState(false);
   
-  const [isDrawerExpanded, setIsDrawerExpanded] = useState(false);
   const [showRiders, setShowRiders] = useState(true);
   
   const [isFollowingUser, setIsFollowingUser] = useState(true);
@@ -92,8 +92,7 @@ const LiveRide = () => {
 
   const [groupIntelligence, setGroupIntelligence] = useState<any>(null);
 
-  // ─── Edit Ride State ─────────────────────────────────────────────────────
-  const [showEditModal, setShowEditModal] = useState(false);
+  // â”€â”€â”€ Edit Ride State â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const [editLog, setEditLog] = useState<any[]>([]);
 
   const formatInstruction = (text: string) => {
@@ -251,7 +250,7 @@ const LiveRide = () => {
     prefetch();
   }, [id]);
 
-  // ─── Step 2: Init map once we have prefetched data ──
+  // â”€â”€â”€ Step 2: Init map once we have prefetched data â”€â”€
   useEffect(() => {
     if (!mapContainer.current || map.current || !isDataLoaded) return;
 
@@ -294,7 +293,7 @@ const LiveRide = () => {
     m.on('load', () => {
         if (!map.current) return;
 
-        // ── Glow + Route layers (if available) ──────────
+        // â”€â”€ Glow + Route layers (if available) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         if (routeFeature) {
           map.current.addSource('route', { type: 'geojson', data: routeFeature });
           
@@ -345,7 +344,7 @@ const LiveRide = () => {
     return () => { map.current?.remove(); map.current = null; };
   }, [isDataLoaded]);
 
-  // ─── Step 3: Add hazard pins + rider markers once map is ready ───────────
+  // â”€â”€â”€ Step 3: Add hazard pins + rider markers once map is ready â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   useEffect(() => {
     if (!mapLoaded || !map.current) return;
     
@@ -401,7 +400,7 @@ const LiveRide = () => {
       const bg = isEnd ? '#ef4444' : '#ef4523';
 
       root.render(
-        <div className="flex items-center justify-center rounded-full border-[3px] border-white shadow-[0_2px_8px_rgba(0,0,0,0.3)] text-white font-black" style={{ backgroundColor: bg, width: '32px', height: '32px' }}>
+        <div className="flex items-center justify-center rounded-full border-[3px] border-white shadow-[0_2px_8px_rgba(0,0,0,0.3)] text-white font-semibold" style={{ backgroundColor: bg, width: '32px', height: '32px' }}>
           {isEnd ? <span className="text-[12px]">E</span> : getStopIcon(stop.stop_type)}
         </div>
       );
@@ -419,7 +418,7 @@ const LiveRide = () => {
     };
   }, [mapLoaded, incidents, rideStops]);
 
-  // ─── Handle ride updated (refresh stops, route, map) ─────────────────────
+  // â”€â”€â”€ Handle ride updated (refresh stops, route, map) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const handleRideUpdated = async () => {
     if (!id) return;
     // Re-fetch ride data
@@ -488,7 +487,7 @@ const LiveRide = () => {
     setLastUpdated(new Date());
   };
 
-  // ─── Fetch edit log on load ─────────────────────────────────────────────
+  // â”€â”€â”€ Fetch edit log on load â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   useEffect(() => {
     if (!id || !isDataLoaded) return;
     supabase.from('ride_edit_log').select('*').eq('ride_id', id).order('created_at', { ascending: false }).limit(20).then(({ data }) => {
@@ -496,7 +495,7 @@ const LiveRide = () => {
     });
   }, [id, isDataLoaded]);
 
-  // ─── Realtime subscriptions ───────────────────────────────────────────────
+  // â”€â”€â”€ Realtime subscriptions â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   useEffect(() => {
     if (!id) return;
     const locSub = supabase.channel(`liveride-loc-${id}`)
@@ -522,7 +521,7 @@ const LiveRide = () => {
           // Handle ride updated notifications from other admins
           if (evt.event_type === 'RIDE_UPDATED' && evt.user_id !== auth.currentUser?.uid) {
             const payload = evt.payload || {};
-            showToast(`🔄 Route updated by ${payload.editor_name || 'admin'}`, 'success');
+            showToast(`ðŸ”„ Route updated by ${payload.editor_name || 'admin'}`, 'success');
             handleRideUpdated();
           }
         })
@@ -562,7 +561,88 @@ const LiveRide = () => {
     return () => { locSub.unsubscribe(); evtSub.unsubscribe(); memSub.unsubscribe(); rideSub.unsubscribe(); };
   }, [id]);
 
-  // ─── GPS watch → camera follow + position broadcast ──────────────────────
+  // —— Realtime platform (WebSocket): fast path for locations + critical events ——
+  useEffect(() => {
+    if (!id) return;
+    const rt = getRealtime();
+    rt.connect();
+    rt.joinRide(id);
+
+    // Fast path: WS location fanout. The Supabase postgres_changes channel
+    // above remains as the durable slow path - merging twice is idempotent
+    // because both carry the same latest position.
+    const offLoc = rt.on(EV_LOC, (env) => {
+      const p = env.p as { ride: string; u: LocationTuple[] };
+      if (!p || p.ride !== id) return;
+      p.u.forEach((row) => {
+        const [memberId, lat, lng, speed, _heading, tsMs] = row;
+        if (memberId === 'self') return; // own marker handled by GPS watch
+        setRiders(prev => {
+          // Accept only if newer than what we already have (dedup vs slow path)
+          const existing = prev[memberId];
+          const existingTs = existing?.updated_at ? new Date(existing.updated_at).getTime() : 0;
+          if (tsMs && tsMs <= existingTs) return prev;
+          return {
+            ...prev,
+            [memberId]: {
+              ...existing,
+              user_id: memberId,
+              latitude: lat,
+              longitude: lng,
+              speed: speed,
+              updated_at: new Date(tsMs).toISOString()
+            }
+          };
+        });
+        placeRiderMarker(memberId, lng, lat);
+      });
+    });
+
+    // Fast path: critical ride events (SOS, ride updates). The Supabase
+    // ride_events channel stays as the durable fallback.
+    const offEvt = rt.on(EV_RIDE_EVENT, (env) => {
+      const p = env.p as { ride: string; eventType: string; by: string; data: any };
+      if (!p || p.ride !== id) return;
+      if (p.eventType === 'SOS' && p.by !== auth.currentUser?.uid) {
+        const payload = p.data || {};
+        setSosData({
+          coordinates: payload.coordinates || '--, --',
+          riderName: payload.riderName || 'Unknown Rider',
+          bikeDetails: payload.bikeDetails || 'Not provided',
+          bloodGroup: payload.bloodGroup || 'Unknown',
+          emergencyContact: payload.emergencyContact || 'Not provided'
+        });
+        setIsReceivingSOS(true);
+        setShowSOSModal(true);
+      }
+      if (p.eventType === 'RIDE_UPDATED' && p.by !== auth.currentUser?.uid) {
+        showToast(`Route updated by ${p.data?.editor_name || 'admin'}`, 'success');
+        handleRideUpdated();
+      }
+    });
+
+    // Fresh snapshot whenever the socket reconnects (covers missed events)
+    const offSnap = rt.on(EV_RIDE_SNAPSHOT, (env) => {
+      const p = env.p as { ride: string; u: LocationTuple[] };
+      if (!p || p.ride !== id) return;
+      p.u.forEach((row) => {
+        const [memberId, lat, lng, speed] = row;
+        if (memberId === 'self') return;
+        setRiders(prev => ({
+          ...prev,
+          [memberId]: { ...prev[memberId], user_id: memberId, latitude: lat, longitude: lng, speed }
+        }));
+        placeRiderMarker(memberId, lng, lat);
+      });
+    });
+
+    return () => {
+      offLoc(); offEvt(); offSnap();
+      rt.leaveRide(id);
+    };
+  }, [id]);
+
+  // â”€â”€â”€ GPS watch â†’ camera follow + position broadcast â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   useEffect(() => {
     if (!mapLoaded) return;
     const wid = navigator.geolocation.watchPosition(
@@ -687,22 +767,14 @@ const LiveRide = () => {
 
 
         if (user && id) {
-          // Push to backend Telemetry Engine (user_id is derived server-side from the JWT)
-          apiClient.post('/api/v1/location/update', {
-            ride_id: parseInt(id) || 1, // Fallback if string
-            latitude: lat,
-            longitude: lng,
-            speed: speedKph,
-            heading: heading ?? 0,
-            timestamp: new Date().toISOString()
-          }).then(() => {
-            telemetryFailCountRef.current = 0;
-            setTelemetryDegraded(false);
-          }).catch(err => {
-             console.error('Backend telemetry update failed:', err);
-             telemetryFailCountRef.current += 1;
-             if (telemetryFailCountRef.current >= 3) setTelemetryDegraded(true);
-          });
+          // Realtime platform: adaptive batching over the shared WebSocket
+          // (auto REST fallback when the socket is down - same telemetry
+          // contract, user_id derived server-side from the JWT).
+          const rt = getRealtime();
+          rt.sendLocation(id, { lat, lng, speed: speedKph, heading: heading ?? 0 });
+          const wsUp = rt.connected;
+          setTelemetryDegraded(!wsUp);
+          if (wsUp) telemetryFailCountRef.current = 0;
         }
       },
       err => {
@@ -742,7 +814,7 @@ const LiveRide = () => {
     return () => navigator.geolocation.clearWatch(wid);
   }, [mapLoaded, is3D, id, isFollowingUser, routeFeature]);
 
-  // ─── Hazard & Stop proximity (Turf) ────────────────────
+  // â”€â”€â”€ Hazard & Stop proximity (Turf) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   useEffect(() => {
     if (!userLocation || !routeFeature?.geometry?.coordinates?.length) return;
     try {
@@ -870,7 +942,7 @@ const LiveRide = () => {
     return () => { map.current?.off('styledata', updateStyle); }
   }, [mapLoaded, mapStyle]);
 
-  // ─── Helpers ──────────────────────────────────────────────────────────────
+  // â”€â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const placeRiderMarker = (userId: string, lng: number, lat: number) => {
     if (!map.current) return;
     if (isNaN(lng) || isNaN(lat) || lng == null || lat == null) return;
@@ -943,7 +1015,7 @@ const LiveRide = () => {
           const res = await apiClient.get(`/api/v1/analytics/ride/${encodeURIComponent(id)}/group-intelligence`);
           setGroupIntelligence(res.data);
         } catch {
-          // Silently skip — backend may not be running
+          // Silently skip â€” backend may not be running
         }
       }
 
@@ -1009,7 +1081,7 @@ const LiveRide = () => {
         emergency_contact_name: emergencyContactName
       });
       if (res.data?.sms_sent) {
-        showToast('🚨 SOS sent — emergency contact notified via SMS.', 'success');
+        showToast('ðŸš¨ SOS sent â€” emergency contact notified via SMS.', 'success');
       } else {
         showToast(`In-app SOS alert sent to your group. SMS to emergency contact was NOT confirmed${res.data?.reason ? `: ${res.data.reason}` : '.'}`, 'error');
       }
@@ -1037,7 +1109,7 @@ const LiveRide = () => {
     if (!navigator.onLine) {
       savePendingSOS(lat, lng);
       showToast('You are offline. SOS will be sent automatically when your connection returns.', 'error');
-      throw new Error('Offline — SOS queued for retry.');
+      throw new Error('Offline â€” SOS queued for retry.');
     }
 
     try {
@@ -1048,7 +1120,7 @@ const LiveRide = () => {
         description: 'Emergency SOS!',
         payload: sosData
       });
-      showToast('🚨 SOS Sent to all riders!', 'success');
+      showToast('ðŸš¨ SOS Sent to all riders!', 'success');
     } catch (err) {
       console.error('SOS insert failed:', err);
       savePendingSOS(lat, lng);
@@ -1057,7 +1129,7 @@ const LiveRide = () => {
     }
 
     // Best-effort dispatch to real emergency contact via backend SMS gateway.
-    // This is independent of the in-app alert above — report failures honestly.
+    // This is independent of the in-app alert above â€” report failures honestly.
     await dispatchSOSToBackend(lat, lng);
   };
 
@@ -1078,7 +1150,7 @@ const LiveRide = () => {
           payload: sosData
         });
         localStorage.removeItem(PENDING_SOS_KEY);
-        showToast('🚨 Queued SOS alert has been sent now that you are back online.', 'success');
+        showToast('ðŸš¨ Queued SOS alert has been sent now that you are back online.', 'success');
         await dispatchSOSToBackend(pending.lat, pending.lng);
       } catch (err) {
         console.error('Retrying pending SOS failed:', err);
@@ -1103,10 +1175,10 @@ const LiveRide = () => {
       ride_id: id,
       user_id: user.uid,
       event_type: 'SOS_REVOKED',
-      description: 'SOS was revoked — false alarm',
+      description: 'SOS was revoked â€” false alarm',
       payload: sosData
     });
-    showToast('SOS revoked — your group has been notified', 'success');
+    showToast('SOS revoked â€” your group has been notified', 'success');
   };
 
   const handleSOSNavigate = (lat: number, lng: number) => {
@@ -1261,8 +1333,6 @@ const LiveRide = () => {
   }, [mapStyle, routeFeature]);
 
 
-
-  // ─── Render ───────────────────────────────────────────────────────────────
   
   const currentUserData = riders[auth.currentUser?.uid || ''];
   const currentUserStatus = currentUserData?.status;
@@ -1274,9 +1344,9 @@ const LiveRide = () => {
         <div className="w-20 h-20 bg-orange-100 rounded-full flex items-center justify-center mb-6 animate-pulse">
           <Shield className="w-10 h-10 text-orange-500" />
         </div>
-        <h2 className="text-2xl font-bold text-dark mb-2">Waiting for Approval</h2>
+        <h2 className="text-2xl font-semibold text-dark mb-2">Waiting for Approval</h2>
         <p className="text-gray-500 mb-4 max-w-xs">Your request to join this ride has been sent to the Ride Admin. Please wait while they review your request.</p>
-        <button onClick={() => navigate('/home')} className="w-full max-w-[300px] bg-dark text-white font-bold py-4 rounded-lg active:scale-95 transition-transform">
+        <button onClick={() => navigate('/home')} className="w-full max-w-[300px] bg-dark text-white font-semibold py-4 rounded-lg active:scale-95 transition-transform">
           Back to Home
         </button>
       </div>
@@ -1287,312 +1357,114 @@ const LiveRide = () => {
   const isAdmin = currentUserData?.role === 'admin' || ride?.owner_id === auth.currentUser?.uid;
 
   return (
-    <div className="w-full h-full bg-dark flex flex-col font-sans overflow-hidden relative">
+    <div className="w-full h-full bg-[#E8F1F2] flex portrait:flex-col landscape:flex-row overflow-hidden font-sans relative">
 
-      {/* Map layer (Must always render so ref is available) */}
-      <div className="absolute inset-0 z-0">
-        <div ref={mapContainer} className="w-full h-full" />
-        <div className="absolute bottom-0 left-0 right-0 h-64 bg-gradient-to-t from-dark to-transparent pointer-events-none z-10" />
-      </div>
+      {/* 1. Telemetry Panel */}
+      <div className="flex flex-col portrait:w-full portrait:h-[50%] portrait:order-2 portrait:border-t landscape:w-[30%] landscape:min-w-[280px] landscape:max-w-[340px] landscape:h-full landscape:order-2 landscape:border-r bg-[#F7F8FA] shrink-0 z-10 shadow-[4px_0_15px_rgba(0,0,0,0.05)] border-gray-200">
+        <div className="flex-1 flex flex-col pt-2 pb-2 overflow-y-auto hide-scrollbar min-h-0">
 
-      {!mapLoaded && <LoadingSpinner fullScreen message="Loading Ride Map..." />}
-
-      {mapLoaded && (
-        <>
-      {/* ── Top HUD ── */}
-      <div className="absolute top-4 left-4 right-4 landscape:right-[calc(50%+16px)] z-20 pointer-events-none">
-        <div className="bg-white/90 backdrop-blur-xl border border-white/50 rounded-[24px] shadow-[0_8px_32px_rgba(0,0,0,0.12)] min-h-[80px] py-3 flex items-center px-4 gap-4 pointer-events-auto transition-all duration-300">
-          <div className="w-[50px] h-[50px] bg-primary/10 rounded-full flex items-center justify-center flex-shrink-0">
-            {currentInstruction ? getTurnIcon(currentInstruction.type) : <ArrowUp className="w-7 h-7 text-primary" />}
+          {/* Header */}
+          <div className="px-5 mb-1 flex justify-between items-start shrink-0">
+            <div className="min-w-0">
+              <span className="text-[#111111] font-semibold text-lg tracking-wide uppercase leading-tight block truncate">{ride?.name || 'Live Ride'}</span>
+              {ride?.ride_code && (
+                <span className="text-[11px] font-semibold text-gray-400 mt-0.5 block">Code: {ride.ride_code}</span>
+              )}
+            </div>
+            <button onClick={() => navigate('/ride-plus')} className="w-9 h-9 bg-white border border-gray-200 rounded-full flex items-center justify-center text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors shadow-sm shrink-0" title="Exit Ride">
+              <X className="w-4 h-4" />
+            </button>
           </div>
-          <div className="flex-1 overflow-hidden">
-            <h2 className="text-[22px] font-bold text-[#273a5a] leading-tight break-words">
-              {currentInstruction ? currentInstruction.text : 'Following Route'}
-            </h2>
-            <p className="text-[15px] text-gray-500 font-bold mt-1">
-              {currentInstruction ? currentInstruction.dist : (ride?.name || 'On route')}
-            </p>
+
+          {/* Speedometer */}
+          <div className="shrink-0 mb-2">
+            <SpeedometerCluster speed={currentSpeedKph || 0} />
           </div>
-          <div className="flex items-center gap-1 shrink-0">
-            {(riders[auth.currentUser?.uid || '']?.role === 'admin' || ride?.owner_id === auth.currentUser?.uid) && (
-              <button onClick={() => setShowEditModal(true)} className="w-10 h-10 rounded-full flex items-center justify-center text-[#ef4523] hover:bg-[#ef4523]/10 hover:scale-110 active:scale-95 transition-all duration-300" title="Edit Ride">
-                <Edit2 className="w-5 h-5" />
+
+          {/* ETA Card */}
+          <div className="px-2 shrink-0 pb-2">
+            <div className="bg-white rounded-[8px] border border-gray-100 shadow-sm overflow-hidden">
+              <div className="flex">
+                <div className="w-1 shrink-0" />
+                <div className="flex-1 min-w-0 p-3">
+                  <div className="flex items-center justify-between gap-2 mb-1">
+                    <span className="text-[9px] font-semibold text-gray-400 uppercase tracking-wider shrink-0">Next Stop</span>
+                    <span className="bg-[#FFF0E6] text-[#FF5A00] text-[10px] font-semibold px-2 py-0.5 rounded-full shrink-0">ETA {etaStr}</span>
+                  </div>
+                  {nextStop?.stop_name && (
+                    <p className="text-[12px] font-semibold text-[#111111] truncate mb-0.5" title={nextStop.stop_name}>{nextStop.stop_name}</p>
+                  )}
+                  <div className="flex items-end justify-between">
+                    <h2 className="text-[26px] font-semibold text-success leading-none tabular-nums">{distStr}</h2>
+                    <span className="text-[11px] font-semibold text-gray-400 tabular-nums">{Math.round(progress * 100)}% done</span>
+                  </div>
+                  <div className="w-full h-1.5 bg-gray-100 rounded-full overflow-hidden mt-2">
+                    <div
+                      className="h-full bg-gradient-to-r from-[#FF5A00] to-success rounded-full transition-all duration-1000"
+                      style={{ width: `${Math.round(progress * 100)}%` }}
+                    />
+                  </div>
+                  <div className="flex items-center gap-1.5 mt-2.5">
+                    <span className="bg-gray-50 border border-gray-100 text-gray-500 text-[10px] font-semibold px-2 py-1 rounded-lg tabular-nums">{userDistKm.toFixed(1)} / {totalDistance.toFixed(1)} km</span>
+                    <span className="bg-gray-50 border border-gray-100 text-gray-500 text-[10px] font-semibold px-2 py-1 rounded-lg tabular-nums">Avg {avgSpeed}</span>
+                    <span className="bg-gray-50 border border-gray-100 text-gray-500 text-[10px] font-semibold px-2 py-1 rounded-lg tabular-nums">Max {maxSpeed}</span>
+                  </div>
+                </div>
+                </div>
+            </div>
+          </div>
+
+          {/* Tabs */}
+          <div className="px-2 shrink-0 pb-2">
+            <div className="flex bg-gray-200/60 p-1 rounded-xl">
+              <button 
+                onClick={() => setActiveTab('details')}
+                className={`flex-1 py-1.5 text-[12px] font-semibold rounded-lg transition-all ${activeTab === 'details' ? 'bg-white text-[#111111] shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+              >
+                Details
               </button>
-            )}
-            {riders[auth.currentUser?.uid || '']?.role === 'admin' || ride?.owner_id === auth.currentUser?.uid ? (
-              <button onClick={handleLeaveOrEnd} className="w-10 h-10 rounded-full flex items-center justify-center text-danger hover:bg-danger/10 hover:scale-110 active:scale-95 transition-all duration-300" title="End Ride">
-                <StopCircle className="w-6 h-6" />
+              <button 
+                onClick={() => setActiveTab('routes')}
+                className={`flex-1 py-1.5 text-[12px] font-semibold rounded-lg transition-all ${activeTab === 'routes' ? 'bg-white text-[#111111] shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+              >
+                Route
               </button>
-            ) : (
-              <button onClick={handleLeaveOrEnd} className="w-10 h-10 rounded-full flex items-center justify-center text-danger hover:bg-danger/10 hover:scale-110 active:scale-95 transition-all duration-300" title="Leave Ride">
-                <LogOut className="w-6 h-6" />
+              <button 
+                onClick={() => setActiveTab('activity')}
+                className={`flex-1 py-1.5 text-[12px] font-semibold rounded-lg transition-all flex items-center justify-center gap-1 ${activeTab === 'activity' ? 'bg-white text-[#111111] shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+              >
+                <History className="w-3 h-3" /> Activity
               </button>
-            )}
+            </div>
           </div>
-        </div>
-      </div>
 
-      {/* ── Floating SOS ── */}
-      <div className={`absolute top-[110px] right-4 z-20 transition-all duration-500 ease-out ${isDrawerExpanded ? 'opacity-0 pointer-events-none translate-y-4' : 'opacity-100 translate-y-0'}`}>
-        <button onClick={handleSOS} className="w-[50px] h-[50px] bg-danger/90 backdrop-blur-md border border-red-400/50 rounded-full flex items-center justify-center text-white shadow-[0_0_24px_rgba(255,59,48,0.6)] shrink-0 hover:scale-110 active:scale-95 transition-all duration-300">
-          <ShieldAlert className="w-6 h-6" />
-        </button>
-      </div>
+          {/* Tab Content */}
+          <div className="px-2 flex-1 min-h-0 overflow-y-auto hide-scrollbar flex flex-col gap-3">
 
-      {/* ── Speed Meter ── */}
-      <div className={`absolute bottom-[240px] landscape:bottom-6 right-4 landscape:right-[calc(50%+16px)] z-20 transition-all duration-500 ease-out ${isDrawerExpanded ? 'opacity-0 pointer-events-none translate-y-4 scale-90' : 'opacity-100 translate-y-0 scale-100'}`}>
-        <div className="w-24 h-24 bg-white/90 backdrop-blur-xl border border-white/50 rounded-full flex flex-col items-center justify-center text-[#273a5a] shadow-[0_8px_32px_rgba(0,0,0,0.15)] hover:scale-105 transition-transform duration-300">
-          <div className="text-[32px] font-black leading-none">{currentSpeedKph !== null ? currentSpeedKph : '--'}</div>
-          <div className="text-[12px] font-bold text-gray-400 mt-1">km/h</div>
-        </div>
-      </div>
+              {activeTab === 'details' && (
+                <div className="flex flex-col gap-3">
 
-      {/* ── Side Controls ── */}
-      <div className={`absolute bottom-[240px] landscape:bottom-6 left-4 z-20 flex flex-col gap-3 transition-all duration-500 ease-out ${isDrawerExpanded ? 'opacity-0 pointer-events-none translate-y-4' : 'opacity-100 translate-y-0'}`}>
-        <button
-          onClick={() => setShowUsersModal(true)}
-          className="w-[48px] h-[48px] rounded-full flex items-center justify-center shadow-[0_8px_24px_rgba(0,0,0,0.2)] bg-[#1c2331]/80 backdrop-blur-xl border border-white/10 text-white hover:scale-110 active:scale-95 transition-all duration-300"
-          title="Show Users"
-        >
-          <Users className="w-6 h-6" />
-        </button>
-        {/* Edit Ride FAB (Admin only) */}
-        {isAdmin && (
-          <button
-            onClick={() => setShowEditModal(true)}
-            className="w-[48px] h-[48px] rounded-full flex items-center justify-center shadow-[0_8px_24px_rgba(239,69,35,0.4)] bg-[#1c2331]/80 backdrop-blur-xl border border-[#ef4523]/50 text-[#ef4523] hover:scale-110 active:scale-95 transition-all duration-300"
-            title="Edit Ride"
-          >
-            <Edit2 className="w-6 h-6" />
-          </button>
-        )}
-        <button
-          onClick={() => setShowTraffic(!showTraffic)}
-          className={`w-[48px] h-[48px] rounded-full flex items-center justify-center hover:scale-110 active:scale-95 transition-all duration-300 shadow-[0_8px_24px_rgba(0,0,0,0.2)] ${showTraffic ? 'bg-primary/90 backdrop-blur-xl border border-white/30 text-white shadow-[0_8px_24px_rgba(255,149,0,0.4)]' : 'bg-[#1c2331]/80 backdrop-blur-xl border border-white/10 text-white'}`}
-          title="Toggle Traffic"
-        >
-          <Layers className="w-6 h-6" />
-        </button>
-        <button
-          onClick={() => { 
-            if (!map.current) return; 
-            const next3D = !is3D;
-            let currentBearing = 0;
-            let targetCenter: [number, number] | null = null;
-            
-            if (userLocationRef.current) {
-              targetCenter = [userLocationRef.current.lng, userLocationRef.current.lat];
-            } else if (routeFeatureRef.current) {
-              targetCenter = [routeFeatureRef.current.geometry.coordinates[0][0], routeFeatureRef.current.geometry.coordinates[0][1]];
-            }
-
-            if (next3D && routeFeatureRef.current && targetCenter) {
-               try {
-                  const userPt = turf.point(targetCenter);
-                  const line = turf.lineString(routeFeatureRef.current.geometry.coordinates);
-                  const closestPoint = turf.nearestPointOnLine(line, userPt);
-                  const routeLength = turf.length(line);
-                  const distanceAlong = (closestPoint.properties as any).location;
-                  const aheadDist = Math.min(distanceAlong + 0.05, routeLength);
-                  const aheadPoint = turf.along(line, aheadDist);
-                  currentBearing = turf.bearing(closestPoint, aheadPoint);
-               } catch(e) {}
-            }
-            if (next3D) {
-              const options: any = { pitch: 60, zoom: 20, bearing: currentBearing, duration: 1000 };
-              if (targetCenter) options.center = targetCenter;
-              map.current.easeTo(options);
-              setIsFollowingUser(true);
-            } else {
-              map.current.easeTo({ pitch: 0, bearing: 0, duration: 1000 });
-            }
-            setIs3D(next3D); 
-          }}
-          className={`w-[48px] h-[48px] rounded-full flex items-center justify-center hover:scale-110 active:scale-95 transition-all duration-300 shadow-[0_8px_24px_rgba(0,0,0,0.2)] ${is3D ? 'bg-primary/90 backdrop-blur-xl border border-white/30 text-white shadow-[0_8px_24px_rgba(255,149,0,0.4)]' : 'bg-[#1c2331]/80 backdrop-blur-xl border border-white/10 text-white'}`}
-        >
-          {is3D ? <Compass className="w-6 h-6" /> : <Navigation2 className="w-6 h-6" />}
-        </button>
-
-        <button
-          onClick={() => {
-            setIsFollowingUser(true);
-            setFocusedRiderId(null);
-            if (map.current) {
-              let currentBearing = map.current.getBearing();
-              let targetCenter: [number, number] | null = null;
-              if (userLocationRef.current) {
-                targetCenter = [userLocationRef.current.lng, userLocationRef.current.lat];
-              } else if (routeFeatureRef.current) {
-                targetCenter = [routeFeatureRef.current.geometry.coordinates[0][0], routeFeatureRef.current.geometry.coordinates[0][1]];
-              }
-
-              if (is3D && routeFeatureRef.current && targetCenter) {
-                try {
-                  const userPt = turf.point(targetCenter);
-                  const line = turf.lineString(routeFeatureRef.current.geometry.coordinates);
-                  const closestPoint = turf.nearestPointOnLine(line, userPt);
-                  const routeLength = turf.length(line);
-                  const distanceAlong = (closestPoint.properties as any).location;
-                  const aheadDist = Math.min(distanceAlong + 0.05, routeLength);
-                  const aheadPoint = turf.along(line, aheadDist);
-                  currentBearing = turf.bearing(closestPoint, aheadPoint);
-                } catch (e) {}
-              }
-
-              const options: any = { duration: 1000, bearing: currentBearing, pitch: is3D ? 60 : 0, zoom: 20 };
-              if (targetCenter) options.center = targetCenter;
-              if (targetCenter) {
-                map.current.easeTo(options);
-                return;
-              }
-
-              useLocationStore.getState().fetchLocationOnce().then((pos) => {
-                const center: [number, number] = [pos.lng, pos.lat];
-                setUserLocation({ lat: pos.lat, lng: pos.lng });
-                map.current?.easeTo({ ...options, center });
-                placeRiderMarker(auth.currentUser?.uid || 'me', pos.lng, pos.lat);
-              }).catch(() => {
-                showToast('Live location unavailable. Please enable location permission.', 'error');
-              });
-            }
-          }}
-          className={`w-[48px] h-[48px] rounded-full flex items-center justify-center hover:scale-110 active:scale-95 transition-all duration-300 shadow-[0_8px_24px_rgba(0,0,0,0.2)] ${isFollowingUser && !focusedRiderId ? 'bg-primary/90 backdrop-blur-xl border border-white/30 text-white shadow-[0_8px_24px_rgba(255,149,0,0.4)]' : 'bg-[#1c2331]/80 backdrop-blur-xl border border-white/10 text-white'}`}
-          title="My Location"
-          aria-label="My Location"
-        >
-          <Crosshair className="w-5 h-5" />
-        </button>
-
-      </div>
-
-      {/* ── Status Banners: telemetry degraded / crash detection paused ── */}
-      <div className="absolute top-[110px] left-1/2 -translate-x-1/2 landscape:left-[25%] landscape:-translate-x-1/2 z-20 flex flex-col items-center gap-2 pointer-events-none transition-all duration-300">
-        {telemetryDegraded && (
-          <div className="bg-amber-500/90 backdrop-blur-md border border-amber-300/50 text-white px-4 py-2 rounded-full font-bold text-[12px] flex items-center gap-2 shadow-[0_8px_24px_rgba(245,158,11,0.4)] whitespace-nowrap">
-            <AlertTriangle className="w-4 h-4" /> Location updates failing
-          </div>
-        )}
-        {showEmergencySetup && (
-          <div className="bg-[#1c2331]/90 backdrop-blur-md border border-white/20 text-white px-4 py-2 rounded-full font-bold text-[12px] flex items-center gap-2 shadow-[0_8px_24px_rgba(0,0,0,0.3)] whitespace-nowrap">
-            <ShieldAlert className="w-4 h-4 text-amber-400" /> Crash detection paused
-          </div>
-        )}
-      </div>
-
-      {/* ── Hazard Banner (mirrors Navigation.tsx) ── */}
-      {nextHazard ? (
-        <div className="absolute top-[160px] left-1/2 -translate-x-1/2 landscape:left-[25%] landscape:-translate-x-1/2 z-20 pointer-events-none transition-all duration-300">
-          <div className="bg-danger/90 backdrop-blur-md border border-red-400/50 text-white px-5 py-2.5 rounded-full font-bold text-[14px] flex items-center gap-2 shadow-[0_8px_24px_rgba(255,59,48,0.5)] animate-pulse whitespace-nowrap">
-            <AlertTriangle className="w-4 h-4" />
-            {fmtHazard(nextHazard.remainingDist)} — {nextHazard.category?.split(':')[0]} Ahead
-          </div>
-        </div>
-      ) : incidents.length > 0 && userLocation ? (
-        <div className="absolute top-[160px] left-1/2 -translate-x-1/2 landscape:left-[25%] landscape:-translate-x-1/2 z-20 pointer-events-none transition-all duration-300">
-          <div className="bg-success/90 backdrop-blur-md border border-green-400/50 text-white px-5 py-2.5 rounded-full font-bold text-[14px] flex items-center gap-2 shadow-[0_8px_24px_rgba(52,199,89,0.4)] whitespace-nowrap">
-            <Shield className="w-4 h-4" /> Clear Route Ahead
-          </div>
-        </div>
-      ) : null}
-
-      {/* ── Bottom Drawer ── */}
-      <div 
-        className={`absolute bottom-0 left-0 right-0 z-30 flex flex-col gap-4 bg-white/95 backdrop-blur-2xl rounded-t-[32px] border-t border-white shadow-[0_-12px_40px_rgba(0,0,0,0.12)] transition-all duration-500 ease-out landscape:h-[100dvh] landscape:w-[50%] landscape:left-auto landscape:right-0 landscape:rounded-t-none landscape:rounded-l-[32px] landscape:border-l landscape:shadow-[-12px_0_40px_rgba(0,0,0,0.12)] ${isDrawerExpanded ? 'max-h-[85vh] landscape:max-h-[100dvh] pt-3 pb-8 px-6' : 'pt-3 pb-8 px-6 landscape:max-h-[100dvh]'}`}
-      >
-        {/* Drawer Handle */}
-        <div 
-          className="w-12 h-1.5 bg-gray-300 hover:bg-gray-400 rounded-full mx-auto shrink-0 cursor-pointer" 
-          onClick={() => setIsDrawerExpanded(!isDrawerExpanded)}
-        />
-
-        <div className="flex-1 overflow-y-auto hide-scrollbar flex flex-col gap-4">
-          
-          {/* ETA card (always visible at top of drawer) */}
-          <div className="bg-transparent pt-1">
-          <div className="flex justify-between items-start mb-4">
-            <div onClick={() => setIsDrawerExpanded(!isDrawerExpanded)} className="cursor-pointer flex-1 hover:opacity-80 transition-opacity" title={isDrawerExpanded ? "Click to close" : "Click to expand"}>
-              <h2 className="text-[32px] font-bold text-success leading-none flex items-center gap-2">
-                {distStr}
-              </h2>
-              <p className="text-[16px] text-gray-500 font-bold mt-1">
-                to next stop · {etaStr}
-              </p>
-              <div className="flex items-center gap-4 mt-2">
-                <p className="text-[13px] font-medium text-[#273a5a]">
-                  <strong>{userDistKm.toFixed(1)} km</strong> / {totalDistance.toFixed(1)} km
-                </p>
-                <p className="text-[13px] font-medium text-[#273a5a]">
-                  Avg: <strong>{avgSpeed}</strong> km/h · Max: <strong>{maxSpeed}</strong> km/h
-                </p>
-              </div>
-              <div className="flex items-center gap-2 mt-2">
+              {/* Live Status Row */}
+              <div className="bg-white rounded-[8px] border border-gray-100 shadow-sm p-3 flex items-center justify-between">
                 <div 
-                  onClick={(e) => { 
-                    e.stopPropagation(); 
-                    if (ride?.ride_code) {
-                      navigator.clipboard.writeText(ride.ride_code);
-                      showToast('Ride code copied!', 'success');
-                    }
-                  }}
-                  className="bg-gray-100 hover:bg-gray-200 transition-colors cursor-pointer px-3 py-1 rounded-full text-xs font-bold text-[#273a5a] flex items-center gap-2"
+                  onClick={() => { if (ride?.ride_code) { navigator.clipboard.writeText(ride.ride_code); showToast('Ride code copied!', 'success'); } }}
+                  className="bg-gray-50 hover:bg-gray-100 transition-colors cursor-pointer px-3 py-1.5 rounded-full text-[11px] font-semibold text-[#111111] flex items-center gap-1.5"
                   title="Copy ride code"
                 >
                   <span className="text-success flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-success animate-pulse" /> LIVE</span>
                   <span>{ride?.ride_code || '...'}</span>
                 </div>
-                <div onClick={(e) => { e.stopPropagation(); fetchLiveUpdates(); }} className="cursor-pointer flex items-center gap-1 text-xs text-gray-400 font-bold hover:text-primary transition-colors">
-                  <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? 'animate-spin text-primary' : ''}`} />
+                <div onClick={() => fetchLiveUpdates()} className="cursor-pointer flex items-center gap-1 text-[11px] text-gray-400 font-semibold hover:text-[#FF5A00] transition-colors">
+                  <RefreshCw className={`w-3 h-3 ${refreshing ? 'animate-spin text-[#FF5A00]' : ''}`} />
                   {timeSinceUpdate}
                 </div>
               </div>
-            </div>
-            <button onClick={(e) => { e.stopPropagation(); navigate('/ride-plus'); }} className="w-[50px] h-[50px] bg-gray-100 rounded-full flex items-center justify-center hover:bg-gray-200 transition-colors shadow-sm">
-              <X className="w-6 h-6 text-danger" />
-            </button>
-          </div>
-
-          {/* Progress bar */}
-          <div className="w-full h-2.5 bg-gray-100 rounded-full overflow-hidden shadow-inner shrink-0">
-            <div
-              className="h-full bg-gradient-to-r from-primary to-success rounded-full transition-all duration-1000"
-              style={{ width: `${Math.round(progress * 100)}%` }}
-            />
-          </div>
-          </div>
-
-          {/* Drawer Expanded Content */}
-          {isDrawerExpanded && (
-            <div className="mt-2 flex flex-col gap-4 pb-6">
-              {/* Tab Switcher */}
-              <div className="flex bg-gray-100 p-1 rounded-xl">
-                <button 
-                  onClick={() => setActiveTab('details')}
-                  className={`flex-1 py-2 text-sm font-bold rounded-lg transition-all ${activeTab === 'details' ? 'bg-white text-[#273a5a] shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
-                >
-                  Details
-                </button>
-                <button 
-                  onClick={() => setActiveTab('routes')}
-                  className={`flex-1 py-2 text-sm font-bold rounded-lg transition-all ${activeTab === 'routes' ? 'bg-white text-[#273a5a] shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
-                >
-                  Routes
-                </button>
-                <button 
-                  onClick={() => setActiveTab('activity')}
-                  className={`flex-1 py-2 text-sm font-bold rounded-lg transition-all flex items-center justify-center gap-1 ${activeTab === 'activity' ? 'bg-white text-[#273a5a] shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
-                >
-                  <History className="w-3.5 h-3.5" /> Activity
-                </button>
-              </div>
-
-              {activeTab === 'details' && (
-                <div className="flex flex-col gap-6">
               
               {/* Pending Approvals Section (Admin Only) */}
               {isAdmin && pendingRiders.length > 0 && (
                 <div className="bg-orange-50 border border-orange-100 rounded-xl p-4 shadow-sm">
                   <div className="flex items-center justify-between mb-3">
-                    <h3 className="text-orange-800 font-bold flex items-center gap-2">
+                    <h3 className="text-orange-800 font-semibold flex items-center gap-2">
                       <Shield className="w-4 h-4" /> Pending Approvals ({pendingRiders.length})
                     </h3>
                   </div>
@@ -1609,11 +1481,11 @@ const LiveRide = () => {
                               className="w-10 h-10 rounded-full object-cover border border-gray-200" 
                             />
                           ) : (
-                            <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center font-bold text-gray-500">
+                            <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center font-semibold text-gray-500">
                               {pr.display_name?.charAt(0) || 'U'}
                             </div>
                           )}
-                          <span className="font-bold text-dark">{pr.display_name}</span>
+                          <span className="font-semibold text-dark">{pr.display_name}</span>
                         </div>
                         <div className="flex gap-2">
                           <button 
@@ -1622,7 +1494,7 @@ const LiveRide = () => {
                               await supabase.from('ride_members').update({ status: 'approved' }).eq('ride_id', id).eq('user_id', searchPrUserId);
                               showToast('Rider approved!', 'success');
                             }}
-                            className="bg-success text-white px-3 py-1.5 rounded-lg text-sm font-bold active:scale-95 transition-all"
+                            className="bg-success text-white px-3 py-1.5 rounded-lg text-sm font-semibold active:scale-95 transition-all"
                           >
                             Approve
                           </button>
@@ -1632,7 +1504,7 @@ const LiveRide = () => {
                               await supabase.from('ride_members').delete().eq('ride_id', id).eq('user_id', searchPrUserId);
                               showToast('Rider rejected', 'info');
                             }}
-                            className="bg-danger/10 text-danger px-3 py-1.5 rounded-lg text-sm font-bold active:scale-95 transition-all"
+                            className="bg-danger/10 text-danger px-3 py-1.5 rounded-lg text-sm font-semibold active:scale-95 transition-all"
                           >
                             Reject
                           </button>
@@ -1647,7 +1519,7 @@ const LiveRide = () => {
 
               {/* Map Settings Section */}
               <div className="bg-gray-50 border border-gray-100 rounded-xl p-4 shadow-sm flex flex-col gap-5">
-                <h3 className="text-[#273a5a] font-bold">Map Settings</h3>
+                <h3 className="text-[#273a5a] font-semibold">Map Settings</h3>
                 
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3 text-[#273a5a] font-medium">
@@ -1668,19 +1540,19 @@ const LiveRide = () => {
                   <div className="flex gap-3">
                     <button 
                       onClick={() => setMapStyle('dark')} 
-                      className={`flex-1 py-3 px-2 rounded-xl text-sm font-bold transition-all ${mapStyle === 'dark' ? 'bg-primary text-white shadow-lg' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}
+                      className={`flex-1 py-3 px-2 rounded-xl text-sm font-semibold transition-all ${mapStyle === 'dark' ? 'bg-primary text-white shadow-lg' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}
                     >
                       Dark
                     </button>
                     <button 
                       onClick={() => setMapStyle('light')} 
-                      className={`flex-1 py-3 px-2 rounded-xl text-sm font-bold transition-all ${mapStyle === 'light' ? 'bg-[#34C759] text-white shadow-lg' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}
+                      className={`flex-1 py-3 px-2 rounded-xl text-sm font-semibold transition-all ${mapStyle === 'light' ? 'bg-[#34C759] text-white shadow-lg' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}
                     >
                       Light
                     </button>
                     <button 
                       onClick={() => setMapStyle('satellite')} 
-                      className={`flex-1 py-3 px-2 rounded-xl text-sm font-bold transition-all ${mapStyle === 'satellite' ? 'bg-[#007AFF] text-white shadow-lg' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}
+                      className={`flex-1 py-3 px-2 rounded-xl text-sm font-semibold transition-all ${mapStyle === 'satellite' ? 'bg-[#007AFF] text-white shadow-lg' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}
                     >
                       Satellite
                     </button>
@@ -1693,7 +1565,7 @@ const LiveRide = () => {
               {/* Group Intelligence ML Inference (Phase 4) */}
               {(
                 <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 shadow-sm flex flex-col gap-3">
-                  <h3 className="text-blue-900 font-bold flex items-center gap-2">
+                  <h3 className="text-blue-900 font-semibold flex items-center gap-2">
                     <Layers className="w-5 h-5 text-blue-500" /> Group Intelligence Inference
                   </h3>
                   
@@ -1705,11 +1577,11 @@ const LiveRide = () => {
                     
                     {effectiveGroupIntelligence.distances && effectiveGroupIntelligence.distances.length > 0 && (
                       <div className="mt-2 bg-white p-3 rounded-lg border border-blue-100">
-                        <h4 className="font-bold mb-2">Distance to Others:</h4>
+                        <h4 className="font-semibold mb-2">Distance to Others:</h4>
                         {effectiveGroupIntelligence.distances.map((d: any, idx: number) => (
                           <div key={idx} className="flex justify-between items-center py-1 border-b border-gray-50 last:border-0">
                             <span>{d.name}</span>
-                            <span className="font-mono font-bold">{Math.round(d.distance_meters)}m</span>
+                            <span className="font-mono font-semibold">{Math.round(d.distance_meters)}m</span>
                           </div>
                         ))}
                       </div>
@@ -1720,27 +1592,27 @@ const LiveRide = () => {
 
               {activeTab === 'routes' && routeFeatureRef.current?.properties?.segments?.[0]?.steps && (
                 <div className="mt-2 flex flex-col gap-4 pb-6">
-                  <h3 className="text-lg font-bold text-[#273a5a]">Route Steps</h3>
+                  <h3 className="text-lg font-semibold text-[#273a5a]">Route Steps</h3>
                   {routeFeatureRef.current.properties.segments[0].steps.slice(0, 10).map((step: any, idx: number) => (
                     <div key={idx} className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
                       <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center shadow-sm text-primary shrink-0">
                         {React.cloneElement(getTurnIcon(step.type) as React.ReactElement<{className?: string}>, { className: 'w-5 h-5' })}
                       </div>
                       <div>
-                        <p className="text-[15px] font-bold text-[#273a5a]">{formatInstruction(step.instruction)}</p>
+                        <p className="text-[15px] font-semibold text-[#273a5a]">{formatInstruction(step.instruction)}</p>
                       </div>
                     </div>
                   ))}
                 </div>
               )}
 
-              {/* ── Activity Log Tab ── */}
+              {/* â”€â”€ Activity Log Tab â”€â”€ */}
               {activeTab === 'activity' && (
                 <div className="mt-2 flex flex-col gap-3 pb-6">
                   <div className="flex items-center justify-between">
-                    <h3 className="text-lg font-bold text-[#273a5a] flex items-center gap-2"><History className="w-5 h-5 text-[#ef4523]" /> Edit History</h3>
+                    <h3 className="text-lg font-semibold text-[#273a5a] flex items-center gap-2"><History className="w-5 h-5 text-[#ef4523]" /> Edit History</h3>
                     {isAdmin && (
-                      <button onClick={() => setShowEditModal(true)} className="text-[12px] font-bold text-[#ef4523] flex items-center gap-1 px-3 py-1.5 rounded-full bg-orange-50 hover:bg-orange-100 transition-colors active:scale-95">
+                      <button onClick={() => navigate(`/ride-plus/create`, { state: { editRideId: id } })} className="text-[12px] font-semibold text-[#ef4523] flex items-center gap-1 px-3 py-1.5 rounded-full bg-orange-50 hover:bg-orange-100 transition-colors active:scale-95">
                         <Edit2 className="w-3.5 h-3.5" /> Edit Ride
                       </button>
                     )}
@@ -1758,18 +1630,18 @@ const LiveRide = () => {
                           <div className="absolute -left-[27px] w-4 h-4 rounded-full bg-white border-4 border-[#ef4523]" />
                           <div className="bg-gray-50 rounded-xl p-3 border border-gray-100">
                             <div className="flex items-center justify-between mb-1">
-                              <span className="text-xs font-bold text-[#273a5a]">{entry.editor_name || 'Admin'}</span>
+                              <span className="text-xs font-semibold text-[#273a5a]">{entry.editor_name || 'Admin'}</span>
                               <span className="text-[10px] text-gray-400 font-medium">
                                 {new Date(entry.created_at).toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
                               </span>
                             </div>
                             <p className="text-[11px] text-gray-500 font-medium">
-                              {entry.edit_type?.replace(/_/g, ' ').replace(/,\s*/g, ' · ')}
+                              {entry.edit_type?.replace(/_/g, ' ').replace(/,\s*/g, ' Â· ')}
                             </p>
                             {entry.changes && (
                               <div className="mt-2 flex flex-wrap gap-1.5">
                                 {Object.keys(entry.changes).map((key: string) => (
-                                  <span key={key} className="px-2 py-0.5 bg-orange-50 text-[#ef4523] rounded-full text-[10px] font-bold">
+                                  <span key={key} className="px-2 py-0.5 bg-orange-50 text-[#ef4523] rounded-full text-[10px] font-semibold">
                                     {key.replace(/_/g, ' ')}
                                   </span>
                                 ))}
@@ -1784,25 +1656,186 @@ const LiveRide = () => {
               )}
 
             </div>
-          )}
-        </div>
+          </div>
       </div>
-        </>
-      )}
+
+      {/* 3. Map Area */}
+      <div className="portrait:w-full portrait:flex-1 portrait:order-1 landscape:flex-1 landscape:h-full landscape:order-3 relative z-0 overflow-hidden">
+        <div ref={mapContainer} className="absolute inset-0 w-full h-full" />
+        <div className="absolute top-0 left-0 right-0 h-20 bg-gradient-to-b from-black/20 to-transparent pointer-events-none z-10" />
+
+        {!mapLoaded && (
+          <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-[#F7F8FA]/90 backdrop-blur-sm">
+            <div className="w-10 h-10 border-4 border-[#FF5A00] border-t-transparent rounded-full animate-spin" />
+            <p className="text-[12px] font-semibold text-gray-400 mt-3 uppercase tracking-wider">Loading Ride Map...</p>
+          </div>
+        )}
+
+        {mapLoaded && (
+          <>
+          {/* Top-right ride actions (SOS + Edit + End/Leave in one stack) */}
+          <div className="absolute top-3 right-3 z-20 flex flex-col gap-2 items-center">
+            <button onClick={handleSOS} className="w-10 h-10 bg-red-500/90 backdrop-blur-md border border-red-400/50 rounded-full flex items-center justify-center text-white shadow-[0_0_20px_rgba(255,59,48,0.6)] shrink-0 hover:scale-110 active:scale-95 transition-all duration-300" title="SOS Emergency">
+              <ShieldAlert className="w-5 h-5" />
+            </button>
+            {(riders[auth.currentUser?.uid || '']?.role === 'admin' || ride?.owner_id === auth.currentUser?.uid) && (
+              <button onClick={() => navigate('/ride-plus/create', { state: { editRideId: id } })} className="w-9 h-9 rounded-full bg-white/95 backdrop-blur border border-gray-100 shadow-md flex items-center justify-center text-[#FF5A00] hover:bg-gray-50 active:scale-95 transition-all" title="Edit Ride">
+                <Edit2 className="w-4 h-4" />
+              </button>
+            )}
+            {riders[auth.currentUser?.uid || '']?.role === 'admin' || ride?.owner_id === auth.currentUser?.uid ? (
+              <button onClick={handleLeaveOrEnd} className="w-9 h-9 rounded-full bg-white/95 backdrop-blur border border-gray-100 shadow-md flex items-center justify-center text-red-500 hover:bg-red-50 active:scale-95 transition-all" title="End Ride">
+                <StopCircle className="w-4 h-4" />
+              </button>
+            ) : (
+              <button onClick={handleLeaveOrEnd} className="w-9 h-9 rounded-full bg-white/95 backdrop-blur border border-gray-100 shadow-md flex items-center justify-center text-red-500 hover:bg-red-50 active:scale-95 transition-all" title="Leave Ride">
+                <LogOut className="w-4 h-4" />
+              </button>
+            )}
+          </div>
+
+          {/* Map Controls */}
+          <div className="absolute right-3 top-1/2 -translate-y-1/2 z-20 flex flex-col gap-2">
+            <button
+              onClick={() => setShowUsersModal(true)}
+              className="w-9 h-9 rounded-full flex items-center justify-center shadow-md bg-white/95 backdrop-blur border border-gray-100 text-[#111111] hover:bg-gray-50 active:scale-95 transition-all duration-300"
+              title="Show Users"
+            >
+              <Users className="w-4 h-4" />
+            </button> 
+            <button
+              onClick={() => setShowTraffic(!showTraffic)}
+              className={`w-9 h-9 rounded-full flex items-center justify-center active:scale-95 transition-all duration-300 shadow-md ${showTraffic ? 'bg-[#FF5A00] text-white shadow-[0_4px_16px_rgba(255,90,0,0.4)]' : 'bg-white/95 backdrop-blur border border-gray-100 text-[#111111] hover:bg-gray-50'}`}
+              title="Toggle Traffic"
+            >
+              <Layers className="w-4 h-4" />
+            </button>
+            <button
+              onClick={() => { 
+                if (!map.current) return; 
+                const next3D = !is3D;
+                let currentBearing = 0;
+                let targetCenter: [number, number] | null = null;
+                
+                if (userLocationRef.current) {
+                  targetCenter = [userLocationRef.current.lng, userLocationRef.current.lat];
+                } else if (routeFeatureRef.current) {
+                  targetCenter = [routeFeatureRef.current.geometry.coordinates[0][0], routeFeatureRef.current.geometry.coordinates[0][1]];
+                }
+
+                if (next3D && routeFeatureRef.current && targetCenter) {
+                   try {
+                      const userPt = turf.point(targetCenter);
+                      const line = turf.lineString(routeFeatureRef.current.geometry.coordinates);
+                      const closestPoint = turf.nearestPointOnLine(line, userPt);
+                      const routeLength = turf.length(line);
+                      const distanceAlong = (closestPoint.properties as any).location;
+                      const aheadDist = Math.min(distanceAlong + 0.05, routeLength);
+                      const aheadPoint = turf.along(line, aheadDist);
+                      currentBearing = turf.bearing(closestPoint, aheadPoint);
+                   } catch(e) {}
+                }
+                if (next3D) {
+                  const options: any = { pitch: 60, zoom: 20, bearing: currentBearing, duration: 1000 };
+                  if (targetCenter) options.center = targetCenter;
+                  map.current.easeTo(options);
+                  setIsFollowingUser(true);
+                } else {
+                  map.current.easeTo({ pitch: 0, bearing: 0, duration: 1000 });
+                }
+                setIs3D(next3D); 
+              }}
+              className={`w-9 h-9 rounded-full flex items-center justify-center active:scale-95 transition-all duration-300 shadow-md ${is3D ? 'bg-[#FF5A00] text-white shadow-[0_4px_16px_rgba(255,90,0,0.4)]' : 'bg-white/95 backdrop-blur border border-gray-100 text-[#111111] hover:bg-gray-50'}`}
+            >
+              {is3D ? <Compass className="w-4 h-4" /> : <Navigation2 className="w-4 h-4" />}
+            </button>
+
+            <button
+              onClick={() => {
+                setIsFollowingUser(true);
+                setFocusedRiderId(null);
+                if (map.current) {
+                  let currentBearing = map.current.getBearing();
+                  let targetCenter: [number, number] | null = null;
+                  if (userLocationRef.current) {
+                    targetCenter = [userLocationRef.current.lng, userLocationRef.current.lat];
+                  } else if (routeFeatureRef.current) {
+                    targetCenter = [routeFeatureRef.current.geometry.coordinates[0][0], routeFeatureRef.current.geometry.coordinates[0][1]];
+                  }
+
+                  if (is3D && routeFeatureRef.current && targetCenter) {
+                    try {
+                      const userPt = turf.point(targetCenter);
+                      const line = turf.lineString(routeFeatureRef.current.geometry.coordinates);
+                      const closestPoint = turf.nearestPointOnLine(line, userPt);
+                      const routeLength = turf.length(line);
+                      const distanceAlong = (closestPoint.properties as any).location;
+                      const aheadDist = Math.min(distanceAlong + 0.05, routeLength);
+                      const aheadPoint = turf.along(line, aheadDist);
+                      currentBearing = turf.bearing(closestPoint, aheadPoint);
+                    } catch (e) {}
+                  }
+
+                  const options: any = { duration: 1000, bearing: currentBearing, pitch: is3D ? 60 : 0, zoom: 20 };
+                  if (targetCenter) options.center = targetCenter;
+                  if (targetCenter) {
+                    map.current.easeTo(options);
+                    return;
+                  }
+
+                  useLocationStore.getState().fetchLocationOnce().then((pos) => {
+                    const center: [number, number] = [pos.lng, pos.lat];
+                    setUserLocation({ lat: pos.lat, lng: pos.lng });
+                    map.current?.easeTo({ ...options, center });
+                    placeRiderMarker(auth.currentUser?.uid || 'me', pos.lng, pos.lat);
+                  }).catch(() => {
+                    showToast('Live location unavailable. Please enable location permission.', 'error');
+                  });
+                }
+              }}
+              className={`w-9 h-9 rounded-full flex items-center justify-center active:scale-95 transition-all duration-300 shadow-md ${isFollowingUser && !focusedRiderId ? 'bg-[#FF5A00] text-white shadow-[0_4px_16px_rgba(255,90,0,0.4)]' : 'bg-white/95 backdrop-blur border border-gray-100 text-[#111111] hover:bg-gray-50'}`}
+              title="My Location"
+              aria-label="My Location"
+            >
+              <Crosshair className="w-4 h-4" />
+            </button>
+          </div>
+
+          {/* Status Banners: telemetry degraded / crash detection paused */}
+          <div className="absolute top-[80px] left-1/2 -translate-x-1/2 z-20 flex flex-col items-center gap-2 pointer-events-none transition-all duration-300">
+            {telemetryDegraded && (
+              <div className="bg-amber-500/90 backdrop-blur-md border border-amber-300/50 text-white px-4 py-2 rounded-full font-semibold text-[12px] flex items-center gap-2 shadow-[0_8px_24px_rgba(245,158,11,0.4)] whitespace-nowrap">
+                <AlertTriangle className="w-4 h-4" /> Location updates failing
+              </div>
+            )}
+            {showEmergencySetup && (
+              <div className="bg-[#111111]/90 backdrop-blur-md border border-white/20 text-white px-4 py-2 rounded-full font-semibold text-[12px] flex items-center gap-2 shadow-[0_8px_24px_rgba(0,0,0,0.3)] whitespace-nowrap">
+                <ShieldAlert className="w-4 h-4 text-amber-400" /> Crash detection paused
+              </div>
+            )}
+          </div>
+
+          {/* Hazard Banner */}
+          {nextHazard ? (
+            <div className="absolute top-3 left-1/2 -translate-x-1/2 z-20 pointer-events-none transition-all duration-300">
+              <div className="bg-red-500/90 backdrop-blur-md border border-red-400/50 text-white px-3 py-1.5 rounded-full font-semibold text-[11px] flex items-center gap-1.5 shadow-[0_4px_14px_rgba(255,59,48,0.45)] animate-pulse whitespace-nowrap max-w-[70%] overflow-hidden">
+                <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+                <span className="truncate">{fmtHazard(nextHazard.remainingDist)} â€” {nextHazard.category?.split(':')[0]} Ahead</span>
+              </div>
+            </div>
+          ) : incidents.length > 0 && userLocation ? (
+            <div className="absolute top-3 left-1/2 -translate-x-1/2 z-20 pointer-events-none transition-all duration-300">
+              <div className="bg-success/90 backdrop-blur-md border border-green-400/50 text-white px-3 py-1.5 rounded-full font-semibold text-[11px] flex items-center gap-1.5 shadow-[0_4px_14px_rgba(52,199,89,0.35)] whitespace-nowrap">
+                <Shield className="w-3.5 h-3.5 shrink-0" /> Clear Route Ahead
+              </div>
+            </div>
+          ) : null}
+          </>
+        )}
+      </div>
 
       {mapLoaded && selectedIncident && (
         <IncidentDrawer incident={selectedIncident} onClose={() => setSelectedIncident(null)} />
-      )}
-
-      {/* Edit Ride Modal */}
-      {showEditModal && id && (
-        <Suspense fallback={<div className="fixed inset-0 z-[200] bg-dark/60 backdrop-blur-sm flex items-center justify-center"><div className="bg-white rounded-xl p-8 shadow-2xl"><div className="w-8 h-8 border-4 border-[#ef4523] border-t-transparent rounded-full animate-spin" /></div></div>}>
-          <EditRideModal
-            rideId={id}
-            onClose={() => setShowEditModal(false)}
-            onSaved={handleRideUpdated}
-          />
-        </Suspense>
       )}
 
       {/* Users Modal */}
@@ -1810,7 +1843,7 @@ const LiveRide = () => {
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-dark/60 backdrop-blur-sm p-4">
           <div className="bg-white w-full max-w-md rounded-xl shadow-2xl overflow-hidden flex flex-col max-h-[80vh]">
             <div className="p-5 border-b border-gray-100 flex items-center justify-between">
-              <h3 className="text-xl font-bold text-[#273a5a] flex items-center gap-2">
+              <h3 className="text-xl font-semibold text-[#273a5a] flex items-center gap-2">
                 <Users className="w-6 h-6 text-primary" /> Ride Members
               </h3>
               <button onClick={() => setShowUsersModal(false)} className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 hover:bg-gray-200 transition-colors">
@@ -1837,13 +1870,13 @@ const LiveRide = () => {
                           {r.role === 'admin' && <div className="absolute -bottom-1 -right-1 bg-yellow-400 p-1 rounded-full border-2 border-white"><Shield className="w-3 h-3 text-white" /></div>}
                         </div>
                         <div>
-                          <h4 className="font-bold text-[#273a5a] flex items-center gap-2">
+                          <h4 className="font-semibold text-[#273a5a] flex items-center gap-2">
                             {r.display_name} {isMe && <span className="text-xs bg-dark text-white px-2 py-0.5 rounded-full">You</span>}
                           </h4>
                           {r.speed > 0 ? <p className="text-sm text-gray-500 font-medium">{Math.round(r.speed)} km/h</p> : <p className="text-sm text-gray-500 font-medium">Stationary</p>}
                         </div>
                       </div>
-                      {idx > 0 && idx < 4 && <span className="text-[10px] font-bold text-primary bg-primary/10 px-2 py-1 rounded-full">Nearest</span>}
+                      {idx > 0 && idx < 4 && <span className="text-[10px] font-semibold text-primary bg-primary/10 px-2 py-1 rounded-full">Nearest</span>}
                     </div>
                   );
                 })}
@@ -1891,18 +1924,18 @@ const LiveRide = () => {
           <div className="w-24 h-24 bg-white/20 rounded-full flex items-center justify-center mb-6 animate-pulse">
             <AlertTriangle className="w-12 h-12 text-white" />
           </div>
-          <h2 className="text-4xl font-black text-white text-center mb-4">
+          <h2 className="text-4xl font-semibold text-white text-center mb-4">
             CRASH DETECTED
           </h2>
           <p className="text-white/80 text-center mb-4 text-lg font-medium max-w-xs">
             SOS Alert will be sent automatically to your ride group in:
           </p>
-          <div className="text-[120px] leading-none font-black text-white mb-12 tabular-nums">
+          <div className="text-[120px] leading-none font-semibold text-white mb-12 tabular-nums">
             {countdown}
           </div>
           <button 
             onClick={cancelCountdown}
-            className="w-full max-w-sm bg-white text-danger hover:bg-gray-100 font-black text-2xl py-6 rounded-full shadow-2xl transition-transform active:scale-95"
+            className="w-full max-w-sm bg-white text-danger hover:bg-gray-100 font-semibold text-2xl py-6 rounded-full shadow-2xl transition-transform active:scale-95"
           >
             CANCEL SOS
           </button>

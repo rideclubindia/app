@@ -1,186 +1,177 @@
-import React, { useMemo } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 
 interface SpeedCockpitProps {
   speed: number;
-  mode: 'Eco' | 'Comfort' | 'Sport';
-  onModeChange?: (mode: 'Eco' | 'Comfort' | 'Sport') => void;
 }
 
-export const SpeedCockpit: React.FC<SpeedCockpitProps> = ({ speed, mode, onModeChange }) => {
-  const maxSpeed = 200; 
-  
-  // SVG Dimensions & Arc Math
-  const size = 460;
-  const center = size / 2;
-  const radius = 170;
-  const circumference = 2 * Math.PI * radius;
-  
-  // Angle sweep: 240 degrees (from 150 deg to 390 deg)
-  const sweepAngle = 240;
-  const startAngle = 150;
-  const arcLength = circumference * (sweepAngle / 360);
-  
-  // Speed Ratio
-  const currentSpeed = Math.min(Math.max(speed, 0), maxSpeed);
-  const speedRatio = currentSpeed / maxSpeed;
-  const activeArcLength = speedRatio * arcLength;
+const MAX_SPEED = 200;
+const REDLINE_FROM = 150;
 
-  // Generate Ticks
-  const ticks = useMemo(() => {
-    const t = [];
-    for (let i = 20; i <= maxSpeed; i += 20) {
-      const angle = startAngle + (i / maxSpeed) * sweepAngle;
-      t.push({ value: i, angle });
+export const SpeedCockpit: React.FC<SpeedCockpitProps> = ({ speed }) => {
+  const size = 360;
+  const center = size / 2;
+  const radius = 150;
+  const circumference = 2 * Math.PI * radius;
+
+  const sweepAngle = 260;
+  const startAngle = 140;
+  const arcLength = circumference * (sweepAngle / 360);
+
+  const target = Math.min(Math.max(speed, 0), MAX_SPEED);
+
+  const [displaySpeed, setDisplaySpeed] = useState(target);
+  const displayedRef = useRef(target);
+
+  useEffect(() => {
+    let raf: number;
+    const tick = () => {
+      const diff = target - displayedRef.current;
+      if (Math.abs(diff) < 0.05) {
+        displayedRef.current = target;
+      } else {
+        displayedRef.current += diff * 0.12;
+        raf = requestAnimationFrame(tick);
+      }
+      setDisplaySpeed(displayedRef.current);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [target]);
+
+  const ratio = displaySpeed / MAX_SPEED;
+  const activeArcLength = ratio * arcLength;
+  const isRedline = ratio >= REDLINE_FROM / MAX_SPEED;
+
+  const polar = (angleDeg: number, r: number) => {
+    const rad = (angleDeg * Math.PI) / 180;
+    return { x: center + r * Math.cos(rad), y: center + r * Math.sin(rad) };
+  };
+
+  const ticks: React.ReactElement[] = [];
+  for (let v = 0; v <= MAX_SPEED; v += 10) {
+    const angle = startAngle + (v / MAX_SPEED) * sweepAngle;
+    const isMajor = v % 40 === 0;
+    const isRed = v >= REDLINE_FROM;
+    const lit = v <= displaySpeed + 2;
+
+    const rOut = radius - 4;
+    const rIn = radius - (isMajor ? 20 : 13);
+    const p1 = polar(angle, rIn);
+    const p2 = polar(angle, rOut);
+
+    let stroke = isRed ? '#F3C6C6' : '#D1D5DB';
+    if (lit) stroke = isRed ? '#DC2626' : '#2563EB';
+
+    ticks.push(
+      <line
+        key={`t${v}`}
+        x1={p1.x} y1={p1.y} x2={p2.x} y2={p2.y}
+        stroke={stroke}
+        strokeWidth={isMajor ? 3.5 : 2}
+        strokeLinecap="round"
+      />
+    );
+
+    if (isMajor) {
+      const lp = polar(angle, radius - 34);
+      ticks.push(
+        <text
+          key={`l${v}`}
+          x={lp.x} y={lp.y}
+          fill={isRed ? '#DC2626' : lit ? '#111827' : '#9CA3AF'}
+          fontSize="14"
+          fontWeight="600"
+          textAnchor="middle"
+          dominantBaseline="central"
+          style={{ fontFamily: 'var(--font-mono)', fontVariantNumeric: 'tabular-nums' }}
+        >
+          {v}
+        </text>
+      );
     }
-    return t;
-  }, [maxSpeed]);
+  }
 
   return (
-    <div className="flex flex-col items-center relative w-full h-full justify-center">
-      
-      {/* SVG Speedometer Gauge */}
-      <div className="relative flex items-center justify-center w-full max-w-[500px] mx-auto">
-        <svg viewBox={`0 0 ${size} ${size}`} className="w-full h-auto overflow-visible">
-          <defs>
-            {/* The beautiful cyan -> white -> red gradient from the image */}
-            <linearGradient id="arcGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-              <stop offset="0%" stopColor="#8EF1FF" />   {/* Cyan/Ice Blue */}
-              <stop offset="40%" stopColor="#FFFFFF" />  {/* White transition */}
-              <stop offset="70%" stopColor="#FF3B30" />  {/* Bright Red */}
-              <stop offset="100%" stopColor="#FF0000" /> {/* Deep Red */}
-            </linearGradient>
-            
-            <filter id="slight-glow" x="-10%" y="-10%" width="120%" height="120%">
-              <feGaussianBlur stdDeviation="3" result="blur" />
-              <feMerge>
-                <feMergeNode in="blur" />
-                <feMergeNode in="SourceGraphic" />
-              </feMerge>
-            </filter>
-          </defs>
+    <div className="relative flex items-center justify-center w-full select-none" style={{ maxWidth: 'min(460px, 64vh)' }}>
+      <svg viewBox={`0 0 ${size} ${size}`} className="w-full h-auto overflow-visible">
+        <defs>
+          <linearGradient id="sc-red" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stopColor="#F97316" />
+            <stop offset="100%" stopColor="#DC2626" />
+          </linearGradient>
+        </defs>
 
-          {/* Background Track Arc (Dark Grey) */}
-          <g transform={`rotate(${startAngle} ${center} ${center})`}>
-            <circle 
-              cx={center} 
-              cy={center} 
-              r={radius} 
-              fill="none" 
-              stroke="#1C1C1E" 
-              strokeWidth="12" 
-              strokeDasharray={`${arcLength} ${circumference}`} 
-              strokeLinecap="round"
-            />
-          </g>
+        {/* Dial */}
+        <circle cx={center} cy={center} r={radius + 12} fill="#FFFFFF" stroke="#E5E7EB" strokeWidth="2" />
 
-          {/* Active Speed Arc */}
-          <g transform={`rotate(${startAngle} ${center} ${center})`}>
-            <circle 
-              cx={center} 
-              cy={center} 
-              r={radius} 
-              fill="none" 
-              stroke="url(#arcGradient)" 
-              strokeWidth="12" 
-              strokeLinecap="round"
-              strokeDasharray={`${activeArcLength} ${circumference}`}
-              className="transition-all duration-700 ease-out"
-            />
-          </g>
+        {/* Redline base arc */}
+        <g transform={`rotate(${startAngle} ${center} ${center})`}>
+          <circle
+            cx={center} cy={center} r={radius}
+            fill="none"
+            stroke="url(#sc-red)"
+            strokeWidth="6"
+            opacity="0.5"
+            strokeDasharray={`${arcLength * (1 - REDLINE_FROM / MAX_SPEED)} ${circumference}`}
+            strokeDashoffset={-arcLength * (REDLINE_FROM / MAX_SPEED)}
+            strokeLinecap="round"
+          />
+        </g>
 
-          {/* Tick Marks & Numbers */}
-          {ticks.map(tick => {
-            const rad = (tick.angle * Math.PI) / 180;
-            
-            // Ticks are on the INSIDE of the arc
-            const r1 = radius - 16;
-            const r2 = radius - 24;
-            const x1 = center + r1 * Math.cos(rad);
-            const y1 = center + r1 * Math.sin(rad);
-            const x2 = center + r2 * Math.cos(rad);
-            const y2 = center + r2 * Math.sin(rad);
-            
-            // Text is further inside
-            const rText = radius - 48;
-            const textX = center + rText * Math.cos(rad);
-            const textY = center + rText * Math.sin(rad);
+        {/* Track */}
+        <g transform={`rotate(${startAngle} ${center} ${center})`}>
+          <circle
+            cx={center} cy={center} r={radius}
+            fill="none"
+            stroke="#E5E7EB"
+            strokeWidth="6"
+            strokeDasharray={`${arcLength} ${circumference}`}
+            strokeLinecap="round"
+          />
+        </g>
 
-            return (
-              <g key={tick.value}>
-                <line 
-                  x1={x1} y1={y1} x2={x2} y2={y2} 
-                  stroke="#FFFFFF" 
-                  strokeWidth="2"
-                  opacity={0.7}
-                />
-                <text 
-                  x={textX} y={textY} 
-                  fill="#FFFFFF" 
-                  fontSize="22" 
-                  fontWeight="400" 
-                  textAnchor="middle" 
-                  dominantBaseline="central"
-                  className="font-sans"
-                  style={{ fontVariantNumeric: 'tabular-nums' }}
-                >
-                  {tick.value}
-                </text>
-              </g>
-            );
-          })}
-          
-          {/* Needle */}
-          <g>
-            {(() => {
-              const currentAngle = startAngle + (speedRatio * sweepAngle);
-              const rad = (currentAngle * Math.PI) / 180;
-              // Needle goes from center to just before the arc
-              const nX1 = center + 50 * Math.cos(rad);
-              const nY1 = center + 50 * Math.sin(rad);
-              const nX2 = center + (radius - 12) * Math.cos(rad);
-              const nY2 = center + (radius - 12) * Math.sin(rad);
-              
-              // Determine needle color based on angle (mimicking the gradient)
-              const isRedZone = currentAngle > 270;
-              
-              return (
-                <line 
-                  x1={nX1} y1={nY1} x2={nX2} y2={nY2} 
-                  stroke={isRedZone ? "#FF3B30" : "#FFFFFF"} 
-                  strokeWidth="4" 
-                  strokeLinecap="round"
-                  className="transition-all duration-700 ease-out"
-                  filter="url(#slight-glow)"
-                />
-              )
-            })()}
-          </g>
+        {/* Active arc */}
+        <g transform={`rotate(${startAngle} ${center} ${center})`}>
+          <circle
+            cx={center} cy={center} r={radius}
+            fill="none"
+            stroke={isRedline ? '#DC2626' : '#2563EB'}
+            strokeWidth="12"
+            strokeLinecap="round"
+            strokeDasharray={`${activeArcLength} ${circumference}`}
+          />
+        </g>
 
-          {/* Central Speed Display */}
-          <text x={center} y={center + 15} textAnchor="middle" fill="#FFFFFF" fontSize="120" fontWeight="500" className="font-sans tracking-tight">
-            {Math.round(currentSpeed)}
-          </text>
-          <text x={center} y={center + 55} textAnchor="middle" fill="#A1A1A6" fontSize="20" fontWeight="400" className="font-sans lowercase">
-            km/h
-          </text>
+        {/* Ticks + labels */}
+        {ticks}
 
-          {/* Odometer / Total Distance */}
-          <text x={center} y={center + 110} textAnchor="middle" fill="#A1A1A6" fontSize="16" fontWeight="400" className="font-sans">
-            Total distance (km)
-          </text>
-          <text x={center} y={center + 135} textAnchor="middle" fill="#FFFFFF" fontSize="24" fontWeight="400" className="font-sans">
-            16416<tspan fill="#A1A1A6">.7</tspan>
-          </text>
-          
-          {/* Top Clock and Temp */}
-          <g transform={`translate(${center}, 40)`}>
-             <text x="-40" y="0" fill="#FFFFFF" fontSize="16" textAnchor="middle" fontWeight="400">🕒 06:40</text>
-             <text x="40" y="0" fill="#FFFFFF" fontSize="16" textAnchor="middle" fontWeight="400">🌡 22°C</text>
-          </g>
+        {/* THE NUMBER */}
+        <text
+          x={center}
+          y={center - 14}
+          textAnchor="middle"
+          dominantBaseline="central"
+          fill={isRedline ? '#DC2626' : '#111827'}
+          fontSize="104"
+          fontWeight="700"
+          style={{ fontFamily: 'var(--font-mono)', fontVariantNumeric: 'tabular-nums', letterSpacing: '-0.04em' }}
+        >
+          {Math.round(displaySpeed)}
+        </text>
 
-        </svg>
-      </div>
-
+        {/* Unit */}
+        <text
+          x={center}
+          y={center + 48}
+          textAnchor="middle"
+          fill="#6B7280"
+          fontSize="22"
+          fontWeight="600"
+          style={{ letterSpacing: '0.2em' }}
+        >
+          KM/H
+        </text>
+      </svg>
     </div>
   );
 };

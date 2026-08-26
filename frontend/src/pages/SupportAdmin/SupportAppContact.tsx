@@ -166,7 +166,7 @@ const SupportAppContact = () => {
                 <button 
                   key={status}
                   onClick={() => setFilterStatus(status as any)} 
-                  className={`px-2 py-1 text-[10px] font-bold rounded ${filterStatus === status ? 'bg-white shadow text-[#273a5a]' : 'text-gray-500 hover:bg-gray-200'}`}
+                  className={`px-2 py-1 text-[10px] font-semibold rounded ${filterStatus === status ? 'bg-white shadow text-[#273a5a]' : 'text-gray-500 hover:bg-gray-200'}`}
                 >
                   {status}
                 </button>
@@ -177,7 +177,7 @@ const SupportAppContact = () => {
           <div className="flex items-center justify-between mb-1 mt-3">
             <div className="flex items-center gap-2 text-blue-500">
               <HelpCircle className="w-5 h-5" />
-              <h1 className="text-[20px] font-bold text-[#273a5a]">{tickets.length} Tickets</h1>
+              <h1 className="text-[20px] font-semibold text-[#273a5a]">{tickets.length} Tickets</h1>
             </div>
           </div>
           <p className="text-[12px] text-[#8A8A8E] mb-3">Manage user support and help requests</p>
@@ -210,8 +210,8 @@ const SupportAppContact = () => {
                   
                   <div className="flex-1 flex flex-col justify-between min-w-0">
                     <div className="flex justify-between items-start mb-1">
-                      <h3 className="text-[13px] font-bold truncate max-w-[150px]">{ticket.user_name || 'User'}</h3>
-                      <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${getStatusColor(ticket.status)}`}>
+                      <h3 className="text-[13px] font-semibold truncate max-w-[150px]">{ticket.user_name || 'User'}</h3>
+                      <span className={`text-[9px] font-semibold px-1.5 py-0.5 rounded ${getStatusColor(ticket.status)}`}>
                         {ticket.status}
                       </span>
                     </div>
@@ -245,7 +245,7 @@ const SupportAppContact = () => {
                   <User className="w-5 h-5" />
                 </div>
                 <div className="flex flex-col">
-                  <h2 className="text-[16px] font-bold text-[#273a5a] leading-tight">{selectedTicket.user_name || 'User Support'}</h2>
+                  <h2 className="text-[16px] font-semibold text-[#273a5a] leading-tight">{selectedTicket.user_name || 'User Support'}</h2>
                   <div className="flex items-center gap-2 text-[11px] text-[#8A8A8E] mt-0.5">
                     <span className="font-mono">ID: {selectedTicket.id.slice(0,6).toUpperCase()}</span>
                     <span className="w-1 h-1 bg-[#E5E5EA] rounded-full"></span>
@@ -259,7 +259,7 @@ const SupportAppContact = () => {
                 <select 
                   value={selectedTicket.status}
                   onChange={(e) => handleStatusChange(selectedTicket.id, e.target.value)}
-                  className={`text-[12px] font-bold px-3 py-1.5 rounded border focus:outline-none ${getStatusColor(selectedTicket.status)}`}
+                  className={`text-[12px] font-semibold px-3 py-1.5 rounded border focus:outline-none ${getStatusColor(selectedTicket.status)}`}
                 >
                   <option value="Open">Open</option>
                   <option value="In Progress">In Progress</option>
@@ -283,7 +283,7 @@ const SupportAppContact = () => {
                     {/* Initial Description */}
                     <div className="flex justify-center mb-6">
                       <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 max-w-[85%] text-center">
-                        <p className="text-[12px] font-bold text-[#8A8A8E] uppercase tracking-wider mb-2">Issue Description</p>
+                        <p className="text-[12px] font-semibold text-[#8A8A8E] uppercase tracking-wider mb-2">Issue Description</p>
                         <p className="text-[13px] text-[#273a5a] font-medium">{selectedTicket.description}</p>
                       </div>
                     </div>
@@ -297,7 +297,7 @@ const SupportAppContact = () => {
                               isAdmin ? 'bg-blue-500 text-white rounded-tr-sm' : 'bg-white border border-[#E5E5EA] text-[#273a5a] rounded-tl-sm'
                             }`}>
                               {!isAdmin && (
-                                <p className="text-[11px] font-bold text-blue-500 mb-1">{message.sender_name}</p>
+                                <p className="text-[11px] font-semibold text-blue-500 mb-1">{message.sender_name}</p>
                               )}
                               
                               {message.image_url && (
@@ -358,7 +358,7 @@ const SupportAppContact = () => {
             <div className="w-16 h-16 rounded-full bg-white shadow-sm border border-[#E5E5EA] flex items-center justify-center mb-4">
               <HelpCircle className="w-8 h-8 text-[#8A8A8E]" />
             </div>
-            <h3 className="text-[18px] font-bold text-[#273a5a] mb-2">Support Center</h3>
+            <h3 className="text-[18px] font-semibold text-[#273a5a] mb-2">Support Center</h3>
             <p className="text-[13px] text-[#8A8A8E] max-w-[250px]">Select a support ticket from the list to view its details and reply to the user.</p>
           </div>
         )}

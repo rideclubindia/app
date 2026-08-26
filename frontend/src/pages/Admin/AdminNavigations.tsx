@@ -149,13 +149,13 @@ const AdminNavigations = () => {
         <div className="p-5 border-b border-[#E5E5EA] shrink-0">
           <div className="flex items-center justify-between mb-4">
             <div>
-              <h1 className="text-[18px] font-bold text-dark flex items-center gap-2">
+              <h1 className="text-[18px] font-semibold text-dark flex items-center gap-2">
                 <Navigation2 className="w-5 h-5 text-primary" />
                 {sessions.length} Navigations
               </h1>
               <p className="text-[12px] text-[#8A8A8E] mt-0.5">Overview live solo navigations</p>
             </div>
-            <button className="flex items-center gap-1.5 px-3 py-1.5 border border-[#E5E5EA] rounded text-[12px] font-bold text-dark hover:bg-gray-50">
+            <button className="flex items-center gap-1.5 px-3 py-1.5 border border-[#E5E5EA] rounded text-[12px] font-semibold text-dark hover:bg-gray-50">
               <Filter className="w-3.5 h-3.5" />
               More filters
             </button>
@@ -170,7 +170,7 @@ const AdminNavigations = () => {
               />
             </div>
             {searchQuery && (
-              <button onClick={() => setSearchQuery('')} className="px-3 h-9 rounded border border-[#E5E5EA] text-[12px] font-bold hover:bg-gray-50">
+              <button onClick={() => setSearchQuery('')} className="px-3 h-9 rounded border border-[#E5E5EA] text-[12px] font-semibold hover:bg-gray-50">
                 Clear
               </button>
             )}
@@ -194,11 +194,11 @@ const AdminNavigations = () => {
                         <Navigation2 className="w-4 h-4" />
                       </div>
                       <div>
-                        <h3 className="font-bold text-[14px] text-dark leading-tight">{session.dest_name || 'Unknown Destination'}</h3>
+                        <h3 className="font-semibold text-[14px] text-dark leading-tight">{session.dest_name || 'Unknown Destination'}</h3>
                         <p className="text-[11px] text-[#8A8A8E] font-mono mt-0.5">ID: {String(session.id).substring(0, 8)}...</p>
                       </div>
                     </div>
-                    <span className={`px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider ${isActive ? 'bg-[#E5F9ED] text-[#34C759]' : isCompleted ? 'bg-[#E8F0FE] text-[#273a5a]' : 'bg-[#F2F4F7] text-[#8A8A8E]'}`}>
+                    <span className={`px-2 py-1 rounded text-[10px] font-semibold uppercase tracking-wider ${isActive ? 'bg-[#E5F9ED] text-[#34C759]' : isCompleted ? 'bg-[#E8F0FE] text-[#273a5a]' : 'bg-[#F2F4F7] text-[#8A8A8E]'}`}>
                       {session.status}
                     </span>
                   </div>
@@ -213,7 +213,7 @@ const AdminNavigations = () => {
                 <div className="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center mx-auto mb-3">
                   <Navigation2 className="w-6 h-6 text-gray-400" />
                 </div>
-                <p className="text-[14px] font-bold text-dark">No navigations found</p>
+                <p className="text-[14px] font-semibold text-dark">No navigations found</p>
                 <p className="text-[12px] text-[#8A8A8E] mt-1">Try adjusting your filters</p>
               </div>
             )}
@@ -232,8 +232,8 @@ const AdminNavigations = () => {
               <div className="flex items-start justify-between">
                 <div>
                   <div className="flex items-center gap-2 mb-1">
-                    <h2 className="text-[20px] font-bold text-dark leading-tight">{selectedSession.dest_name || 'Unknown Destination'}</h2>
-                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${selectedSession.status === 'active' ? 'bg-[#E5F9ED] text-[#34C759]' : selectedSession.status === 'completed' ? 'bg-[#E8F0FE] text-[#273a5a]' : 'bg-[#F2F4F7] text-[#8A8A8E]'}`}>
+                    <h2 className="text-[20px] font-semibold text-dark leading-tight">{selectedSession.dest_name || 'Unknown Destination'}</h2>
+                    <span className={`px-2 py-0.5 rounded text-[10px] font-semibold uppercase ${selectedSession.status === 'active' ? 'bg-[#E5F9ED] text-[#34C759]' : selectedSession.status === 'completed' ? 'bg-[#E8F0FE] text-[#273a5a]' : 'bg-[#F2F4F7] text-[#8A8A8E]'}`}>
                       {selectedSession.status}
                     </span>
                   </div>
@@ -251,26 +251,26 @@ const AdminNavigations = () => {
             <div className="flex-1 overflow-y-auto p-6 space-y-6">
               <div className="space-y-8">
                 <div className="mb-6">
-                  <h3 className="text-[11px] font-bold text-[#8A8A8E] uppercase tracking-wider mb-3 flex items-center gap-2">
+                  <h3 className="text-[11px] font-semibold text-[#8A8A8E] uppercase tracking-wider mb-3 flex items-center gap-2">
                     <Navigation2 className="w-4 h-4" />
                     Session Details
                   </h3>
                   <div className="bg-[#F8F9FB] rounded-lg p-3 grid grid-cols-2 gap-y-3 gap-x-4 text-[12px]">
                     <div>
                       <span className="text-[#8A8A8E] block mb-0.5">Time Started</span>
-                      <span className="font-bold text-dark">{new Date(selectedSession.created_at).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}</span>
+                      <span className="font-semibold text-dark">{new Date(selectedSession.created_at).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}</span>
                     </div>
                     {selectedSession.status !== 'active' && selectedSession.updated_at && (
                       <div>
                         <span className="text-[#8A8A8E] block mb-0.5">When Ended</span>
-                        <span className="font-bold text-[#FF3B30]">{new Date(selectedSession.updated_at).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}</span>
+                        <span className="font-semibold text-[#FF3B30]">{new Date(selectedSession.updated_at).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}</span>
                       </div>
                     )}
                   </div>
                 </div>
 
                 <div>
-                  <h3 className="text-[11px] font-bold text-[#8A8A8E] uppercase tracking-wider mb-3 flex items-center gap-2">
+                  <h3 className="text-[11px] font-semibold text-[#8A8A8E] uppercase tracking-wider mb-3 flex items-center gap-2">
                     <MapPin className="w-4 h-4" />
                     Route
                   </h3>
@@ -279,28 +279,28 @@ const AdminNavigations = () => {
                     
                     <div className="flex gap-4 relative cursor-pointer group">
                       <div className="w-6 h-6 rounded-full flex items-center justify-center relative z-10 transition-colors bg-[#E5F9ED] text-[#34C759]">
-                        <span className="font-bold text-[11px]">A</span>
+                        <span className="font-semibold text-[11px]">A</span>
                       </div>
                       <div className="flex-1 pb-2">
-                        <div className="text-sm font-bold text-gray-900 group-hover:text-primary transition-colors">
+                        <div className="text-sm font-semibold text-gray-900 group-hover:text-primary transition-colors">
                           Start Location
                         </div>
                         <div className="text-xs text-gray-500 mt-0.5 flex gap-2">
-                          <span className="uppercase text-[9px] font-bold px-1.5 rounded bg-gray-100">{selectedSession.origin_lat.toFixed(4)}, {selectedSession.origin_lng.toFixed(4)}</span>
+                          <span className="uppercase text-[9px] font-semibold px-1.5 rounded bg-gray-100">{selectedSession.origin_lat.toFixed(4)}, {selectedSession.origin_lng.toFixed(4)}</span>
                         </div>
                       </div>
                     </div>
                     
                     <div className="flex gap-4 relative cursor-pointer group">
                       <div className="w-6 h-6 rounded-full flex items-center justify-center relative z-10 transition-colors bg-[#FFEBEE] text-[#FF3B30]">
-                        <span className="font-bold text-[11px]">B</span>
+                        <span className="font-semibold text-[11px]">B</span>
                       </div>
                       <div className="flex-1 pb-2">
-                        <div className="text-sm font-bold text-gray-900 group-hover:text-primary transition-colors">
+                        <div className="text-sm font-semibold text-gray-900 group-hover:text-primary transition-colors">
                           {selectedSession.dest_name || 'Destination'}
                         </div>
                         <div className="text-xs text-gray-500 mt-0.5 flex gap-2">
-                          <span className="uppercase text-[9px] font-bold px-1.5 rounded bg-gray-100">{selectedSession.dest_lat.toFixed(4)}, {selectedSession.dest_lng.toFixed(4)}</span>
+                          <span className="uppercase text-[9px] font-semibold px-1.5 rounded bg-gray-100">{selectedSession.dest_lat.toFixed(4)}, {selectedSession.dest_lng.toFixed(4)}</span>
                         </div>
                       </div>
                     </div>
@@ -320,7 +320,7 @@ const AdminNavigations = () => {
                     showToast('Session cancelled', 'success');
                     setSelectedSession(null);
                   }}
-                  className="flex-1 bg-white border border-red-500 text-red-500 font-bold h-[44px] rounded-lg hover:bg-red-50 transition-colors flex items-center justify-center"
+                  className="flex-1 bg-white border border-red-500 text-red-500 font-semibold h-[44px] rounded-lg hover:bg-red-50 transition-colors flex items-center justify-center"
                 >
                   Force Cancel
                 </button>

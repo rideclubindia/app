@@ -36,7 +36,7 @@ export const NavigationOverlay: React.FC<NavigationOverlayProps> = ({
         </div>
         <div className="flex-1 ml-1.5 min-w-0">
           <div className="flex items-baseline gap-1.5">
-            <span className="text-[20px] font-bold tracking-tight leading-none text-white">{distanceToTurn.replace(/[^\d]/g, '') || '--'}</span>
+            <span className="text-[20px] font-semibold tracking-tight leading-none text-white">{distanceToTurn.replace(/[^\d]/g, '') || '--'}</span>
             <span className="text-[12px] font-medium text-[#C0C6D0]">{distanceToTurn.replace(/[\d]/g, '').trim() || 'm'}</span>
           </div>
           <div className="text-[#9BA3B0] font-medium text-[10px] mt-0.5 truncate">

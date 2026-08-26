@@ -1,8 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { createRoot } from 'react-dom/client';
 import { useLocationStore } from '../../store/useLocationStore';
-import { ChevronLeft, MapPin, Map, Users, Calendar, Clock, Car, Shield, Globe, Check, ChevronUp, ChevronDown, ChevronRight, ArrowRight, Search, Trash2, Coffee, Fuel, Utensils, BedDouble, Droplets, Camera, Eye, Edit2, Zap, Bike as Motorcycle, Settings, Send, Sparkles, Crosshair, ArrowUp as ArrowUpIcon, ArrowDown as ArrowDownIcon, X } from 'lucide-react';
+import { ChevronLeft, MapPin, Map, Users, Calendar, Zap, Globe, ChevronDown, ArrowRight, Search, Crosshair, ArrowUp as ArrowUpIcon, ArrowDown as ArrowDownIcon, X, Camera, Send, Sparkles, Bike as Motorcycle, Loader2 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { auth } from '../../lib/firebase';
 import { useToast } from '../../components/ToastContext';
@@ -10,9 +9,6 @@ import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import * as turf from '@turf/turf';
 import { getDeterministicUuid } from '../../lib/user';
-import { RiderCockpitLayout } from '../../components/spatial/RiderCockpitLayout';
-import { EdgeRail } from '../../components/spatial/EdgeRail';
-import { SpatialMembrane } from '../../components/spatial/SpatialMembrane';
 
 const CreateRide = () => {
   const navigate = useNavigate();
@@ -25,6 +21,8 @@ const CreateRide = () => {
 
   const location = useLocation();
   const restrictInstant = location.state?.restrictInstant || false;
+  const editRideId: string | null = location.state?.editRideId || null;
+  const isEditMode = !!editRideId;
 
   // --- Step 1 State ---
   const [isInstant, setIsInstant] = useState(!restrictInstant);
@@ -135,6 +133,57 @@ const CreateRide = () => {
     fetchConfig();
   }, []);
 
+  // --- Edit Mode: load existing ride and prefill ---
+  useEffect(() => {
+    const loadRide = async () => {
+      if (!editRideId) return;
+      try {
+        const { data: ride, error } = await supabase.from('rides').select('*').eq('id', editRideId).single();
+        if (error || !ride) {
+          showToast('Failed to load ride for editing', 'error');
+          return;
+        }
+        const rd = ride.ride_date ? new Date(ride.ride_date) : new Date();
+        setFormData(prev => ({
+          ...prev,
+          name: ride.name || '',
+          description: ride.description || '',
+          visibility: ride.visibility || 'public',
+          max_riders: ride.max_riders || 20,
+          ride_date: rd.toISOString().split('T')[0],
+          ride_time: rd.toTimeString().slice(0, 5),
+          vehicle_type: ride.vehicle_type || 'Any'
+        }));
+        setIsInstant(ride.status === 'live');
+        if (ride.image_url) setCoverPreview(ride.image_url);
+
+        const sl = ride.start_location;
+        const dst = ride.destination;
+        if (sl?.lat && sl?.lng) {
+          setOriginCoords({ lat: sl.lat, lng: sl.lng });
+          setOriginText(sl.name || 'Start Location');
+        }
+        if (dst?.lat && dst?.lng) {
+          setDestCoords({ lat: dst.lat, lng: dst.lng });
+          setDestText(dst.name || 'Destination');
+        }
+
+        const { data: stopsData } = await supabase.from('ride_stops').select('*').eq('ride_id', editRideId).order('sequence', { ascending: true });
+        if (stopsData) {
+          const middle = stopsData.filter(s => s.stop_type !== 'Start' && s.stop_type !== 'Destination');
+          setStops(middle.map(s => ({
+            text: s.stop_name || '',
+            coords: s.latitude && s.longitude ? { lat: s.latitude, lng: s.longitude } : null,
+            type: s.stop_type || 'Other'
+          })));
+        }
+      } catch (e) {
+        console.error(e);
+        showToast('Failed to load ride', 'error');
+      }
+    };
+    loadRide();
+  }, [editRideId]);
 
   // --- Step 2 Effects & Handlers ---
   
@@ -440,7 +489,7 @@ const CreateRide = () => {
         ? new Date().toISOString() 
         : new Date(`${formData.ride_date}T${formData.ride_time}`).toISOString();
 
-      let finalImageUrl = "https://images.unsplash.com/photo-1558981403-c5f9899a28bc?ixlib=rb-4.0.3&auto=format&fit=crop&w=1200&q=80";
+      let finalImageUrl = coverPreview;
       if (coverFile) {
         const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
         if (!coverFile.type.startsWith('image/')) {
@@ -470,35 +519,53 @@ const CreateRide = () => {
         formData.description
       ].filter(Boolean).join('\n\n');
 
-      // 1. Create Ride
-      const { data: ride, error: rideErr } = await supabase.from('rides').insert({
-        ride_code: rideCode,
-        owner_id: user.uid,
-        name: formData.name,
-        description: fullDescription,
-        visibility: formData.visibility,
-        max_riders: formData.max_riders,
-        ride_date: combinedDateTime,
-        vehicle_type: formData.vehicle_type,
-        image_url: finalImageUrl,
-        start_location: { lat: originCoords!.lat, lng: originCoords!.lng, name: originText },
-        destination: { lat: destCoords!.lat, lng: destCoords!.lng, name: destText },
-        status: isInstant ? 'live' : 'scheduled'
-      }).select().single();
+      // 1. Create or Update Ride
+      let rideId: string;
+      if (isEditMode) {
+        const { error: upErr } = await supabase.from('rides').update({
+          name: formData.name,
+          description: fullDescription,
+          visibility: formData.visibility,
+          max_riders: formData.max_riders,
+          ride_date: combinedDateTime,
+          vehicle_type: formData.vehicle_type,
+          image_url: finalImageUrl,
+          start_location: { lat: originCoords!.lat, lng: originCoords!.lng, name: originText },
+          destination: { lat: destCoords!.lat, lng: destCoords!.lng, name: destText }
+        }).eq('id', editRideId);
+        if (upErr) throw upErr;
+        rideId = editRideId;
+      } else {
+        const { data: ride, error: rideErr } = await supabase.from('rides').insert({
+          ride_code: rideCode,
+          owner_id: user.uid,
+          name: formData.name,
+          description: fullDescription,
+          visibility: formData.visibility,
+          max_riders: formData.max_riders,
+          ride_date: combinedDateTime,
+          vehicle_type: formData.vehicle_type,
+          image_url: finalImageUrl,
+          start_location: { lat: originCoords!.lat, lng: originCoords!.lng, name: originText },
+          destination: { lat: destCoords!.lat, lng: destCoords!.lng, name: destText },
+          status: isInstant ? 'live' : 'scheduled'
+        }).select().single();
 
-      if (rideErr) throw rideErr;
+        if (rideErr) throw rideErr;
+        rideId = ride.id;
 
-      // 2. Add Owner as Admin Member
-      await supabase.from('ride_members').insert({
-        ride_id: ride.id,
-        user_id: getDeterministicUuid(user.uid),
-        role: 'admin',
-        status: 'approved',
-        display_name: user.displayName || user.email?.split('@')[0] || 'Admin',
-        avatar_url: user.photoURL || `https://ui-avatars.com/api/?name=${user.displayName || user.email?.split('@')[0] || 'Admin'}`
-      });
+        // 2. Add Owner as Admin Member (create only)
+        await supabase.from('ride_members').insert({
+          ride_id: ride.id,
+          user_id: getDeterministicUuid(user.uid),
+          role: 'admin',
+          status: 'approved',
+          display_name: user.displayName || user.email?.split('@')[0] || 'Admin',
+          avatar_url: user.photoURL || `https://ui-avatars.com/api/?name=${user.displayName || user.email?.split('@')[0] || 'Admin'}`
+        });
+      }
 
-      // 3. Save all Stops
+      // 3. Save all Stops (replace existing in edit mode)
       const allStops = [
         { name: originText, lat: originCoords!.lat, lng: originCoords!.lng, type: 'Start' },
         ...stops.filter(s => s.coords).map(s => ({ name: s.text, lat: s.coords!.lat, lng: s.coords!.lng, type: s.type || 'Waypoint' })),
@@ -506,7 +573,7 @@ const CreateRide = () => {
       ];
 
       const stopInserts = allStops.map((stop, idx) => ({
-        ride_id: ride.id,
+        ride_id: rideId,
         stop_name: stop.name,
         latitude: stop.lat,
         longitude: stop.lng,
@@ -514,382 +581,392 @@ const CreateRide = () => {
         stop_type: stop.type
       }));
 
+      await supabase.from('ride_stops').delete().eq('ride_id', rideId);
       const { error: stopErr } = await supabase.from('ride_stops').insert(stopInserts);
       if (stopErr) throw stopErr;
 
-      showToast(`Ride created! Code: ${rideCode}`, 'success');
-      navigate(`/ride-plus/live/${ride.id}`); 
+      if (isEditMode) {
+        showToast('Ride updated!', 'success');
+      } else {
+        showToast(`Ride created! Code: ${rideCode}`, 'success');
+      }
+      navigate(`/ride-plus/live/${rideId}`); 
       
-    } catch (err: any) {
-      showToast(err.message || 'Failed to create ride', 'error');
+     } catch (err: any) {
+      showToast(err.message || (isEditMode ? 'Failed to update ride' : 'Failed to create ride'), 'error');
     } finally {
       setLoading(false);
     }
   };
 
+  const inputClass = "w-full h-10 bg-[#F7F8FA] border border-gray-200 rounded-xl px-3 text-[13px] text-[#111111] placeholder-gray-400 font-medium outline-none focus:border-[#FF5A00]/60 focus:bg-white focus:ring-1 focus:ring-[#FF5A00]/30 transition-all";
+
   return (
-    <div className="w-full h-full bg-[var(--color-hmi-bg)] flex flex-col font-sans relative overflow-hidden text-[var(--color-hmi-text-primary)]">
+    <div className="w-full h-full bg-[#F2F4F7] flex flex-col font-sans overflow-hidden">
       {step === 1 && (
         <>
-        <div className="flex-1 overflow-y-auto pb-32 hide-scrollbar bg-[var(--color-hmi-bg)]">
-          <input type="file" accept="image/*" className="hidden" ref={coverInputRef} onChange={handleCoverSelect} />
-          {/* ====== IMMERSIVE HERO IMAGE ====== */}
-          <div className="relative h-[45dvh] w-full shrink-0 rounded-b-[32px] overflow-hidden shadow-sm">
-            <img 
-              src={coverPreview}
-              alt="Ride Cover" 
-              className="w-full h-full object-cover"
-            />
-            <div className="absolute inset-0 bg-gradient-to-b from-[var(--color-hmi-bg)]/80 via-transparent to-[var(--color-hmi-bg)]"></div>
-            
-            {/* Top Bar */}
-            <div className="absolute top-6 left-4 right-4 flex justify-between items-center z-10">
-              <button 
-                onClick={() => navigate(-1)} 
-                className="w-10 h-10 bg-white rounded-full flex items-center justify-center text-black shadow-md active:scale-95 transition-all"
-              >
-                <ChevronLeft className="w-6 h-6" />
+        {/* Header */}
+        <div className="flex items-center gap-3 shrink-0 px-5 pt-4 pb-2">
+          <button 
+            onClick={() => navigate(-1)} 
+            className="w-9 h-9 rounded-full bg-white border border-gray-200 flex items-center justify-center text-[#111111] hover:bg-gray-50 active:scale-95 transition-all shadow-sm"
+          >
+            <ChevronLeft className="w-5 h-5" />
+          </button>
+          <div>
+            <h1 className="text-[#111111] font-semibold text-lg tracking-wide uppercase leading-tight">{isEditMode ? 'Edit Ride' : 'Create Ride'}</h1>
+            <p className="text-[12px] text-gray-400 font-medium mt-0.5">Step 1 of 2 &middot; {isEditMode ? 'Update ride details' : 'Ride details'}</p>
+          </div>
+        </div>
+
+        <div className="flex-1 min-h-0 flex portrait:flex-col landscape:flex-row gap-3 px-3 pb-3">
+
+          {/* Cover Image */}
+          <div className="portrait:h-[180px] portrait:shrink-0 landscape:w-[36%] landscape:h-full">
+            <input type="file" accept="image/*" className="hidden" ref={coverInputRef} onChange={handleCoverSelect} />
+            <div className="relative w-full h-full rounded-[8px] overflow-hidden border border-gray-100 shadow-sm group">
+              <img 
+                src={coverPreview}
+                alt="Ride Cover" 
+                className="w-full h-full object-cover group-hover:scale-[1.02] transition-transform duration-500"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent pointer-events-none"></div>
+              <button onClick={() => coverInputRef.current?.click()} className="absolute bottom-3 right-3 px-3 py-2 bg-black/50 backdrop-blur-md rounded-full text-white border border-white/20 text-[12px] font-semibold gap-1.5 flex items-center hover:bg-black/60 active:scale-95 transition-all">
+                <Camera className="w-3.5 h-3.5" /> Edit Cover
               </button>
             </div>
-
-            {/* Edit Cover Button */}
-            <button onClick={() => coverInputRef.current?.click()} className="absolute bottom-6 right-6 px-4 py-2 bg-black/40 backdrop-blur-md rounded-full text-white border border-white/20 text-sm font-bold gap-2 flex items-center z-10 hover:bg-black/50 transition-colors">
-              <Camera className="w-4 h-4" /> Edit Cover
-            </button>
           </div>
 
-          {/* ====== MAIN CONTENT BELOW HERO ====== */}
-          <div className="px-5 pt-6 pb-6 space-y-8 bg-[var(--color-hmi-bg)] relative z-20">
+          {/* Form Column */}
+          <div className="flex-1 min-h-0 flex flex-col">
+            <div className="flex-1 overflow-y-auto hide-scrollbar pr-1 flex flex-col gap-3">
 
-            {/* ---- Ride Identity ---- */}
-            <div className="space-y-3">
-              <div className="bg-[var(--color-hmi-surface)] border border-[var(--color-hmi-accent)]/20 rounded-[20px] p-4 relative shadow-[0_10px_40px_rgba(0,0,0,0.5)] backdrop-blur-xl">
+              {/* Ride Name */}
+              <div className="bg-white rounded-[8px] border border-gray-100 shadow-sm p-3">
+                <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider block mb-1">Ride Name</span>
                 <input 
                   type="text" 
                   value={formData.name}
                   onChange={(e) => setFormData({...formData, name: e.target.value})}
                   placeholder="e.g. Sunday Morning Cruise"
-                  className="w-full bg-transparent text-[20px] font-black text-[var(--color-hmi-text-primary)] placeholder-[var(--color-hmi-text-muted)] focus:outline-none uppercase"
+                  className="w-full bg-transparent text-[17px] font-semibold text-[#111111] placeholder-gray-300 focus:outline-none uppercase tracking-wide"
                 />
               </div>
-            </div>
 
-            {/* ---- Settings Stack ---- */}
-            <div className="bg-[var(--color-hmi-surface)]/80 backdrop-blur-xl rounded-[24px] border border-[var(--color-hmi-accent)]/20 shadow-[0_10px_40px_rgba(0,0,0,0.5)] overflow-visible flex flex-col">
-              
-              {/* Timing Switch */}
-              <div 
-                className={`p-4 flex items-center justify-between border-b border-[var(--color-hmi-accent)]/10 transition-colors rounded-t-[24px] ${restrictInstant ? 'opacity-50 cursor-not-allowed bg-[var(--color-hmi-surface)]' : 'hover:bg-[var(--color-hmi-elevated)] cursor-pointer'}`}
-                onClick={() => {
-                  if (restrictInstant) {
-                    showToast('You already have an active ride. Leave or end it to create an instant ride.', 'error');
-                    return;
-                  }
-                  setIsInstant(!isInstant);
-                }}
-              >
-                <div className="flex items-center gap-3">
-                  <div className={`w-11 h-11 rounded-full flex items-center justify-center transition-colors duration-300 ${isInstant ? 'bg-orange-50' : 'bg-blue-50'}`}>
-                    {isInstant ? <Zap className="w-5 h-5 text-[#ef4523]" fill="currentColor" /> : <Calendar className="w-5 h-5 text-blue-500" />}
-                  </div>
-                  <div className="flex flex-col">
-                    <span className="font-black text-[15px] text-[#273a5a]">
-                      {isInstant ? 'Ride Now' : 'Schedule Later'}
-                    </span>
-                    <span className="text-[12px] text-gray-400 font-bold">
-                      {isInstant ? 'Start immediately' : 'Pick a specific time'}
-                    </span>
-                  </div>
-                </div>
-                
-                {/* Switch Graphic */}
-                <div className={`w-12 h-7 rounded-full p-1 cursor-pointer transition-colors duration-300 relative ${isInstant ? 'bg-[#ef4523]' : 'bg-gray-200'}`}>
-                  <div className={`absolute top-1 w-5 h-5 rounded-full bg-white shadow-sm transition-transform duration-300 ${isInstant ? 'translate-x-5' : 'translate-x-0'}`} />
-                </div>
-              </div>
+              {/* Settings Card */}
+              <div className="bg-white rounded-[8px] border border-gray-100 shadow-sm flex flex-col overflow-visible">
 
-              {/* Expanded Date/Time Pickers (If Scheduled) */}
-              {!isInstant && (
-                <div className="px-4 py-4 bg-gray-50/50 border-b border-gray-50 flex gap-3 animate-in fade-in slide-in-from-top-2 duration-300">
-                  <input 
-                    type="date"
-                    value={formData.ride_date}
-                    onChange={(e) => setFormData({...formData, ride_date: e.target.value})}
-                    className="flex-1 bg-white text-[#273a5a] text-[13px] font-bold rounded-xl px-4 py-2.5 outline-none border border-gray-200 focus:border-blue-500 transition-colors shadow-sm"
-                  />
-                  <input 
-                    type="time"
-                    value={formData.ride_time}
-                    onChange={(e) => setFormData({...formData, ride_time: e.target.value})}
-                    className="flex-1 bg-white text-[#273a5a] text-[13px] font-bold rounded-xl px-4 py-2.5 outline-none border border-gray-200 focus:border-blue-500 transition-colors shadow-sm"
-                  />
-                </div>
-              )}
-
-              {/* Max Riders */}
-              <div className="p-4 flex flex-col gap-4 border-b border-gray-50 hover:bg-gray-50/50 transition-colors">
-                <div className="flex items-center justify-between">
+                {/* Timing Switch */}
+                <div 
+                  className={`p-3.5 flex items-center justify-between border-b border-gray-50 transition-colors ${(restrictInstant && !isEditMode) ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-50 cursor-pointer'}`}
+                  onClick={() => {
+                    if (restrictInstant && !isEditMode) {
+                      showToast('You already have an active ride. Leave or end it to create an instant ride.', 'error');
+                      return;
+                    }
+                    setIsInstant(!isInstant);
+                  }}
+                >
                   <div className="flex items-center gap-3">
-                    <div className="w-11 h-11 rounded-full bg-indigo-50 flex items-center justify-center">
-                      <Users className="w-5 h-5 text-indigo-500" />
+                    <div className={`w-10 h-10 rounded-full flex items-center justify-center transition-colors duration-300 ${isInstant ? 'bg-[#FFF0E6]' : 'bg-blue-50'}`}>
+                      {isInstant ? <Zap className="w-5 h-5 text-[#FF5A00]" fill="currentColor" /> : <Calendar className="w-5 h-5 text-blue-500" />}
                     </div>
                     <div className="flex flex-col">
-                      <span className="font-black text-[15px] text-[#273a5a]">Rider Capacity</span>
-                      <span className="text-[12px] text-gray-400 font-bold">Limit the group size</span>
+                      <span className="font-semibold text-[14px] text-[#111111]">
+                        {isInstant ? 'Ride Now' : 'Schedule Later'}
+                      </span>
+                      <span className="text-[12px] text-gray-400 font-medium">
+                        {isInstant ? 'Start immediately' : 'Pick a specific time'}
+                      </span>
                     </div>
                   </div>
-                  <div className="bg-[#14142B] text-white px-3 py-1.5 rounded-full text-[12px] font-bold shadow-sm">
-                    {formData.max_riders} Max
+                  
+                  {/* Switch Graphic */}
+                  <div className={`w-11 h-6 rounded-full p-1 cursor-pointer transition-colors duration-300 relative ${isInstant ? 'bg-[#FF5A00]' : 'bg-gray-200'}`}>
+                    <div className={`absolute top-1 w-4 h-4 rounded-full bg-white shadow-sm transition-transform duration-300 ${isInstant ? 'translate-x-5' : 'translate-x-0'}`} />
                   </div>
-                </div>
-                
-                <div className="px-2 mt-1">
-                  <input 
-                    type="range" 
-                    min={2} 
-                    max={50}
-                    value={formData.max_riders || 20} 
-                    onChange={(e) => setFormData({...formData, max_riders: parseInt(e.target.value)})} 
-                    className="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-indigo-500 hover:accent-indigo-600 transition-colors"
-                  />
-                  <div className="flex justify-between text-[11px] text-gray-400 font-bold mt-2">
-                    <span>2 riders</span>
-                    <span>50 riders</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Vehicle Type */}
-              <div 
-                className="p-4 flex items-center justify-between border-b border-gray-50 hover:bg-gray-50/50 transition-colors cursor-pointer relative"
-                onClick={() => setOpenDropdown(openDropdown === 'vehicle' ? null : 'vehicle')}
-              >
-                <div className="flex items-center gap-3">
-                  <div className="w-11 h-11 rounded-full bg-rose-50 flex items-center justify-center">
-                    <Motorcycle className="w-5 h-5 text-rose-500" />
-                  </div>
-                  <div className="flex flex-col">
-                    <span className="font-black text-[15px] text-[#273a5a]">Vehicle Type</span>
-                    <span className="text-[12px] text-gray-400 font-bold">What should people bring?</span>
-                  </div>
-                </div>
-                
-                <div className="flex items-center gap-2 text-[#273a5a] font-bold text-[13px] bg-white border border-gray-200 px-3 py-1.5 rounded-full shadow-sm">
-                  {vehicleTypes.find(v => v.value === formData.vehicle_type)?.label || 'Any Vehicle'}
-                  <ChevronDown className={`w-3.5 h-3.5 text-gray-400 transition-transform ${openDropdown === 'vehicle' ? 'rotate-180' : ''}`} />
                 </div>
 
-                {/* Dropdown */}
-                {openDropdown === 'vehicle' && (
-                  <div className="absolute top-[calc(100%-8px)] right-4 w-[200px] max-h-[300px] overflow-y-auto bg-white rounded-xl shadow-xl border border-gray-100 z-50 animate-in fade-in zoom-in-95 duration-200">
-                    {vehicleTypes.map(vt => (
-                      <div 
-                        key={vt.value}
-                        className={`px-4 py-3 text-[13px] font-bold transition-colors border-b border-gray-50 last:border-0 ${formData.vehicle_type === vt.value ? 'bg-rose-50 text-rose-600' : 'text-[#273a5a] hover:bg-gray-50'}`}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setFormData({...formData, vehicle_type: vt.value});
-                          setOpenDropdown(null);
-                        }}
-                      >
-                        {vt.label}
+                {/* Expanded Date/Time Pickers (If Scheduled) */}
+                {!isInstant && (
+                  <div className="px-3.5 py-3 bg-[#F7F8FA] border-b border-gray-50 flex gap-2.5 animate-in fade-in slide-in-from-top-2 duration-300">
+                    <input 
+                      type="date"
+                      value={formData.ride_date}
+                      onChange={(e) => setFormData({...formData, ride_date: e.target.value})}
+                      className={`flex-1 ${inputClass}`}
+                    />
+                    <input 
+                      type="time"
+                      value={formData.ride_time}
+                      onChange={(e) => setFormData({...formData, ride_time: e.target.value})}
+                      className={`flex-1 ${inputClass}`}
+                    />
+                  </div>
+                )}
+
+                {/* Max Riders */}
+                <div className="p-3.5 flex flex-col gap-3 border-b border-gray-50 hover:bg-gray-50/50 transition-colors">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-indigo-50 flex items-center justify-center">
+                        <Users className="w-5 h-5 text-indigo-500" />
                       </div>
-                    ))}
+                      <div className="flex flex-col">
+                        <span className="font-semibold text-[14px] text-[#111111]">Rider Capacity</span>
+                        <span className="text-[12px] text-gray-400 font-medium">Limit the group size</span>
+                      </div>
+                    </div>
+                    <div className="bg-[#111111] text-white px-3 py-1 rounded-full text-[12px] font-semibold shadow-sm tabular-nums">
+                      {formData.max_riders} Max
+                    </div>
                   </div>
-                )}
+                  
+                  <div className="px-1">
+                    <input 
+                      type="range" 
+                      min={2} 
+                      max={50}
+                      value={formData.max_riders || 20} 
+                      onChange={(e) => setFormData({...formData, max_riders: parseInt(e.target.value)})} 
+                      className="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-[#FF5A00]"
+                    />
+                    <div className="flex justify-between text-[11px] text-gray-400 font-semibold mt-1.5">
+                      <span>2 riders</span>
+                      <span>50 riders</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Vehicle Type */}
+                <div 
+                  className="p-3.5 flex items-center justify-between border-b border-gray-50 hover:bg-gray-50/50 transition-colors cursor-pointer relative"
+                  onClick={() => setOpenDropdown(openDropdown === 'vehicle' ? null : 'vehicle')}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-rose-50 flex items-center justify-center">
+                      <Motorcycle className="w-5 h-5 text-rose-500" />
+                    </div>
+                    <div className="flex flex-col">
+                      <span className="font-semibold text-[14px] text-[#111111]">Vehicle Type</span>
+                      <span className="text-[12px] text-gray-400 font-medium">What should people bring?</span>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-center gap-2 text-[#111111] font-semibold text-[12px] bg-[#F7F8FA] border border-gray-200 px-3 py-1.5 rounded-full">
+                    {vehicleTypes.find(v => v.value === formData.vehicle_type)?.label || 'Any Vehicle'}
+                    <ChevronDown className={`w-3.5 h-3.5 text-gray-400 transition-transform ${openDropdown === 'vehicle' ? 'rotate-180' : ''}`} />
+                  </div>
+
+                  {/* Dropdown */}
+                  {openDropdown === 'vehicle' && (
+                    <div className="absolute top-[calc(100%-8px)] right-4 w-[200px] max-h-[300px] overflow-y-auto hide-scrollbar bg-white rounded-xl shadow-xl border border-gray-100 z-50 animate-in fade-in zoom-in-95 duration-200">
+                      {vehicleTypes.map(vt => (
+                        <div 
+                          key={vt.value}
+                          className={`px-4 py-2.5 text-[13px] font-semibold transition-colors border-b border-gray-50 last:border-0 ${formData.vehicle_type === vt.value ? 'bg-[#FFF0E6] text-[#FF5A00]' : 'text-[#111111] hover:bg-gray-50'}`}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setFormData({...formData, vehicle_type: vt.value});
+                            setOpenDropdown(null);
+                          }}
+                        >
+                          {vt.label}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Visibility */}
+                <div 
+                  className="p-3.5 flex items-center justify-between hover:bg-gray-50/50 transition-colors cursor-pointer relative"
+                  onClick={() => setOpenDropdown(openDropdown === 'visibility' ? null : 'visibility')}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-emerald-50 flex items-center justify-center">
+                      <Globe className="w-5 h-5 text-emerald-500" />
+                    </div>
+                    <div className="flex flex-col">
+                      <span className="font-semibold text-[14px] text-[#111111]">Visibility</span>
+                      <span className="text-[12px] text-gray-400 font-medium">Who can see this ride?</span>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-center gap-2 text-[#111111] font-semibold text-[12px] bg-[#F7F8FA] border border-gray-200 px-3 py-1.5 rounded-full">
+                    {formData.visibility === 'public' ? 'Public' : 'Private'}
+                    <ChevronDown className={`w-3.5 h-3.5 text-gray-400 transition-transform ${openDropdown === 'visibility' ? 'rotate-180' : ''}`} />
+                  </div>
+
+                  {/* Dropdown */}
+                  {openDropdown === 'visibility' && (
+                    <div className="absolute top-[calc(100%-8px)] right-4 w-[160px] bg-white rounded-xl shadow-xl border border-gray-100 z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+                      <div 
+                        className={`px-4 py-2.5 text-[13px] font-semibold transition-colors border-b border-gray-50 ${formData.visibility === 'public' ? 'bg-emerald-50 text-emerald-600' : 'text-[#111111] hover:bg-gray-50'}`}
+                        onClick={(e) => { e.stopPropagation(); setFormData({...formData, visibility: 'public'}); setOpenDropdown(null); }}
+                      >
+                        Public
+                      </div>
+                      <div 
+                        className={`px-4 py-2.5 text-[13px] font-semibold transition-colors ${formData.visibility === 'private' ? 'bg-emerald-50 text-emerald-600' : 'text-[#111111] hover:bg-gray-50'}`}
+                        onClick={(e) => { e.stopPropagation(); setFormData({...formData, visibility: 'private'}); setOpenDropdown(null); }}
+                      >
+                        Private
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
 
-              {/* Visibility */}
-              <div 
-                className="p-4 flex items-center justify-between hover:bg-gray-50/50 transition-colors cursor-pointer relative rounded-b-[24px]"
-                onClick={() => setOpenDropdown(openDropdown === 'visibility' ? null : 'visibility')}
+              {/* About this ride */}
+              <div className="bg-white rounded-[8px] border border-gray-100 shadow-sm p-3.5">
+                <h3 className="text-[12px] font-semibold text-gray-400 uppercase tracking-wider flex items-center gap-1.5 mb-2">
+                  <Sparkles className="w-3.5 h-3.5 text-[#FF5A00]" /> About this ride
+                </h3>
+                <textarea
+                  value={formData.description}
+                  onChange={(e) => setFormData({...formData, description: e.target.value})}
+                  placeholder="e.g. Meet at the gas station at 8 AM. We'll ride through the canyon and stop for lunch..."
+                  rows={3}
+                  maxLength={500}
+                  className="w-full bg-[#F7F8FA] border border-gray-200 rounded-xl p-3 text-[13px] text-[#111111] font-medium placeholder-gray-400 focus:outline-none focus:border-[#FF5A00]/60 focus:bg-white focus:ring-1 focus:ring-[#FF5A00]/30 transition-all resize-none"
+                />
+                <div className="text-right mt-1">
+                  <span className="text-[10px] text-gray-400 font-medium">{formData.description.length}/500</span>
+                </div>
+              </div>
+
+            </div>
+
+            {/* CTA */}
+            <div className="shrink-0 pt-3">
+              <button 
+                onClick={handleNextStep}
+                className="w-full bg-[#FF5A00] hover:bg-[#ff6a1a] text-white font-semibold text-[15px] py-3.5 rounded-xl shadow-lg shadow-[#FF5A00]/25 active:scale-[0.98] transition-all flex items-center justify-center gap-2 uppercase tracking-wider"
               >
-                <div className="flex items-center gap-3">
-                  <div className="w-11 h-11 rounded-full bg-emerald-50 flex items-center justify-center">
-                    <Globe className="w-5 h-5 text-emerald-500" />
-                  </div>
-                  <div className="flex flex-col">
-                    <span className="font-black text-[15px] text-[#273a5a]">Visibility</span>
-                    <span className="text-[12px] text-gray-400 font-bold">Who can see this ride?</span>
-                  </div>
-                </div>
-                
-                <div className="flex items-center gap-2 text-[#273a5a] font-bold text-[13px] bg-white border border-gray-200 px-3 py-1.5 rounded-full shadow-sm">
-                  {formData.visibility === 'public' ? 'Public' : 'Private'}
-                  <ChevronDown className={`w-3.5 h-3.5 text-gray-400 transition-transform ${openDropdown === 'visibility' ? 'rotate-180' : ''}`} />
-                </div>
-
-                {/* Dropdown */}
-                {openDropdown === 'visibility' && (
-                  <div className="absolute top-[calc(100%-8px)] right-4 w-[160px] bg-white rounded-xl shadow-xl border border-gray-100 z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
-                    <div 
-                      className={`px-4 py-3 text-[13px] font-bold transition-colors border-b border-gray-50 ${formData.visibility === 'public' ? 'bg-emerald-50 text-emerald-600' : 'text-[#273a5a] hover:bg-gray-50'}`}
-                      onClick={(e) => { e.stopPropagation(); setFormData({...formData, visibility: 'public'}); setOpenDropdown(null); }}
-                    >
-                      Public
-                    </div>
-                    <div 
-                      className={`px-4 py-3 text-[13px] font-bold transition-colors ${formData.visibility === 'private' ? 'bg-emerald-50 text-emerald-600' : 'text-[#273a5a] hover:bg-gray-50'}`}
-                      onClick={(e) => { e.stopPropagation(); setFormData({...formData, visibility: 'private'}); setOpenDropdown(null); }}
-                    >
-                      Private
-                    </div>
-                  </div>
-                )}
-              </div>
+                Continue to Route <ArrowRight className="w-5 h-5" />
+              </button>
             </div>
-
-            {/* ---- About this ride ---- */}
-            <div className="space-y-4 pt-2">
-              <h3 className="text-[15px] font-black text-[#273a5a] flex items-center gap-2">
-                <Sparkles className="w-5 h-5 text-[#ff5a2c]" /> About this ride
-              </h3>
-              
-              <div className="space-y-3">
-                <div className="bg-white border border-gray-100 rounded-xl p-4 relative shadow-sm">
-                  <textarea
-                    value={formData.description}
-                    onChange={(e) => setFormData({...formData, description: e.target.value})}
-                    placeholder="e.g. Meet at the gas station at 8 AM. We'll ride through the canyon and stop for lunch..."
-                    rows={4}
-                    maxLength={500}
-                    className="w-full bg-transparent text-[13px] text-[#273a5a] font-medium placeholder-gray-400 focus:outline-none resize-none"
-                  />
-                  <div className="text-right mt-1">
-                    <span className="text-[10px] text-gray-400 font-medium">{formData.description.length}/500</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-
           </div>
-        </div>
-
-        {/* ====== FLOATING BOTTOM CTA ====== */}
-        <div className="absolute bottom-0 left-0 right-0 px-5 pb-6 pt-10 bg-gradient-to-t from-[var(--color-hmi-bg)] via-[var(--color-hmi-bg)]/90 to-transparent pointer-events-none z-30">
-          <button 
-            onClick={handleNextStep}
-            className="w-full pointer-events-auto bg-[var(--color-hmi-accent)] text-black font-black text-[16px] py-4 rounded-[12px] shadow-[0_8px_24px_rgba(255,77,33,0.35)] active:scale-[0.97] transition-all flex items-center justify-center gap-2 uppercase"
-          >
-            ROUTE <ArrowRight className="w-5 h-5" />
-          </button>
         </div>
         </>
       )}
 
       {/* ====== STEP 2: ROUTE BUILDER ====== */}
       {step === 2 && (
-        <div className="flex flex-col gap-6 w-full h-full bg-[#111827] p-2 overflow-y-auto hide-scrollbar">
-          <div className="flex items-center justify-between shrink-0">
-            <div className="flex items-center gap-3">
-              <button onClick={() => setStep(1)} className="w-[36px] h-[36px] flex items-center justify-center rounded-full bg-white/10 hover:bg-white/20 transition-colors">
-                <ChevronLeft className="w-5 h-5 text-white" />
-              </button>
-              <h1 className="text-[18px] font-bold text-white uppercase">Plan Route</h1>
+        <>
+        {/* Header */}
+        <div className="flex items-center justify-between shrink-0 px-5 pt-4 pb-2">
+          <div className="flex items-center gap-3">
+            <button onClick={() => setStep(1)} className="w-9 h-9 rounded-full bg-white border border-gray-200 flex items-center justify-center text-[#111111] hover:bg-gray-50 active:scale-95 transition-all shadow-sm">
+              <ChevronLeft className="w-5 h-5" />
+            </button>
+            <div>
+              <h1 className="text-[#111111] font-semibold text-lg tracking-wide uppercase leading-tight">Plan Route</h1>
+              <p className="text-[12px] text-gray-400 font-medium mt-0.5">Step 2 of 2 &middot; Add stops along the way</p>
             </div>
           </div>
-            
-            <div className="flex gap-3">
-              <div className="flex flex-col items-center justify-start pt-[17px]">
-                <div className="w-[10px] h-[10px] rounded-full border-2 border-[#34C759] flex-shrink-0"></div>
-                {stops.map((_, i) => (
-                  <React.Fragment key={i}>
-                    <div className="w-[2px] h-[36px] bg-gray-200 my-1 flex-shrink-0"></div>
-                    <div className="w-[8px] h-[8px] rounded-full border-2 border-purple-400 bg-white flex-shrink-0 relative z-10"></div>
-                  </React.Fragment>
-                ))}
-                <div className="w-[2px] h-[36px] bg-gray-200 my-1 flex-shrink-0"></div>
-                <div className="w-[10px] h-[10px] rounded-full bg-[#FF3B30] flex-shrink-0"></div>
+          <button 
+            onClick={handleFinalCreate}
+            disabled={loading}
+            className="h-10 px-5 rounded-full bg-[#FF5A00] hover:bg-[#ff6a1a] text-white text-[14px] font-semibold flex items-center gap-2 shadow-lg shadow-[#FF5A00]/25 transition-all active:scale-95 disabled:opacity-50"
+          >
+            {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+            {isEditMode ? 'Save Changes' : 'Create Ride'}
+          </button>
+        </div>
+
+        <div className="flex-1 min-h-0 flex flex-row gap-3 px-3 pb-3">
+
+          {/* Inputs Panel */}
+          <div className="w-[340px] min-w-[290px] max-w-[380px] shrink-0 bg-white rounded-[8px] border border-gray-100 shadow-sm overflow-y-auto hide-scrollbar p-3">
+
+            {/* Origin */}
+            <div className="flex items-start gap-2.5">
+              <div className="flex flex-col items-center pt-[15px] shrink-0">
+                <div className="w-2.5 h-2.5 rounded-full bg-[#34C759] border-2 border-white ring-1 ring-gray-200" />
+                <div className="w-0.5 flex-1 min-h-[24px] border-l-2 border-dashed border-gray-200 my-1" />
               </div>
-              <div className="flex-1 flex flex-col gap-2">
-                <div className="relative flex-1">
-                  <input
-                    type="text"
-                    value={originText}
-                    onChange={e => handleInputChange(e.target.value, 'origin')}
-                    onFocus={() => { if(originText.length >= 3) handleInputChange(originText, 'origin'); }}
-                    onBlur={() => setTimeout(() => setActiveInput(null), 200)}
-                    placeholder="Start location..."
-                    className="w-full h-[44px] bg-gray-50 border border-gray-200 rounded-lg pl-3 pr-[80px] text-[14px] text-[#273a5a] font-medium outline-none focus:border-[#ff5a2c] focus:bg-white transition-all"
-                  />
-                  
-                  {activeInput === 'origin' && suggestions.length > 0 && (
-                    <div className="absolute top-[100%] left-0 right-0 mt-1 bg-white border border-gray-100 rounded-lg shadow-[0_10px_40px_rgba(0,0,0,0.1)] z-[100] max-h-48 overflow-y-auto">
-                      {suggestions.map((s, i) => (
-                        <div 
-                          key={i} 
-                          className="p-3 border-b border-gray-50 last:border-0 hover:bg-gray-50 cursor-pointer text-[13px] font-medium text-[#273a5a] truncate"
-                          onMouseDown={() => handleSelectSuggestion(s, 'origin')}
-                        >
-                          {s.display_name}
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                  
-                    {activeInput === 'dest' && suggestions.length > 0 && (
-                      <div className="absolute top-[100%] left-0 right-0 mt-1 bg-white border border-gray-100 rounded-lg shadow-[0_10px_40px_rgba(0,0,0,0.1)] z-[100] max-h-48 overflow-y-auto">
-                        {suggestions.map((s, i) => (
-                          <div 
-                            key={i} 
-                            className="p-3 border-b border-gray-50 last:border-0 hover:bg-gray-50 cursor-pointer text-[13px] font-medium text-[#273a5a] truncate"
-                            onMouseDown={() => handleSelectSuggestion(s, 'dest')}
-                          >
-                            {s.display_name}
-                          </div>
-                        ))}
+              <div className="relative flex-1 pb-1">
+                <input
+                  type="text"
+                  value={originText}
+                  onChange={e => handleInputChange(e.target.value, 'origin')}
+                  onFocus={() => { if(originText.length >= 3) handleInputChange(originText, 'origin'); }}
+                  onBlur={() => setTimeout(() => setActiveInput(null), 200)}
+                  placeholder="Start location..."
+                  className={inputClass}
+                />
+                {activeInput === 'origin' && suggestions.length > 0 && (
+                  <div className="absolute top-[100%] left-0 right-0 mt-1 bg-white border border-gray-100 rounded-xl shadow-xl z-[100] max-h-48 overflow-y-auto hide-scrollbar">
+                    {suggestions.map((s, i) => (
+                      <div 
+                        key={i} 
+                        className="p-2.5 border-b border-gray-50 last:border-0 hover:bg-gray-50 cursor-pointer text-[12px] font-medium text-[#111111] truncate"
+                        onMouseDown={() => handleSelectSuggestion(s, 'origin')}
+                      >
+                        {s.display_name}
                       </div>
-                    )}
-                    <div className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center gap-1">
-                    <button 
-                      onClick={() => {
-                        if (globalLocation) {
-                          setOriginCoords({ lat: globalLocation.lat, lng: globalLocation.lng });
-                          setOriginText(globalLocationName || 'My Location');
-                        }
-                      }}
-                      className="w-10 h-10 flex items-center justify-center text-blue-500 hover:bg-gray-100 rounded-xl transition-colors active:scale-95"
-                      title="Use Current Location"
-                    >
-                      <Crosshair className="w-4 h-4" />
-                    </button>
-                    <button 
-                      onClick={() => setSelectingLocationFor('origin')}
-                      className={`w-[28px] h-[28px] rounded flex items-center justify-center ${selectingLocationFor === 'origin' ? 'text-white bg-[#ff5a2c]' : 'text-blue-500 hover:bg-blue-50'} active:scale-95 transition-all`}
-                    >
-                      <Map className="w-4 h-4" />
-                    </button>
+                    ))}
                   </div>
+                )}
+                <div className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center gap-0.5">
+                  <button 
+                    onClick={() => {
+                      if (globalLocation) {
+                        setOriginCoords({ lat: globalLocation.lat, lng: globalLocation.lng });
+                        setOriginText(globalLocationName || 'My Location');
+                      }
+                    }}
+                    className="w-[30px] h-[30px] flex items-center justify-center text-[#FF5A00] hover:bg-[#FF5A00]/10 rounded-lg transition-colors active:scale-95"
+                    title="Use Current Location"
+                  >
+                    <Crosshair className="w-4 h-4" />
+                  </button>
+                  <button 
+                    onClick={() => setSelectingLocationFor('origin')}
+                    className={`w-[30px] h-[30px] flex items-center justify-center rounded-lg active:scale-95 transition-all ${selectingLocationFor === 'origin' ? 'text-white bg-[#FF5A00]' : 'text-blue-500 hover:bg-blue-50'}`}
+                    title="Pick on map"
+                  >
+                    <Map className="w-4 h-4" />
+                  </button>
                 </div>
-                {stops.map((stop, index) => (
-                  <div key={index} className="flex gap-2 w-full items-center">
-                    
-                    <div className="relative flex-1 flex">
-                      <div className="relative flex">
-                        <button 
-                          onClick={() => setOpenDropdownIdx(openDropdownIdx === index ? null : index)}
-                          className="h-[44px] flex items-center justify-between gap-1 bg-gray-50 border border-gray-200 border-r-0 rounded-l-lg px-2 text-[12px] text-[#273a5a] font-medium outline-none hover:bg-gray-100 min-w-[95px]"
-                        >
-                          <div className="flex items-center gap-1">
-                            {getStopInfo(stop.type).emoji} <span className="truncate">{!stop.type || stop.type === 'Other' ? 'Pin' : stop.type}</span>
-                          </div>
-                          <ChevronDown className="w-3 h-3 text-gray-400" />
-                        </button>
-                        {openDropdownIdx === index && (
-                          <div className="absolute top-[100%] left-0 mt-1 bg-white border border-gray-100 rounded-lg shadow-lg z-[110] w-[140px] py-1 max-h-[200px] overflow-y-auto hide-scrollbar">
-                            {['Pin', 'Food', 'Hospital', 'Mechanic', 'Tea', 'Fuel', 'Stay', 'Sightseeing'].map(t => (
-                              <div key={t} onClick={() => { 
-                                const newStops = [...stops];
-                                newStops[index].type = t === 'Pin' ? 'Other' : t;
-                                setStops(newStops);
-                                setOpenDropdownIdx(null);
-                              }} className="px-3 py-2 text-[13px] font-medium text-[#273a5a] hover:bg-gray-50 cursor-pointer flex items-center gap-2">
-                                {getStopInfo(t === 'Pin' ? 'Other' : t).emoji} {t}
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </div>
+              </div>
+            </div>
+
+            {/* Stops */}
+            {stops.map((stop, index) => (
+              <div key={index} className="flex items-start gap-2.5">
+                <div className="flex flex-col items-center pt-[15px] shrink-0">
+                  <div className="w-2 h-2 rounded-full bg-[#FF8A4C] border-2 border-white ring-1 ring-gray-200" />
+                  <div className="w-0.5 flex-1 min-h-[24px] border-l-2 border-dashed border-gray-200 my-1" />
+                </div>
+                <div className="flex-1 pb-1 flex flex-col gap-1.5">
+                  <div className="flex gap-1.5">
+                    <div className="relative">
+                      <button 
+                        onClick={() => setOpenDropdownIdx(openDropdownIdx === index ? null : index)}
+                        className="h-10 flex items-center justify-between gap-1 bg-[#F7F8FA] border border-gray-200 rounded-xl px-2.5 text-[12px] text-[#111111] font-medium outline-none hover:bg-gray-100 min-w-[52px] transition-all"
+                      >
+                        {getStopInfo(stop.type).emoji}
+                        <ChevronDown className="w-3 h-3 text-gray-400" />
+                      </button>
+                      {openDropdownIdx === index && (
+                        <div className="absolute top-[100%] left-0 mt-1 bg-white border border-gray-100 rounded-xl shadow-xl z-[110] w-[140px] py-1 max-h-[200px] overflow-y-auto hide-scrollbar">
+                          {['Pin', 'Food', 'Hospital', 'Mechanic', 'Tea', 'Fuel', 'Stay', 'Sightseeing'].map(t => (
+                            <div key={t} onClick={() => { 
+                              const newStops = [...stops];
+                              newStops[index].type = t === 'Pin' ? 'Other' : t;
+                              setStops(newStops);
+                              setOpenDropdownIdx(null);
+                            }} className="px-3 py-2 text-[13px] font-medium text-[#111111] hover:bg-gray-50 cursor-pointer flex items-center gap-2">
+                              {getStopInfo(t === 'Pin' ? 'Other' : t).emoji} {t}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                    <div className="relative flex-1">
                       <input
                         type="text"
                         value={stop.text}
@@ -897,15 +974,14 @@ const CreateRide = () => {
                         onFocus={() => { if(stop.text.length >= 3) handleInputChange(stop.text, `stop-${index}`); }}
                         onBlur={() => setTimeout(() => setActiveInput(null), 200)}
                         placeholder={`Stop ${index + 1}...`}
-                        className="w-full h-[44px] bg-gray-50 border border-gray-200 border-l-0 rounded-r-lg pl-3 pr-[40px] text-[14px] text-[#273a5a] font-medium outline-none focus:border-[#ff5a2c] focus:bg-white transition-all"
+                        className={`${inputClass} pr-[38px]`}
                       />
-                      
                       {activeInput === `stop-${index}` && suggestions.length > 0 && (
-                        <div className="absolute top-[100%] left-0 right-0 mt-1 bg-white border border-gray-100 rounded-lg shadow-[0_10px_40px_rgba(0,0,0,0.1)] z-[100] max-h-48 overflow-y-auto">
+                        <div className="absolute top-[100%] left-0 right-0 mt-1 bg-white border border-gray-100 rounded-xl shadow-xl z-[100] max-h-48 overflow-y-auto hide-scrollbar">
                           {suggestions.map((s, i) => (
                             <div 
                               key={i} 
-                              className="p-3 border-b border-gray-50 last:border-0 hover:bg-gray-50 cursor-pointer text-[13px] font-medium text-[#273a5a] truncate"
+                              className="p-2.5 border-b border-gray-50 last:border-0 hover:bg-gray-50 cursor-pointer text-[12px] font-medium text-[#111111] truncate"
                               onMouseDown={() => handleSelectSuggestion(s, `stop-${index}`)}
                             >
                               {s.display_name}
@@ -913,91 +989,132 @@ const CreateRide = () => {
                           ))}
                         </div>
                       )}
-                      <div className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center gap-0.5">
+                      <div className="absolute right-1 top-1/2 -translate-y-1/2">
                         <button 
                           onClick={() => setSelectingLocationFor(`stop-${index}`)}
-                          className={`w-[28px] h-[28px] rounded flex items-center justify-center ${selectingLocationFor === `stop-${index}` ? 'text-white bg-[#ff5a2c]' : 'text-blue-500 hover:bg-blue-50'} active:scale-95 transition-all ml-1`}
+                          className={`w-[30px] h-[30px] flex items-center justify-center rounded-lg active:scale-95 transition-all ${selectingLocationFor === `stop-${index}` ? 'text-white bg-[#FF5A00]' : 'text-blue-500 hover:bg-blue-50'}`}
+                          title="Pick on map"
                         >
                           <Map className="w-4 h-4" />
                         </button>
                       </div>
                     </div>
-                    
-                    <div className="flex items-center gap-1 shrink-0">
-                      <div className="flex flex-col">
-                        <button
-                          onClick={() => {
-                            const newStops = [...stops];
-                            const temp = newStops[index - 1];
-                            newStops[index - 1] = newStops[index];
-                            newStops[index] = temp;
-                            setStops(newStops);
-                          }}
-                          disabled={index === 0}
-                          className="p-1 hover:bg-gray-200 rounded disabled:opacity-30 transition-colors"
-                        >
-                          <ArrowUpIcon className="w-3 h-3 text-gray-600" />
-                        </button>
-                        <button
-                          onClick={() => {
-                            const newStops = [...stops];
-                            const temp = newStops[index + 1];
-                            newStops[index + 1] = newStops[index];
-                            newStops[index] = temp;
-                            setStops(newStops);
-                          }}
-                          disabled={index === stops.length - 1}
-                          className="p-1 hover:bg-gray-200 rounded disabled:opacity-30 transition-colors"
-                        >
-                          <ArrowDownIcon className="w-3 h-3 text-gray-600" />
-                        </button>
-                      </div>
-                      <button 
-                        onClick={() => {
-                          const newStops = stops.filter((_, i) => i !== index);
-                          setStops(newStops);
-                        }}
-                        className="p-2 ml-1 bg-red-50 text-red-500 hover:bg-red-100 rounded-lg active:scale-95 transition-colors"
-                      >
-                        <X className="w-4 h-4" />
-                      </button>
-                    </div>
                   </div>
-                ))}
-                
-                <div className="flex gap-2 w-full">
-                  <div className="relative flex-1">
-                    <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
-                    <input
-                      type="text"
-                      value={destText}
-                      onChange={e => handleInputChange(e.target.value, 'dest')}
-                      onFocus={() => { if(destText.length >= 3) handleInputChange(destText, 'dest'); }}
-                      onBlur={() => setTimeout(() => setActiveInput(null), 200)}
-                      placeholder="Destination..."
-                      className="w-full h-[44px] bg-gray-50 border border-gray-200 rounded-lg pl-9 pr-[40px] text-[14px] text-[#273a5a] font-medium outline-none focus:border-[#ff5a2c] focus:bg-white transition-all"
-                    />
-                    <div className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center gap-1">
-                      <button 
-                        onClick={() => setSelectingLocationFor('dest')}
-                        className={`w-[28px] h-[28px] rounded flex items-center justify-center ${selectingLocationFor === 'dest' ? 'text-white bg-[#ff5a2c]' : 'text-blue-500 hover:bg-blue-50'} active:scale-95 transition-all`}
-                      >
-                        <Map className="w-4 h-4" />
-                      </button>
-                    </div>
+                  <div className="flex items-center gap-1">
+                    <button
+                      onClick={() => {
+                        const newStops = [...stops];
+                        const temp = newStops[index - 1];
+                        newStops[index - 1] = newStops[index];
+                        newStops[index] = temp;
+                        setStops(newStops);
+                      }}
+                      disabled={index === 0}
+                      className="p-1.5 hover:bg-gray-100 rounded-lg disabled:opacity-30 transition-colors"
+                      title="Move up"
+                    >
+                      <ArrowUpIcon className="w-3.5 h-3.5 text-gray-500" />
+                    </button>
+                    <button
+                      onClick={() => {
+                        const newStops = [...stops];
+                        const temp = newStops[index + 1];
+                        newStops[index + 1] = newStops[index];
+                        newStops[index] = temp;
+                        setStops(newStops);
+                      }}
+                      disabled={index === stops.length - 1}
+                      className="p-1.5 hover:bg-gray-100 rounded-lg disabled:opacity-30 transition-colors"
+                      title="Move down"
+                    >
+                      <ArrowDownIcon className="w-3.5 h-3.5 text-gray-500" />
+                    </button>
+                    <button 
+                      onClick={() => {
+                        const newStops = stops.filter((_, i) => i !== index);
+                        setStops(newStops);
+                      }}
+                      className="p-1.5 ml-auto bg-red-50 text-red-500 hover:bg-red-100 rounded-lg active:scale-95 transition-colors"
+                      title="Remove stop"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
                   </div>
                 </div>
-                
-                {stops.length < 5 && (
-                  <div className="flex justify-end -mt-1">
-                     <button onClick={() => setStops([...stops, { text: '', coords: null, type: 'Other' }])} className="text-[13px] font-semibold text-[#ff5a2c] hover:text-[#ff5a2c]/80 transition-colors flex items-center gap-1 py-1 px-2 rounded hover:bg-orange-50 uppercase">
-                       + STOP
-                     </button>
+              </div>
+            ))}
+
+            {/* Destination */}
+            <div className="flex items-start gap-2.5">
+              <div className="flex flex-col items-center pt-[15px] shrink-0">
+                <div className="w-2.5 h-2.5 rounded-full bg-[#FF3B30] border-2 border-white ring-1 ring-gray-200" />
+              </div>
+              <div className="relative flex-1">
+                <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                <input
+                  type="text"
+                  value={destText}
+                  onChange={e => handleInputChange(e.target.value, 'dest')}
+                  onFocus={() => { if(destText.length >= 3) handleInputChange(destText, 'dest'); }}
+                  onBlur={() => setTimeout(() => setActiveInput(null), 200)}
+                  placeholder="Destination..."
+                  className={`${inputClass} pl-9 pr-[38px]`}
+                />
+                {activeInput === 'dest' && suggestions.length > 0 && (
+                  <div className="absolute top-[100%] left-0 right-0 mt-1 bg-white border border-gray-100 rounded-xl shadow-xl z-[100] max-h-48 overflow-y-auto hide-scrollbar">
+                    {suggestions.map((s, i) => (
+                      <div 
+                        key={i} 
+                        className="p-2.5 border-b border-gray-50 last:border-0 hover:bg-gray-50 cursor-pointer text-[12px] font-medium text-[#111111] truncate"
+                        onMouseDown={() => handleSelectSuggestion(s, 'dest')}
+                      >
+                        {s.display_name}
+                      </div>
+                    ))}
                   </div>
                 )}
+                <div className="absolute right-1 top-1/2 -translate-y-1/2">
+                  <button 
+                    onClick={() => setSelectingLocationFor('dest')}
+                    className={`w-[30px] h-[30px] flex items-center justify-center rounded-lg active:scale-95 transition-all ${selectingLocationFor === 'dest' ? 'text-white bg-[#FF5A00]' : 'text-blue-500 hover:bg-blue-50'}`}
+                    title="Pick on map"
+                  >
+                    <Map className="w-4 h-4" />
+                  </button>
+                </div>
               </div>
             </div>
+
+            {stops.length < 5 && (
+              <button onClick={() => setStops([...stops, { text: '', coords: null, type: 'Other' }])} className="mt-3 ml-6 text-[12px] font-semibold text-[#FF5A00] hover:bg-[#FF5A00]/10 transition-colors flex items-center gap-1 py-1.5 px-3 rounded-lg border border-[#FF5A00]/20">
+                + Add Stop
+              </button>
+            )}
+          </div>
+
+          {/* Map */}
+          <div className="flex-1 relative rounded-[8px] overflow-hidden border border-gray-100 shadow-sm bg-[#E8F1F2]">
+            <div ref={mapContainer} className="absolute inset-0 w-full h-full" />
+
+            {!mapLoaded && (
+              <div className="absolute inset-0 flex items-center justify-center bg-[#F7F8FA] z-10">
+                <div className="w-8 h-8 border-4 border-[#FF5A00] border-t-transparent rounded-full animate-spin" />
+              </div>
+            )}
+
+            {/* Picking hint banner */}
+            {selectingLocationFor && (
+              <div className="absolute top-4 left-1/2 -translate-x-1/2 z-20 bg-[#111111]/90 backdrop-blur text-white text-[12px] font-semibold px-4 py-2 rounded-full flex items-center gap-2 shadow-lg animate-in fade-in duration-200">
+                <MapPin className="w-3.5 h-3.5 text-[#FF5A00]" />
+                Tap on the map to set {selectingLocationFor === 'origin' ? 'start' : selectingLocationFor === 'dest' ? 'destination' : 'stop'} location
+                <button onClick={() => { setSelectingLocationFor(null); selectingLocationForRef.current = null; }} className="ml-1 text-white/60 hover:text-white">
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            )}
+          </div>
         </div>
+        </>
       )}
     </div>
   );

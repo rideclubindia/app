@@ -40,6 +40,10 @@ class Settings(BaseSettings):
     TWILIO_AUTH_TOKEN: str = Field("", env="TWILIO_AUTH_TOKEN")
     TWILIO_FROM_NUMBER: str = Field("", env="TWILIO_FROM_NUMBER")
 
+    # Real-time platform (backend/realtime/)
+    RTC_MAX_DEVICES_PER_USER: int = Field(5, env="RTC_MAX_DEVICES_PER_USER")
+    RTC_IDLE_TIMEOUT_S: int = Field(1800, env="RTC_IDLE_TIMEOUT_S")  # 30 min silence -> drop
+
     class Config:
         env_file = ".env"
         env_file_encoding = 'utf-8'

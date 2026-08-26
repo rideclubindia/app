@@ -136,7 +136,7 @@ const WebsitePage: React.FC<WebsitePageProps> = ({ title, subtitle, children, fu
             flexDirection: 'column'
           }}>
             <div className="hero-tag" style={{ margin: '0 auto 16px auto', fontSize: '12px', color: 'var(--orange)', textTransform: 'uppercase', letterSpacing: '2px', fontWeight: 800 }}>Ride Club Platform</div>
-            <h1 className="hero-title text-center text-white font-black tracking-tight" style={{ marginBottom: children ? '0' : '16px' }}>{title}</h1>
+            <h1 className="hero-title text-center text-white font-semibold tracking-tight" style={{ marginBottom: children ? '0' : '16px' }}>{title}</h1>
             
             {!children && (
               <>
@@ -183,10 +183,10 @@ const WebsitePage: React.FC<WebsitePageProps> = ({ title, subtitle, children, fu
               Two Wheels, One Soul. Discover routes. Meet riders. Create unforgettable journeys with the world's most premium motorcycle community.
             </div>
             <div className="social-links">
-              <a href="#" className="font-bold text-gray-400 hover:text-orange-500 px-2">IG</a>
-              <a href="#" className="font-bold text-gray-400 hover:text-orange-500 px-2">FB</a>
-              <a href="#" className="font-bold text-gray-400 hover:text-orange-500 px-2">YT</a>
-              <a href="#" className="font-bold text-gray-400 hover:text-orange-500 px-2">IN</a>
+              <a href="#" className="font-semibold text-gray-400 hover:text-orange-500 px-2">IG</a>
+              <a href="#" className="font-semibold text-gray-400 hover:text-orange-500 px-2">FB</a>
+              <a href="#" className="font-semibold text-gray-400 hover:text-orange-500 px-2">YT</a>
+              <a href="#" className="font-semibold text-gray-400 hover:text-orange-500 px-2">IN</a>
             </div>
           </div>
           <div className="footer-col">

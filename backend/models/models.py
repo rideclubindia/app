@@ -177,3 +177,21 @@ class Pin(Base):
     
     severity = Column(Integer, default=1)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+class NavigationStatus(enum.Enum):
+    NAVIGATING = "navigating"
+    ARRIVED = "arrived"
+    CANCELLED = "cancelled"
+
+class Navigation(Base):
+    __tablename__ = "navigations"
+
+    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    ride_id = Column(Integer, ForeignKey("rides.id"), index=True)
+    destination_lat = Column(Float, nullable=True)
+    destination_lng = Column(Float, nullable=True)
+    destination_name = Column(String, nullable=True)
+    status = Column(Enum(NavigationStatus), default=NavigationStatus.NAVIGATING)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    ride = relationship("Ride", backref="navigation")

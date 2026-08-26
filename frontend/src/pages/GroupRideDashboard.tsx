@@ -5,17 +5,11 @@ import 'maplibre-gl/dist/maplibre-gl.css';
 import * as turf from '@turf/turf';
 import { grcaApi, type GRCADashboardResponse } from '../services/grcaApi';
 import { 
-    Users, Activity, MapPin, AlertTriangle, 
-    CheckCircle, Navigation, Radio, Clock, Route,
-    TrendingUp, ArrowLeft, MoreVertical, Search,
-    PauseCircle, PlayCircle, Flag, Map
+    Users, Activity, AlertTriangle, 
+    ArrowLeft, Radio, Search
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
-import { CockpitLayout } from '../components/spatial/CockpitLayout';
-import { SpatialMembrane } from '../components/spatial/SpatialMembrane';
-import { LeftGravityWell } from '../components/spatial/LeftGravityWell';
 import { Helmet } from 'react-helmet-async';
-import { motion, AnimatePresence } from 'framer-motion';
 
 export const GroupRideDashboard: React.FC = () => {
     const [searchParams] = useSearchParams();
@@ -56,10 +50,11 @@ export const GroupRideDashboard: React.FC = () => {
             try {
                 // 1. Fetch Route and Stops
                 const { data: rideData } = await supabase.from('rides').select('*').eq('id', actualRideId).single();
+                let geometry: any = null;
                 if (rideData && rideData.route_geometry) {
                     let geom = rideData.route_geometry;
                     if (typeof geom === 'string') try { geom = JSON.parse(geom); } catch(e) {}
-                    setRideFeature(geom);
+                    geometry = geom;
                 }
                 if (rideData && rideData.start_location) {
                     let loc = rideData.start_location;
@@ -68,6 +63,62 @@ export const GroupRideDashboard: React.FC = () => {
                 }
                 const { data: stopsData } = await supabase.from('ride_stops').select('*').eq('ride_id', actualRideId);
                 if (stopsData) setRideStops(stopsData);
+
+                // Build the planned route from stops (incl. Start/Destination) or origin/destination when no geometry is stored
+                if (!geometry && rideData) {
+                    const parse = (v: any) => { if (!v) return null; if (typeof v === 'string') { try { return JSON.parse(v); } catch { return null; } } return v; };
+                    const sl = parse(rideData.start_location);
+                    const dl = parse(rideData.destination);
+                    const pick = (o: any) => {
+                        if (!o) return null;
+                        const lat = o.lat ?? o.latitude, lng = o.lng ?? o.longitude;
+                        return (typeof lat === 'number' && typeof lng === 'number' && isFinite(lat) && isFinite(lng)) ? [lng, lat] as [number, number] : null;
+                    };
+
+                    // Prefer the full ordered stop list (same source LiveRide uses, so the path matches)
+                    let waypoints: [number, number][] = (stopsData || [])
+                        .filter((s: any) => s.latitude && s.longitude)
+                        .sort((a: any, b: any) => (a.sequence ?? a.stop_order ?? 0) - (b.sequence ?? b.stop_order ?? 0))
+                        .map((s: any) => [s.longitude, s.latitude] as [number, number]);
+
+                    // Fallback: origin/intermediates/destination from ride fields
+                    if (waypoints.length < 2) {
+                        waypoints = [];
+                        const startPt = pick(sl);
+                        if (startPt) waypoints.push(startPt);
+                        (stopsData || [])
+                            .filter((s: any) => s.stop_type !== 'Start' && s.stop_type !== 'Destination' && s.latitude && s.longitude)
+                            .sort((a: any, b: any) => (a.sequence ?? 0) - (b.sequence ?? 0))
+                            .forEach((s: any) => waypoints.push([s.longitude, s.latitude]));
+                        const destPt = pick(dl);
+                        if (destPt) waypoints.push(destPt);
+                    }
+
+                    // Deduplicate adjacent identical points (TomTom rejects them)
+                    waypoints = waypoints.filter((c, i) => i === 0 || c[0] !== waypoints[i - 1][0] || c[1] !== waypoints[i - 1][1]);
+
+                    if (waypoints.length >= 2) {
+                        try {
+                            const { fetchTomTomRoute } = await import('../lib/routing');
+                            const built = await fetchTomTomRoute(waypoints, 'driving-car');
+                            if (built) {
+                                geometry = built;
+                                // Persist so future loads skip the rebuild
+                                supabase.from('rides').update({ route_geometry: built }).eq('id', actualRideId).then(() => {}, () => {});
+                            }
+                        } catch (e) { console.warn('Route build failed:', e); }
+
+                        // Guaranteed fallback: straight path through stops so the route is always visible
+                        if (!geometry) {
+                            geometry = {
+                                type: 'Feature',
+                                properties: { summary: { distance: 0, duration: 0 }, fallback: true },
+                                geometry: { type: 'LineString', coordinates: waypoints }
+                            };
+                        }
+                    }
+                }
+                if (geometry) setRideFeature(geometry);
 
                 // 2. Fetch Members
                 const { data: mems } = await supabase.from('ride_members')
@@ -263,7 +314,7 @@ export const GroupRideDashboard: React.FC = () => {
                         paint: {
                             'line-color': '#273a5a', // Dark blue for planned route
                             'line-width': 5,
-                            'line-opacity': 0.4,
+                            'line-opacity': 0.9,
                             'line-dasharray': [2, 2]
                         }
                     }, map.getStyle()?.layers?.find(l => l.type === 'symbol')?.id); // Draw under labels
@@ -305,11 +356,13 @@ export const GroupRideDashboard: React.FC = () => {
 
             // Draw stops
             rideStops.forEach(stop => {
+                if (!stop.latitude || !stop.longitude) return;
                 let marker = markersRef.current[`stop-${stop.id}`];
                 if (!marker) {
                     const el = document.createElement('div');
-                    el.className = 'w-6 h-6 bg-orange-500 rounded-full border-2 border-white shadow-md flex items-center justify-center text-white text-[10px] font-bold';
-                    el.innerHTML = stop.type === 'destination' ? '🏁' : '📍';
+                    el.className = 'w-7 h-7 bg-white rounded-full border-2 shadow-md flex items-center justify-center text-[12px]';
+                    el.style.borderColor = '#FF5A00';
+                    el.innerHTML = stop.stop_type === 'Destination' ? '🏁' : stop.stop_type === 'Start' ? '🚩' : '📍';
                     
                     marker = new maplibregl.Marker({element: el}).setLngLat([stop.longitude, stop.latitude]).addTo(map);
                     markersRef.current[`stop-${stop.id}`] = marker;
@@ -385,27 +438,27 @@ export const GroupRideDashboard: React.FC = () => {
 
     if (loading && !dashboardData) {
         return (
-            <div className="flex h-screen items-center justify-center bg-[#F2F4F7] text-[#273a5a] font-sans">
-                <div className="text-xl animate-pulse flex flex-col items-center gap-4">
-                    <Activity className="animate-spin w-10 h-10 text-[#ef4523]" /> 
-                    <span className="font-bold text-gray-500">Initializing Digital Twin...</span>
+            <div className="flex h-full items-center justify-center bg-[#F2F4F7] font-sans">
+                <div className="flex flex-col items-center gap-4">
+                    <div className="w-10 h-10 border-4 border-[#FF5A00] border-t-transparent rounded-full animate-spin" />
+                    <span className="text-[13px] font-semibold text-gray-400 uppercase tracking-wider">Initializing Group Tracker...</span>
                 </div>
             </div>
         );
     }
 
-
-
     if (!dashboardData) return null;
 
     const getStatusColor = (status: string) => {
         switch (status) {
-            case 'Excellent': return 'text-emerald-600 bg-emerald-50 border-emerald-100';
-            case 'Healthy': return 'text-green-600 bg-green-50 border-green-100';
-            case 'Moderate': return 'text-yellow-600 bg-yellow-50 border-yellow-100';
-            case 'Weak': return 'text-orange-600 bg-orange-50 border-orange-100';
-            case 'Critical': return 'text-red-600 bg-red-50 border-red-100';
-            default: return 'text-gray-600 bg-gray-50 border-gray-100';
+            case 'Excellent': return 'bg-emerald-50 text-emerald-600';
+            case 'Healthy': return 'bg-green-50 text-green-600';
+            case 'Optimal': return 'bg-green-50 text-green-600';
+            case 'Moderate': return 'bg-yellow-50 text-yellow-600';
+            case 'Weak': return 'bg-orange-50 text-orange-600';
+            case 'Scattered': return 'bg-red-50 text-red-500';
+            case 'Critical': return 'bg-red-50 text-red-600';
+            default: return 'bg-gray-100 text-gray-500';
         }
     };
 
@@ -415,169 +468,165 @@ export const GroupRideDashboard: React.FC = () => {
         return true;
     });
 
-    const cohesionData = dashboardData.cohesion_history ? dashboardData.cohesion_history.map((score, index) => ({ index, score })) : [];
-    if (cohesionData.length === 1) {
-        cohesionData.push({ index: 1, score: cohesionData[0].score });
-    }
-
     return (
-        <CockpitLayout
-            mapChildren={
-                <div className="w-full h-full relative pointer-events-none bg-[#FAFAF9]">
-                    <div ref={mapContainer} className="w-full h-full" />
-                </div>
-            }
-        >
-            <Helmet>
-                <title>Group Dashboard | Ride Club</title>
-            </Helmet>
+    <React.Fragment>
+        <Helmet>
+            <title>Group Dashboard | Ride Club</title>
+        </Helmet>
 
-            <LeftGravityWell onSOSClick={() => navigate('/alerts')}>
-                <button onClick={() => navigate(-1)} className="w-10 h-10 rounded-full flex items-center justify-center hover:bg-white/20 active:scale-95 transition-all text-[#ef4523] mt-2">
-                    <ArrowLeft className="w-5 h-5" />
-                </button>
-            </LeftGravityWell>
+        <div className="w-full h-full bg-[#F2F4F7] flex flex-row overflow-hidden font-sans">
 
-            <SpatialMembrane className="flex flex-col h-full pointer-events-auto p-4 gap-4 overflow-y-auto hide-scrollbar landscape:ml-[72px]">
-                
-                {/* Dashboard Header */}
-                <div className="bg-white/90 backdrop-blur-md rounded-[24px] p-5 shadow-[0_8px_30px_rgba(0,0,0,0.12)] border border-white/50 flex items-center justify-between gap-4 mt-2">
-                    <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1">
-                            <h1 className="text-[22px] font-black text-[#14142B] leading-tight truncate">Group Tracker</h1>
-                        </div>
-                        <div className="flex items-center gap-2 overflow-x-auto hide-scrollbar">
-                            <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider border whitespace-nowrap ${getStatusColor(dashboardData.group_status)}`}>
+            {/* ===== LEFT: Tracker Panel ===== */}
+            <div className="w-[340px] min-w-[300px] max-w-[380px] shrink-0 bg-[#F7F8FA] border-r border-gray-200 flex flex-col">
+
+                {/* Header */}
+                <div className="flex items-center justify-between shrink-0 px-4 pt-4 pb-2">
+                    <div className="flex items-center gap-3">
+                        <button onClick={() => navigate(-1)} className="w-9 h-9 rounded-full bg-white border border-gray-200 flex items-center justify-center text-[#111111] hover:bg-gray-50 active:scale-95 transition-all shadow-sm">
+                            <ArrowLeft className="w-5 h-5" />
+                        </button>
+                        <div>
+                            <h1 className="text-[#111111] font-semibold text-lg tracking-wide uppercase leading-tight">Group Tracker</h1>
+                            <span className={`inline-block mt-0.5 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${getStatusColor(dashboardData.group_status)}`}>
                                 {dashboardData.group_status}
                             </span>
-                            <span className="text-[12px] font-bold text-gray-500 whitespace-nowrap">ID: {dashboardData.ride_id.substring(0,6).toUpperCase()}</span>
                         </div>
                     </div>
-                    <div className="w-12 h-12 rounded-full bg-[#FFF0E6] flex items-center justify-center shrink-0 border border-white/50">
-                        <Radio className="w-6 h-6 text-[#ef4523]" />
-                    </div>
-                </div>
-
-                {/* Core Stats Spatial Grid */}
-                <div className="grid grid-cols-2 gap-3">
-                    <div className="bg-white/90 backdrop-blur-md rounded-[20px] p-4 shadow-[0_8px_30px_rgba(0,0,0,0.12)] border border-white/50 flex flex-col justify-center">
-                        <div className="flex items-center gap-2 mb-2">
-                            <Activity className="w-4 h-4 text-[#ef4523]" strokeWidth={3} />
-                            <span className="text-[11px] font-black text-gray-500 uppercase tracking-widest">Cohesion</span>
-                        </div>
-                        <span className="text-[28px] font-black text-[#14142B] leading-none">{dashboardData.cohesion_score}</span>
-                    </div>
-                    
-                    <div className="bg-white/90 backdrop-blur-md rounded-[20px] p-4 shadow-[0_8px_30px_rgba(0,0,0,0.12)] border border-white/50 flex flex-col justify-center">
-                        <div className="flex items-center gap-2 mb-2">
-                            <Users className="w-4 h-4 text-[#3B82F6]" strokeWidth={3} />
-                            <span className="text-[11px] font-black text-gray-500 uppercase tracking-widest">Active Fleet</span>
-                        </div>
-                        <span className="text-[28px] font-black text-[#14142B] leading-none">
-                            {dashboardData.active_count}<span className="text-[14px] text-gray-400 ml-1">/{dashboardData.riders_metrics.length}</span>
-                        </span>
+                    <div className="w-9 h-9 rounded-full bg-[#FFF0E6] flex items-center justify-center shrink-0">
+                        <Radio className="w-4 h-4 text-[#FF5A00]" />
                     </div>
                 </div>
 
-                {/* System Alert Overlay */}
-                {dashboardData.recommended_regroup_action && (
-                    <div className="bg-red-50/90 backdrop-blur-md rounded-[20px] p-4 shadow-sm border border-red-100 flex items-start gap-3">
-                        <div className="bg-red-100 p-2 rounded-xl shrink-0 mt-0.5">
-                            <AlertTriangle className="w-5 h-5 text-red-500" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                            <h4 className="font-black text-[13px] text-red-600 uppercase tracking-widest mb-1">System Alert</h4>
-                            <p className="text-[13px] font-bold text-red-800 leading-tight">{dashboardData.recommended_regroup_action}</p>
-                        </div>
-                    </div>
-                )}
+                <div className="flex-1 overflow-y-auto hide-scrollbar px-3 pb-3 flex flex-col gap-3">
 
-                {/* Spatial Rider Presence Field */}
-                <div className="bg-white/90 backdrop-blur-md rounded-[24px] shadow-[0_8px_30px_rgba(0,0,0,0.12)] border border-white/50 overflow-hidden flex flex-col">
-                    <div className="p-4 border-b border-gray-100/50 flex items-center justify-between">
-                        <h3 className="font-black text-[14px] text-[#14142B] uppercase tracking-widest">Spatial Presence</h3>
-                        <div className="flex gap-2">
-                            <span className="text-[10px] font-bold text-gray-400 flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-[#ef4523]"></span> Active</span>
-                            <span className="text-[10px] font-bold text-gray-400 flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-yellow-400"></span> Stopped</span>
-                        </div>
-                    </div>
-                    
-                    <div className="relative h-[220px] w-full bg-[#F8F9FA] overflow-hidden">
-                        {/* Background Grid Pattern */}
-                        <div className="absolute inset-0 opacity-[0.03]" style={{ backgroundImage: 'radial-gradient(#14142B 1px, transparent 1px)', backgroundSize: '20px 20px' }}></div>
-                        
-                        {/* Leader Marker (Center) */}
-                        <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-32 h-32 rounded-full border border-[#ef4523]/20 flex items-center justify-center">
-                            <div className="w-16 h-16 rounded-full border border-[#ef4523]/40 flex items-center justify-center">
-                                <div className="text-[10px] font-black text-[#ef4523]/50 uppercase tracking-widest">Leader</div>
+                    {/* Core Stats */}
+                    <div className="grid grid-cols-2 gap-2">
+                        <div className="bg-white rounded-[8px] border border-gray-100 shadow-sm p-3">
+                            <div className="flex items-center gap-1.5 mb-1.5">
+                                <Activity className="w-3.5 h-3.5 text-[#FF5A00]" strokeWidth={2.5} />
+                                <span className="text-[9px] font-bold text-gray-400 uppercase tracking-wider">Cohesion</span>
+                            </div>
+                            <span className="text-[24px] font-semibold text-[#111111] leading-none tabular-nums">{dashboardData.cohesion_score}</span>
+                            <div className="w-full h-1 bg-gray-100 rounded-full overflow-hidden mt-2">
+                                <div className="h-full bg-gradient-to-r from-[#FF5A00] to-success rounded-full transition-all duration-500" style={{ width: `${dashboardData.cohesion_score}%` }} />
                             </div>
                         </div>
+                        <div className="bg-white rounded-[8px] border border-gray-100 shadow-sm p-3">
+                            <div className="flex items-center gap-1.5 mb-1.5">
+                                <Users className="w-3.5 h-3.5 text-blue-500" strokeWidth={2.5} />
+                                <span className="text-[9px] font-bold text-gray-400 uppercase tracking-wider">Active Fleet</span>
+                            </div>
+                            <span className="text-[24px] font-semibold text-[#111111] leading-none tabular-nums">
+                                {dashboardData.active_count}<span className="text-[13px] text-gray-400 ml-0.5">/{dashboardData.riders_metrics.length}</span>
+                            </span>
+                            <div className="flex items-center gap-1 mt-2">
+                                <span className="w-1.5 h-1.5 rounded-full bg-[#FF5A00] animate-pulse" />
+                                <span className="text-[10px] font-semibold text-gray-400">Live tracking</span>
+                            </div>
+                        </div>
+                    </div>
 
-                        {/* Fluid Rider Nodes */}
-                        <AnimatePresence>
-                            {dashboardData.riders_metrics.map((r, i) => {
-                                // Map distance_to_leader to radius (0-100px) and heading to angle
-                                const distFactor = Math.min(r.distance_to_leader / 500, 1); // 500m max radius
-                                const radius = distFactor * 90; // max 90px from center
-                                const angle = (i * (360 / Math.max(dashboardData.riders_metrics.length, 1))) * (Math.PI / 180);
-                                
-                                const xOffset = Math.cos(angle) * radius;
-                                const yOffset = Math.sin(angle) * radius;
-                                
-                                return (
-                                    <motion.div
-                                        key={r.rider_id}
-                                        layout
-                                        initial={{ opacity: 0, scale: 0 }}
-                                        animate={{ opacity: 1, scale: 1, x: `calc(-50% + ${xOffset}px)`, y: `calc(-50% + ${yOffset}px)` }}
-                                        exit={{ opacity: 0, scale: 0 }}
-                                        transition={{ type: "spring", stiffness: 200, damping: 20 }}
-                                        className="absolute left-1/2 top-1/2 flex flex-col items-center gap-1.5 z-10"
-                                    >
-                                        <div className={`w-11 h-11 rounded-full flex items-center justify-center text-white font-black text-[14px] shadow-[0_4px_12px_rgba(0,0,0,0.15)] border-2 border-white transition-colors duration-300 ${
-                                            r.status === 'Stopped' ? 'bg-yellow-500' :
-                                            r.separation_risk === 'High' ? 'bg-red-500 animate-pulse' :
-                                            'bg-[#ef4523]'
+                    {/* Regroup Alert */}
+                    {dashboardData.recommended_regroup_action && (
+                        <div className="bg-white rounded-[8px] border border-red-100 p-3 flex items-start gap-2.5 shadow-sm">
+                            <div className="bg-red-50 p-1.5 rounded-lg shrink-0">
+                                <AlertTriangle className="w-4 h-4 text-red-500" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                                <h4 className="text-[10px] font-bold text-red-500 uppercase tracking-wider mb-0.5">Regroup Recommended</h4>
+                                <p className="text-[12px] font-semibold text-[#111111] leading-snug">{dashboardData.recommended_regroup_action}</p>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Riders List */}
+                    <div className="flex flex-col">
+                        <div className="flex items-center justify-between mb-2">
+                            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Riders</span>
+                            <span className="text-[10px] font-semibold text-gray-400">{filteredRiders.length}</span>
+                        </div>
+                        <div className="relative mb-2">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
+                            <input 
+                                type="text"
+                                value={searchQuery}
+                                onChange={e => setSearchQuery(e.target.value)}
+                                placeholder="Search riders..."
+                                className="w-full h-9 bg-white border border-gray-200 rounded-xl pl-9 pr-3 text-[12px] text-[#111111] placeholder-gray-400 font-medium outline-none focus:border-[#FF5A00]/60 transition-all shadow-sm"
+                            />
+                        </div>
+                        <div className="flex flex-col gap-2">
+                            {filteredRiders.length === 0 ? (
+                                <div className="text-center text-[12px] font-semibold text-gray-400 py-4">No riders found</div>
+                            ) : (
+                                filteredRiders.map(r => (
+                                    <div key={r.rider_id} className="bg-white rounded-[8px] border border-gray-100 shadow-sm p-2.5 flex items-center justify-between">
+                                        <div className="flex items-center gap-2.5 min-w-0">
+                                            <div className={`w-9 h-9 rounded-full flex items-center justify-center text-white font-bold text-[12px] shrink-0 border-2 border-white shadow-sm ${
+                                                r.status === 'Stopped' ? 'bg-yellow-500' :
+                                                r.separation_risk === 'High' ? 'bg-red-500' :
+                                                'bg-[#FF5A00]'
+                                            }`}>
+                                                {r.rider_id.substring(0, 2).toUpperCase()}
+                                            </div>
+                                            <div className="min-w-0">
+                                                <p className="text-[13px] font-semibold text-[#111111] truncate leading-tight">{r.rider_id}</p>
+                                                <p className="text-[11px] text-gray-400 font-medium">
+                                                    {r.status} · {r.top_speed} km/h
+                                                </p>
+                                            </div>
+                                        </div>
+                                        <span className={`text-[9px] font-bold px-2 py-1 rounded-full uppercase tracking-wider shrink-0 ${
+                                            r.separation_risk === 'High' ? 'bg-red-50 text-red-500' : 'bg-green-50 text-green-600'
                                         }`}>
-                                            {r.rider_id.substring(0,2).toUpperCase()}
-                                        </div>
-                                        <div className="bg-white/90 backdrop-blur-sm px-2 py-0.5 rounded-full shadow-sm border border-white flex flex-col items-center">
-                                            <span className="text-[10px] font-black text-[#14142B] leading-none">{r.rider_id}</span>
-                                            <span className="text-[8px] font-bold text-gray-500">{r.distance_to_leader.toFixed(0)}m</span>
-                                        </div>
-                                    </motion.div>
-                                );
-                            })}
-                        </AnimatePresence>
-                    </div>
-                </div>
-
-                {/* Events Log Spatial Card */}
-                <div className="bg-white/90 backdrop-blur-md rounded-[24px] shadow-[0_8px_30px_rgba(0,0,0,0.12)] border border-white/50 overflow-hidden flex flex-col mb-6">
-                    <div className="p-4 border-b border-gray-100/50">
-                        <h3 className="font-black text-[14px] text-[#14142B] uppercase tracking-widest">Telemetry Stream</h3>
-                    </div>
-                    <div className="p-4 overflow-y-auto max-h-[200px] flex flex-col gap-3 hide-scrollbar">
-                        {dashboardData.events.length === 0 ? (
-                            <div className="text-center text-[12px] font-bold text-gray-400 py-4">Waiting for telemetry data...</div>
-                        ) : (
-                            dashboardData.events.slice().reverse().map((event, idx) => (
-                                <div key={idx} className="flex gap-3 items-center">
-                                    <div className={`w-2 h-2 rounded-full shrink-0 ${
-                                        event.event_type.includes('RISK') ? 'bg-red-500' : 'bg-[#3B82F6]'
-                                    }`}></div>
-                                    <div className="flex-1 min-w-0">
-                                        <p className="text-[13px] font-bold text-[#14142B] truncate">{event.event_type.replace(/_/g, ' ')}</p>
-                                        <p className="text-[11px] font-bold text-gray-400 truncate">{event.details}</p>
+                                            {r.separation_risk}
+                                        </span>
                                     </div>
-                                    <span className="text-[10px] font-black text-gray-300">{new Date(event.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
-                                </div>
-                            ))
-                        )}
+                                ))
+                            )}
+                        </div>
+                    </div>
+
+                    {/* Telemetry Stream */}
+                    <div className="bg-white rounded-[8px] border border-gray-100 shadow-sm overflow-hidden">
+                        <div className="px-3 py-2.5 border-b border-gray-50 flex items-center gap-2">
+                            <Activity className="w-3.5 h-3.5 text-[#FF5A00]" />
+                            <h3 className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Telemetry Stream</h3>
+                        </div>
+                        <div className="p-3 overflow-y-auto max-h-[180px] flex flex-col gap-2.5 hide-scrollbar">
+                            {dashboardData.events.length === 0 ? (
+                                <div className="text-center text-[11px] font-semibold text-gray-400 py-3">Waiting for telemetry data...</div>
+                            ) : (
+                                dashboardData.events.slice().reverse().map((event, idx) => (
+                                    <div key={idx} className="flex gap-2.5 items-center">
+                                        <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${
+                                            event.event_type.includes('RISK') ? 'bg-red-500' : 'bg-blue-500'
+                                        }`}></div>
+                                        <div className="flex-1 min-w-0">
+                                            <p className="text-[12px] font-semibold text-[#111111] truncate">{event.event_type.replace(/_/g, ' ')}</p>
+                                            <p className="text-[10px] font-medium text-gray-400 truncate">{event.details}</p>
+                                        </div>
+                                        <span className="text-[9px] font-semibold text-gray-300 shrink-0">{new Date(event.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
+                                    </div>
+                                ))
+                            )}
+                        </div>
                     </div>
                 </div>
+            </div>
 
-            </SpatialMembrane>
-        </CockpitLayout>
+            {/* ===== RIGHT: Live Map ===== */}
+            <div className="flex-1 relative min-w-0 overflow-hidden">
+                <div ref={mapContainer} className="absolute inset-0 w-full h-full" />
+
+                {/* Legend */}
+                <div className="absolute top-3 left-3 z-10 bg-white/95 backdrop-blur border border-gray-100 rounded-full px-3 py-1.5 shadow-md flex items-center gap-3">
+                    <span className="text-[10px] font-semibold text-gray-500 flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-[#FF5A00]"></span> Active</span>
+                    <span className="text-[10px] font-semibold text-gray-500 flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-yellow-400"></span> Stopped</span>
+                    <span className="text-[10px] font-semibold text-gray-500 flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-red-500"></span> Separated</span>
+                </div>
+            </div>
+        </div>
+    </React.Fragment>
     );
 };

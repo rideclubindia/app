@@ -131,20 +131,20 @@ const Terms = () => {
           <div className="w-8 h-8 rounded-lg bg-[#ef4523] flex items-center justify-center shadow-[0_0_12px_rgba(255,106,0,0.4)]">
             <FileCheck className="w-4 h-4 text-white" />
           </div>
-          <h1 className="text-[20px] font-bold text-white tracking-tight">Terms of Service</h1>
+          <h1 className="text-[20px] font-semibold text-white tracking-tight">Terms of Service</h1>
         </div>
       </div>
 
       {/* Content */}
       <div className="relative z-10 flex-1 overflow-y-auto px-5 pb-10 hide-scrollbar">
-        <div className="bg-white/[0.04] backdrop-blur-xl border border-white/[0.08] rounded-[24px] p-6 shadow-2xl">
+        <div className="bg-white/[0.04] backdrop-blur-xl border border-white/[0.08] rounded-[8px] p-6 shadow-2xl">
           {loading ? (
             <div className="flex items-center justify-center h-40">
               <div className="w-8 h-8 border-4 border-[#ef4523] border-t-transparent rounded-full animate-spin"></div>
             </div>
           ) : (
             <div>
-              <p className="text-[11px] font-bold text-[#ef4523] mb-6 uppercase tracking-wider">Last updated: {lastUpdated}</p>
+              <p className="text-[11px] font-semibold text-[#ef4523] mb-6 uppercase tracking-wider">Last updated: {lastUpdated}</p>
               <div className="text-[14px] text-gray-200 leading-relaxed whitespace-pre-wrap">
                 {content}
               </div>

@@ -48,14 +48,14 @@ class ErrorBoundary extends Component<Props, State> {
           <div className="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mb-6 text-red-500">
             <AlertTriangle className="w-10 h-10" />
           </div>
-          <h1 className="text-2xl font-bold text-dark mb-2">Something went wrong</h1>
+          <h1 className="text-2xl font-semibold text-dark mb-2">Something went wrong</h1>
           <p className="text-gray-500 mb-4 max-w-md">
             We encountered an unexpected error. Our team has been notified. 
             Please try refreshing the page.
           </p>
           <button 
             onClick={() => window.location.reload()}
-            className="bg-primary text-white font-bold py-3 px-8 rounded-full flex items-center gap-2 active:scale-95 transition-all"
+            className="bg-primary text-white font-semibold py-3 px-8 rounded-full flex items-center gap-2 active:scale-95 transition-all"
           >
             <RefreshCw className="w-5 h-5" /> Refresh Page
           </button>

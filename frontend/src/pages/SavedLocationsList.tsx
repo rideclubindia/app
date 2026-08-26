@@ -95,17 +95,17 @@ const SavedLocationsList = () => {
           <ArrowLeft className="w-6 h-6 text-[#14142B]" />
         </button>
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-          <h1 className="text-[17px] font-bold text-[#14142B]">Saved Locations</h1>
+          <h1 className="text-[17px] font-semibold text-[#14142B]">Saved Locations</h1>
         </div>
       </div>
 
       <div className="flex-1 overflow-y-auto p-5 pb-32">
         <div className="mb-8">
           <div className="flex items-center justify-between mb-4 px-1">
-            <h3 className="text-[18px] font-bold text-[#14142B]">Your Places</h3>
+            <h3 className="text-[18px] font-semibold text-[#14142B]">Your Places</h3>
             <button 
               onClick={() => navigate('/saved-location-picker', { state: { name: 'Pinned Location' } })}
-              className="text-[14px] font-bold text-[#FF7A00] hover:bg-[#FFF3E7] px-3 py-1 rounded-full transition-colors flex items-center gap-1"
+              className="text-[14px] font-semibold text-[#FF7A00] hover:bg-[#FFF3E7] px-3 py-1 rounded-full transition-colors flex items-center gap-1"
             >
               + Add
             </button>
@@ -124,7 +124,7 @@ const SavedLocationsList = () => {
                       <MapPin className="w-6 h-6 text-[#FF7A00]" strokeWidth={2} />
                     </div>
                     <div className="flex flex-col truncate">
-                      <p className="text-[16px] font-bold text-[#14142B] truncate">{loc.name || 'Saved Location'}</p>
+                      <p className="text-[16px] font-semibold text-[#14142B] truncate">{loc.name || 'Saved Location'}</p>
                       <p className="text-[13px] font-medium text-[#6E7191] mt-0.5 truncate">{loc.address || `${loc.latitude?.toFixed(4)}, ${loc.longitude?.toFixed(4)}`}</p>
                     </div>
                   </div>
@@ -142,7 +142,7 @@ const SavedLocationsList = () => {
               <div className="w-16 h-16 rounded-full bg-[#F4F4F6] flex items-center justify-center mx-auto mb-4">
                 <Bookmark className="w-8 h-8 text-[#A0A3BD]" strokeWidth={2} />
               </div>
-              <h4 className="text-[17px] font-bold text-[#14142B] mb-2">No saved locations</h4>
+              <h4 className="text-[17px] font-semibold text-[#14142B] mb-2">No saved locations</h4>
               <p className="text-[14px] text-[#6E7191] max-w-[200px] mx-auto">Save places like home or work for quick access</p>
             </div>
           )}

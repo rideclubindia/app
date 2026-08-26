@@ -184,8 +184,8 @@ Core utility classes for layout, spacing, typography, colors, borders, and shado
 <p class="font-normal">Normal (400)</p>
 <p class="font-medium">Medium (500)</p>
 <p class="font-semibold">Semibold (600)</p>
-<p class="font-bold">Bold (700)</p>
-<p class="font-black">Black (900)</p>
+<p class="font-semibold">Bold (700)</p>
+<p class="font-semibold">Black (900)</p>
 ```
 
 ### Text Alignment
@@ -210,7 +210,7 @@ Core utility classes for layout, spacing, typography, colors, borders, and shado
 ### Combined Font Utilities
 
 ```html
-<h1 class="text-4xl/tight font-bold">
+<h1 class="text-4xl/tight font-semibold">
   Font size 4xl with tight line height
 </h1>
 ```

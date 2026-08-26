@@ -143,20 +143,20 @@ const AdminSettings = () => {
     <div className="p-6 bg-[#F8F9FB] w-full h-full overflow-hidden flex flex-col">
       <div className="mb-6 shrink-0 flex justify-between items-end">
         <div>
-          <h1 className="text-[18px] font-bold tracking-tight flex items-center gap-2">
+          <h1 className="text-[18px] font-semibold tracking-tight flex items-center gap-2">
             <SettingsIcon className="w-5 h-5 text-primary" />
             Global Settings
           </h1>
           <p className="text-[12px] text-[#8A8A8E] mt-1">Manage platform configuration and feature toggles.</p>
         </div>
-        <button onClick={handleSave} disabled={isSaving} className={`flex items-center gap-2 h-8 px-4 text-white rounded text-[12px] font-bold ${isSaving ? 'bg-gray-400' : 'bg-primary'}`}>
+        <button onClick={handleSave} disabled={isSaving} className={`flex items-center gap-2 h-8 px-4 text-white rounded text-[12px] font-semibold ${isSaving ? 'bg-gray-400' : 'bg-primary'}`}>
           <Save className="w-4 h-4" /> {isSaving ? 'Saving...' : 'Save'}
         </button>
       </div>
 
       <div className="flex flex-col xl:flex-row gap-6 items-start w-full flex-1 min-h-0">
         <div className="flex-1 w-full bg-white border border-[#E5E5EA] rounded-lg space-y-6 shadow-sm p-6 overflow-y-auto h-full">
-          <h3 className="font-bold text-[14px]">Platform Toggles</h3>
+          <h3 className="font-semibold text-[14px]">Platform Toggles</h3>
           <div className="space-y-4">
           <div className="flex items-center justify-between">
             <span className="text-[13px] font-semibold">App Maintenance Mode</span>
@@ -263,10 +263,10 @@ const AdminSettings = () => {
 
 
 
-        <h3 className="font-bold text-[14px] pt-4 border-t">Limits & Config</h3>
+        <h3 className="font-semibold text-[14px] pt-4 border-t">Limits & Config</h3>
         <div className="space-y-4">
           <div>
-            <label className="block text-[11px] font-bold text-[#8A8A8E] uppercase mb-1">Daily Pins Per User</label>
+            <label className="block text-[11px] font-semibold text-[#8A8A8E] uppercase mb-1">Daily Pins Per User</label>
             <input 
               type="number" 
               value={settings.maxPinsPerUserDaily} 
@@ -275,7 +275,7 @@ const AdminSettings = () => {
             />
           </div>
           <div>
-            <label className="block text-[11px] font-bold text-[#8A8A8E] uppercase mb-1">Support Email</label>
+            <label className="block text-[11px] font-semibold text-[#8A8A8E] uppercase mb-1">Support Email</label>
             <input 
               type="email" 
               value={settings.supportEmail} 
@@ -289,12 +289,12 @@ const AdminSettings = () => {
         {(settings.comingSoonMode || settings.websiteComingSoonMode) && (
           <div className="flex-1 w-full bg-white border border-[#E5E5EA] rounded-lg space-y-5 shadow-sm p-6 animate-in fade-in slide-in-from-right-4 overflow-y-auto h-full">
             <div className="border-b pb-3 mb-4">
-              <h4 className="font-bold text-[14px] text-[#273a5a]">Coming Soon Configuration</h4>
+              <h4 className="font-semibold text-[14px] text-[#273a5a]">Coming Soon Configuration</h4>
               <p className="text-[11px] text-[#8A8A8E]">Configure the screen that users will see while this mode is active.</p>
             </div>
             
             <div>
-              <label className="block text-[11px] font-bold text-[#8A8A8E] uppercase mb-1">Headline</label>
+              <label className="block text-[11px] font-semibold text-[#8A8A8E] uppercase mb-1">Headline</label>
               <input 
                 type="text" 
                 value={settings.comingSoonTitle} 
@@ -303,7 +303,7 @@ const AdminSettings = () => {
               />
             </div>
             <div>
-              <label className="block text-[11px] font-bold text-[#8A8A8E] uppercase mb-1">Subheading</label>
+              <label className="block text-[11px] font-semibold text-[#8A8A8E] uppercase mb-1">Subheading</label>
               <input 
                 type="text" 
                 value={settings.comingSoonSubtitle} 
@@ -312,7 +312,7 @@ const AdminSettings = () => {
               />
             </div>
             <div>
-              <label className="block text-[11px] font-bold text-[#8A8A8E] uppercase mb-1">Description</label>
+              <label className="block text-[11px] font-semibold text-[#8A8A8E] uppercase mb-1">Description</label>
               <textarea 
                 value={settings.comingSoonDescription} 
                 onChange={e => {
@@ -324,7 +324,7 @@ const AdminSettings = () => {
               />
             </div>
             <div>
-              <label className="block text-[11px] font-bold text-[#8A8A8E] uppercase mb-1">Launch Date (Optional)</label>
+              <label className="block text-[11px] font-semibold text-[#8A8A8E] uppercase mb-1">Launch Date (Optional)</label>
               <input 
                 type="datetime-local" 
                 value={settings.comingSoonLaunchDate} 
@@ -344,7 +344,7 @@ const AdminSettings = () => {
             </div>
             
             <div className="pt-4 border-t">
-              <label className="block text-[11px] font-bold text-[#8A8A8E] uppercase mb-2">Background Image</label>
+              <label className="block text-[11px] font-semibold text-[#8A8A8E] uppercase mb-2">Background Image</label>
               <div className="flex flex-col gap-3">
                   <div className="flex gap-4 items-center">
                     {settings.comingSoonImage && !imageFile && (
@@ -375,7 +375,7 @@ const AdminSettings = () => {
                           }
                         }}
                     />
-                    <button onClick={() => imageInputRef.current?.click()} className="flex items-center justify-center gap-2 flex-1 h-10 border rounded text-[12px] font-bold hover:bg-gray-50">
+                    <button onClick={() => imageInputRef.current?.click()} className="flex items-center justify-center gap-2 flex-1 h-10 border rounded text-[12px] font-semibold hover:bg-gray-50">
                         <ImageIcon className="w-4 h-4" /> Upload Image
                     </button>
                   </div>
@@ -391,7 +391,7 @@ const AdminSettings = () => {
             </div>
 
             <div className="pt-4 border-t">
-              <label className="block text-[11px] font-bold text-[#8A8A8E] uppercase mb-2">Custom Logo (Optional)</label>
+              <label className="block text-[11px] font-semibold text-[#8A8A8E] uppercase mb-2">Custom Logo (Optional)</label>
               <div className="flex flex-col gap-3">
                   <div className="flex gap-4 items-center">
                     {settings.comingSoonLogo && !logoFile && (
@@ -422,7 +422,7 @@ const AdminSettings = () => {
                           }
                         }}
                     />
-                    <button onClick={() => logoInputRef.current?.click()} className="flex items-center justify-center gap-2 flex-1 h-10 border rounded text-[12px] font-bold hover:bg-gray-50">
+                    <button onClick={() => logoInputRef.current?.click()} className="flex items-center justify-center gap-2 flex-1 h-10 border rounded text-[12px] font-semibold hover:bg-gray-50">
                         <ImageIcon className="w-4 h-4" /> Upload Logo
                     </button>
                   </div>
@@ -439,7 +439,7 @@ const AdminSettings = () => {
 
             <div className="pt-4 border-t space-y-4">
               <div>
-                <label className="block text-[11px] font-bold text-[#8A8A8E] uppercase mb-1">Button Text (Optional)</label>
+                <label className="block text-[11px] font-semibold text-[#8A8A8E] uppercase mb-1">Button Text (Optional)</label>
                 <input 
                   type="text" 
                   value={settings.comingSoonButtonText} 
@@ -448,7 +448,7 @@ const AdminSettings = () => {
                 />
               </div>
               <div>
-                <label className="block text-[11px] font-bold text-[#8A8A8E] uppercase mb-1">Button URL / Action</label>
+                <label className="block text-[11px] font-semibold text-[#8A8A8E] uppercase mb-1">Button URL / Action</label>
                 <input 
                   type="text" 
                   value={settings.comingSoonButtonAction} 
@@ -462,7 +462,7 @@ const AdminSettings = () => {
               <button 
                 onClick={handleSave}
                 disabled={isSaving}
-                className="px-6 py-2 text-[13px] font-bold text-white bg-primary rounded hover:bg-[#d83c1d] disabled:bg-gray-400"
+                className="px-6 py-2 text-[13px] font-semibold text-white bg-primary rounded hover:bg-[#d83c1d] disabled:bg-gray-400"
               >
                 {isSaving ? 'Saving...' : 'Save Configuration'}
               </button>
@@ -474,7 +474,7 @@ const AdminSettings = () => {
       {confirmModal.isOpen && (
         <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-lg shadow-xl w-full max-w-sm p-6 animate-in fade-in zoom-in-95 duration-200">
-            <h3 className="text-[16px] font-bold text-[#273a5a] mb-2">Confirm Action</h3>
+            <h3 className="text-[16px] font-semibold text-[#273a5a] mb-2">Confirm Action</h3>
             <p className="text-[#8A8A8E] text-[13px] mb-6">
               Are you sure you want to {confirmModal.checked ? 'turn on' : 'turn off'} <strong>{confirmModal.label}</strong>?
             </p>

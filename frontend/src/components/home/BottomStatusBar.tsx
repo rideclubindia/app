@@ -1,5 +1,5 @@
 import React from 'react';
-import { Car, Navigation, Phone, ChevronLeft, ChevronRight, Music, Volume2, Bluetooth } from 'lucide-react';
+import { Car, Navigation, Phone, ChevronLeft, ChevronRight, Music, Volume2 } from 'lucide-react';
 
 interface BottomStatusBarProps {
   temperature: number | null;
@@ -47,9 +47,6 @@ export const BottomStatusBar: React.FC<BottomStatusBarProps> = ({ temperature })
         </button>
         <button className="text-[#C0C6D0] hover:text-white transition-colors">
           <Volume2 size={18} />
-        </button>
-        <button className="text-[#C0C6D0] hover:text-white transition-colors">
-          <Bluetooth size={18} />
         </button>
       </div>
     </div>

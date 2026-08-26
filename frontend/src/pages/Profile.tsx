@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { ChevronRight, Settings, Bell, MapPin, Navigation2, Car, Map as MapIcon, ShieldCheck, Check, Bike, LogOut, Shield, Heart } from 'lucide-react';
+import { ChevronRight, Settings, Bell, Navigation2, Car, Map as MapIcon, ShieldCheck, Check, Bike, LogOut, Shield, Heart } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { auth } from '../lib/firebase';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
@@ -8,9 +8,6 @@ import { useToast } from '../components/ToastContext';
 import { Helmet } from 'react-helmet-async';
 import { getDeterministicUuid } from '../lib/user';
 import { useLocationStore } from '../store/useLocationStore';
-import { RiderCockpitLayout } from '../components/spatial/RiderCockpitLayout';
-import { EdgeRail } from '../components/spatial/EdgeRail';
-import { SpatialMembrane } from '../components/spatial/SpatialMembrane';
 
 const getDistanceKm = (lat1: number, lon1: number, lat2: number, lon2: number) => {
   const R = 6371;
@@ -192,159 +189,157 @@ const Profile = () => {
       <title>Your Profile | Ride Club</title>
     </Helmet>
 
-    <RiderCockpitLayout 
-      topRail={<EdgeRail />}
-      leftPanelWidth="100%"
-      leftPanel={
-        <div className="flex flex-col gap-6 w-full h-full pointer-events-auto bg-[var(--color-hmi-bg)] landscape:bg-transparent rounded-[24px] landscape:rounded-none p-5 landscape:p-0 overflow-hidden shadow-2xl landscape:shadow-none">
-        {/* Header */}
-        <div className="flex items-center justify-between shrink-0 mb-2">
-          <div>
-            <h1 className="text-[28px] font-bold text-white tracking-tight leading-none">Profile</h1>
-            <p className="text-[14px] text-white/50 mt-1">Manage your identity</p>
-          </div>
-          <div className="flex gap-2">
-            <button onClick={() => navigate('/settings')} className="w-10 h-10 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 flex items-center justify-center transition-all active:scale-95">
-              <Settings className="w-5 h-5 text-white/80" strokeWidth={1.5} />
-            </button>
-            <button onClick={() => navigate('/alerts')} className="w-10 h-10 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 flex items-center justify-center transition-all active:scale-95 relative">
-              <Bell className="w-5 h-5 text-white/80" strokeWidth={1.5} />
-              <div className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full border border-[#1a1a1a]"></div>
-            </button>
-            <button onClick={handleLogout} className="w-10 h-10 rounded-full bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 flex items-center justify-center transition-all active:scale-95">
-              <LogOut className="w-5 h-5 text-red-400" strokeWidth={1.5} />
-            </button>
-          </div>
-        </div>
+    <div className="w-full h-full bg-[#F2F4F7] flex flex-col font-sans overflow-hidden">
 
-        <div className="flex-1 overflow-y-auto hide-scrollbar flex flex-col gap-5 pb-8">
-          
-          {/* Identity Card */}
-          <div className="bg-white/5 border border-white/10 rounded-[24px] p-5 backdrop-blur-md relative overflow-hidden">
-            <div className="flex items-start gap-4 relative z-10">
-              <div className="relative">
-                <div className="w-20 h-20 rounded-full border-2 border-white/20 overflow-hidden shadow-2xl shrink-0">
-                  <img src={avatarUrl} alt="Profile" className="w-full h-full object-cover" />
-                </div>
-                <button onClick={() => navigate('/edit-profile')} className="absolute -bottom-1 -right-1 w-7 h-7 bg-primary rounded-full flex items-center justify-center shadow-lg hover:scale-105 transition-transform border-2 border-[#1a1a1a]">
-                  <Settings className="w-3.5 h-3.5 text-white" />
-                </button>
+      {/* Header */}
+      <div className="flex items-center justify-between shrink-0 px-5 pt-4 pb-2">
+        <div>
+          <h1 className="text-[#111111] font-semibold text-lg tracking-wide uppercase leading-tight">Profile</h1>
+          <p className="text-[12px] text-gray-400 font-medium mt-0.5">Manage your identity</p>
+        </div>
+        <div className="flex gap-2">
+          <button onClick={() => navigate('/settings')} className="w-9 h-9 rounded-full bg-white hover:bg-gray-50 border border-gray-200 flex items-center justify-center transition-all active:scale-95 shadow-sm">
+            <Settings className="w-[18px] h-[18px] text-[#111111]" strokeWidth={1.8} />
+          </button>
+          <button onClick={() => navigate('/alerts')} className="w-9 h-9 rounded-full bg-white hover:bg-gray-50 border border-gray-200 flex items-center justify-center transition-all active:scale-95 relative shadow-sm">
+            <Bell className="w-[18px] h-[18px] text-[#111111]" strokeWidth={1.8} />
+            <div className="absolute top-2 right-2 w-2 h-2 bg-[#FF5A00] rounded-full border border-white"></div>
+          </button>
+          <button onClick={handleLogout} className="w-9 h-9 rounded-full bg-white hover:bg-red-50 border border-gray-200 flex items-center justify-center transition-all active:scale-95 shadow-sm">
+            <LogOut className="w-[18px] h-[18px] text-red-500" strokeWidth={1.8} />
+          </button>
+        </div>
+      </div>
+
+      <div className="flex-1 overflow-y-auto hide-scrollbar px-5 pb-6 flex flex-col gap-4">
+
+        {/* Identity Card */}
+        <div className="bg-white border border-gray-100 rounded-[8px] p-4 shadow-sm">
+          <div className="flex items-start gap-4">
+            <div className="relative shrink-0">
+              <div className="w-16 h-16 rounded-full border-2 border-gray-100 overflow-hidden shadow-sm">
+                <img src={avatarUrl} alt="Profile" className="w-full h-full object-cover" />
               </div>
-              
-              <div className="flex-1 flex flex-col pt-1">
-                <div className="flex items-center gap-2 mb-1">
-                  <h2 className="text-[22px] font-bold text-white leading-none tracking-tight">{fullName}</h2>
-                  {stats.trust >= 80 && <Check className="w-[18px] h-[18px] text-primary" strokeWidth={3} />}
+              <button onClick={() => navigate('/edit-profile')} className="absolute -bottom-1 -right-1 w-6 h-6 bg-[#FF5A00] rounded-full flex items-center justify-center shadow-md hover:scale-105 transition-transform border-2 border-white">
+                <Settings className="w-3 h-3 text-white" />
+              </button>
+            </div>
+
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-1.5 mb-0.5">
+                <h2 className="text-[19px] font-semibold text-[#111111] leading-tight truncate">{fullName}</h2>
+                {stats.trust >= 80 && <Check className="w-4 h-4 text-[#FF5A00] shrink-0" strokeWidth={3} />}
+              </div>
+
+              <p className="text-[12px] text-gray-400 font-medium truncate mb-2">{profileData?.email || user?.email}</p>
+
+              <div className="flex items-center gap-2 flex-wrap">
+                <div className="flex items-center gap-1.5 bg-red-50 px-2 py-1 rounded-lg">
+                  <Heart className="w-3 h-3 text-red-500" />
+                  <span className="text-[11px] font-semibold text-red-600">{profileData?.blood_group || 'No Blood Group'}</span>
                 </div>
-                
-                <p className="text-[13px] text-white/60 mb-2 font-medium">{profileData?.email || user?.email}</p>
-                
-                <div className="flex items-center gap-3 mt-1">
-                  <div className="flex items-center gap-1.5 bg-white/5 px-2 py-1 rounded-lg">
-                    <Heart className="w-3.5 h-3.5 text-red-400" />
-                    <span className="text-[12px] font-bold text-white/80">{profileData?.blood_group || 'No Blood Group'}</span>
-                  </div>
-                  <div className="flex items-center gap-1.5 bg-white/5 px-2 py-1 rounded-lg">
-                    <ShieldCheck className="w-3.5 h-3.5 text-green-400" />
-                    <span className="text-[12px] font-bold text-white/80">Safe Rider</span>
-                  </div>
+                <div className="flex items-center gap-1.5 bg-green-50 px-2 py-1 rounded-lg">
+                  <ShieldCheck className="w-3 h-3 text-green-600" />
+                  <span className="text-[11px] font-semibold text-green-700">Safe Rider</span>
                 </div>
               </div>
             </div>
           </div>
+        </div>
 
-          {/* Impact Stats */}
-          <div>
-            <h3 className="text-[16px] font-bold text-white mb-3 tracking-tight">Your Impact</h3>
-            <div className="grid grid-cols-2 gap-3">
-              <div onClick={() => navigate('/ride-history')} className="bg-white/5 border border-white/10 rounded-[20px] p-4 backdrop-blur-md cursor-pointer hover:bg-white/10 transition-all active:scale-95 group">
-                <div className="flex items-center gap-2 mb-2">
-                  <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center">
-                    <Car className="w-4 h-4 text-primary" strokeWidth={2.5} />
-                  </div>
-                  <span className="text-[13px] font-medium text-white/60">Rides</span>
+        {/* Impact Stats */}
+        <div>
+          <h3 className="text-[12px] font-semibold text-gray-400 uppercase tracking-wider mb-2">Your Impact</h3>
+          <div className="grid grid-cols-2 landscape:grid-cols-4 gap-3">
+            <div onClick={() => navigate('/ride-history')} className="bg-white border border-gray-100 rounded-[8px] p-3.5 shadow-sm cursor-pointer hover:border-[#FF5A00]/40 transition-all active:scale-95 group">
+              <div className="flex items-center gap-2 mb-2">
+                <div className="w-7 h-7 rounded-full bg-[#FFF0E6] flex items-center justify-center">
+                  <Car className="w-3.5 h-3.5 text-[#FF5A00]" strokeWidth={2.5} />
                 </div>
-                <span className="text-[28px] font-black text-white group-hover:text-primary transition-colors">{activityStats.totalRides}</span>
+                <span className="text-[11px] font-medium text-gray-400">Rides</span>
               </div>
-              
-              <div onClick={() => navigate('/my-rides')} className="bg-white/5 border border-white/10 rounded-[20px] p-4 backdrop-blur-md cursor-pointer hover:bg-white/10 transition-all active:scale-95 group">
-                <div className="flex items-center gap-2 mb-2">
-                  <div className="w-8 h-8 rounded-full bg-blue-500/20 flex items-center justify-center">
-                    <Navigation2 className="w-4 h-4 text-blue-400" strokeWidth={2.5} />
-                  </div>
-                  <span className="text-[13px] font-medium text-white/60">Navigations</span>
-                </div>
-                <span className="text-[28px] font-black text-white group-hover:text-blue-400 transition-colors">{activityStats.totalNavigations}</span>
-              </div>
+              <span className="text-[24px] font-semibold text-[#111111] tabular-nums">{activityStats.totalRides}</span>
+            </div>
 
-              <div className="bg-white/5 border border-white/10 rounded-[20px] p-4 backdrop-blur-md">
-                <div className="flex items-center gap-2 mb-2">
-                  <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center">
-                    <MapIcon className="w-4 h-4 text-white/70" strokeWidth={2.5} />
-                  </div>
-                  <span className="text-[13px] font-medium text-white/60">Distance</span>
+            <div onClick={() => navigate('/my-rides')} className="bg-white border border-gray-100 rounded-[8px] p-3.5 shadow-sm cursor-pointer hover:border-blue-300 transition-all active:scale-95 group">
+              <div className="flex items-center gap-2 mb-2">
+                <div className="w-7 h-7 rounded-full bg-blue-50 flex items-center justify-center">
+                  <Navigation2 className="w-3.5 h-3.5 text-blue-500" strokeWidth={2.5} />
                 </div>
-                <span className="text-[28px] font-black text-white">{activityStats.kmTraveled.toFixed(1)}<span className="text-[16px] font-bold text-white/40 ml-1">km</span></span>
+                <span className="text-[11px] font-medium text-gray-400">Navigations</span>
               </div>
+              <span className="text-[24px] font-semibold text-[#111111] tabular-nums">{activityStats.totalNavigations}</span>
+            </div>
 
-              <div className="bg-white/5 border border-white/10 rounded-[20px] p-4 backdrop-blur-md">
-                <div className="flex items-center gap-2 mb-2">
-                  <div className="w-8 h-8 rounded-full bg-green-500/20 flex items-center justify-center">
-                    <ShieldCheck className="w-4 h-4 text-green-400" strokeWidth={2.5} />
-                  </div>
-                  <span className="text-[13px] font-medium text-white/60">Trust</span>
+            <div className="bg-white border border-gray-100 rounded-[8px] p-3.5 shadow-sm">
+              <div className="flex items-center gap-2 mb-2">
+                <div className="w-7 h-7 rounded-full bg-gray-100 flex items-center justify-center">
+                  <MapIcon className="w-3.5 h-3.5 text-gray-500" strokeWidth={2.5} />
                 </div>
-                <span className="text-[28px] font-black text-white">{stats.trust}%</span>
+                <span className="text-[11px] font-medium text-gray-400">Distance</span>
               </div>
+              <span className="text-[24px] font-semibold text-[#111111] tabular-nums">{activityStats.kmTraveled.toFixed(1)}<span className="text-[13px] font-semibold text-gray-400 ml-1">km</span></span>
+            </div>
+
+            <div className="bg-white border border-gray-100 rounded-[8px] p-3.5 shadow-sm">
+              <div className="flex items-center gap-2 mb-2">
+                <div className="w-7 h-7 rounded-full bg-green-50 flex items-center justify-center">
+                  <ShieldCheck className="w-3.5 h-3.5 text-green-600" strokeWidth={2.5} />
+                </div>
+                <span className="text-[11px] font-medium text-gray-400">Trust</span>
+              </div>
+              <span className="text-[24px] font-semibold text-[#111111] tabular-nums">{stats.trust}%</span>
             </div>
           </div>
+        </div>
 
-          {/* Quick Actions */}
-          <div className="flex flex-col gap-2 mt-2">
-             <div onClick={() => navigate('/edit-profile')} className="bg-white/5 border border-white/10 rounded-[16px] p-4 flex items-center justify-between cursor-pointer hover:bg-white/10 transition-all backdrop-blur-md">
-                <div className="flex items-center gap-4">
-                  <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center">
-                    <Settings className="w-5 h-5 text-white" strokeWidth={1.5} />
-                  </div>
-                  <div>
-                    <p className="text-[15px] font-bold text-white">Edit Details</p>
-                    <p className="text-[13px] text-white/50 mt-0.5">Update personal info</p>
-                  </div>
+        {/* Quick Actions */}
+        <div>
+          <h3 className="text-[12px] font-semibold text-gray-400 uppercase tracking-wider mb-2">Quick Actions</h3>
+          <div className="bg-white border border-gray-100 rounded-[8px] shadow-sm flex flex-col overflow-hidden">
+            <div onClick={() => navigate('/edit-profile')} className="p-4 flex items-center justify-between cursor-pointer hover:bg-gray-50 transition-colors border-b border-gray-50">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-full bg-[#FFF0E6] flex items-center justify-center shrink-0">
+                  <Settings className="w-4 h-4 text-[#FF5A00]" strokeWidth={1.8} />
                 </div>
-                <ChevronRight className="w-5 h-5 text-white/30" />
-             </div>
+                <div>
+                  <p className="text-[14px] font-semibold text-[#111111]">Edit Details</p>
+                  <p className="text-[12px] text-gray-400 mt-0.5">Update personal info</p>
+                </div>
+              </div>
+              <ChevronRight className="w-4 h-4 text-gray-300" />
+            </div>
 
-             <div className="bg-white/5 border border-white/10 rounded-[16px] p-4 flex items-center justify-between backdrop-blur-md">
-                <div className="flex items-center gap-4">
-                  <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center">
-                    <Bike className="w-5 h-5 text-white" strokeWidth={1.5} />
-                  </div>
-                  <div>
-                    <p className="text-[15px] font-bold text-white">Bike Information</p>
-                    <p className="text-[13px] text-white/50 mt-0.5">{bModel}</p>
-                  </div>
+            <div className="p-4 flex items-center justify-between border-b border-gray-50">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-full bg-blue-50 flex items-center justify-center shrink-0">
+                  <Bike className="w-4 h-4 text-blue-500" strokeWidth={1.8} />
                 </div>
-                <span className="bg-primary/20 text-primary border border-primary/30 text-[11px] font-bold px-3 py-1 rounded-full tracking-wider">{bNumber}</span>
-             </div>
-             
-             <div onClick={() => navigate('/support')} className="bg-white/5 border border-white/10 rounded-[16px] p-4 flex items-center justify-between cursor-pointer hover:bg-white/10 transition-all backdrop-blur-md">
-                <div className="flex items-center gap-4">
-                  <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center">
-                    <Shield className="w-5 h-5 text-white" strokeWidth={1.5} />
-                  </div>
-                  <div>
-                    <p className="text-[15px] font-bold text-white">Help & Support</p>
-                    <p className="text-[13px] text-white/50 mt-0.5">Contact us</p>
-                  </div>
+                <div className="min-w-0">
+                  <p className="text-[14px] font-semibold text-[#111111]">Bike Information</p>
+                  <p className="text-[12px] text-gray-400 mt-0.5 truncate">{bModel}</p>
                 </div>
-                <ChevronRight className="w-5 h-5 text-white/30" />
-             </div>
+              </div>
+              <span className="bg-[#FFF0E6] text-[#FF5A00] text-[11px] font-semibold px-2.5 py-1 rounded-full tracking-wider shrink-0">{bNumber}</span>
+            </div>
+
+            <div onClick={() => navigate('/support')} className="p-4 flex items-center justify-between cursor-pointer hover:bg-gray-50 transition-colors">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-full bg-green-50 flex items-center justify-center shrink-0">
+                  <Shield className="w-4 h-4 text-green-600" strokeWidth={1.8} />
+                </div>
+                <div>
+                  <p className="text-[14px] font-semibold text-[#111111]">Help & Support</p>
+                  <p className="text-[12px] text-gray-400 mt-0.5">Contact us</p>
+                </div>
+              </div>
+              <ChevronRight className="w-4 h-4 text-gray-300" />
+            </div>
           </div>
+        </div>
 
-        </div>
-        </div>
-      }
-    />
+      </div>
+    </div>
     </React.Fragment>
   );
 };

@@ -71,14 +71,14 @@ const JoinRide = () => {
         <button onClick={() => navigate(-1)} className="w-10 h-10 bg-gray-50 rounded-full flex items-center justify-center text-dark hover:bg-gray-100 transition-colors">
           <ChevronLeft className="w-6 h-6" />
         </button>
-        <h1 className="text-2xl font-bold text-dark">Join Ride</h1>
+        <h1 className="text-2xl font-semibold text-dark">Join Ride</h1>
       </div>
 
       <div className="flex-1 p-6 flex flex-col items-center justify-center -mt-16">
         <div className="w-20 h-20 bg-[#FFF0E6] rounded-full flex items-center justify-center mb-6">
           <Key className="w-10 h-10 text-primary" />
         </div>
-        <h2 className="text-2xl font-bold text-dark mb-2">Enter Ride Code</h2>
+        <h2 className="text-2xl font-semibold text-dark mb-2">Enter Ride Code</h2>
         <p className="text-gray-500 text-center mb-4 px-6">Ask the ride leader for the 6-character ride code to join their live group.</p>
 
         <form onSubmit={handleJoin} className="w-full max-w-[300px] flex flex-col gap-4">
@@ -88,13 +88,13 @@ const JoinRide = () => {
             value={code}
             onChange={(e) => setCode(e.target.value.toUpperCase())}
             maxLength={11}
-            className="w-full bg-gray-50 border border-gray-200 rounded-lg px-6 py-4 text-center text-[20px] font-bold tracking-widest text-dark focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary uppercase transition-colors"
+            className="w-full bg-gray-50 border border-gray-200 rounded-lg px-6 py-4 text-center text-[20px] font-semibold tracking-widest text-dark focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary uppercase transition-colors"
           />
 
           <button 
             type="submit"
             disabled={loading || code.length < 5}
-            className="w-full bg-dark text-white font-bold py-4 rounded-lg flex items-center justify-center gap-2 disabled:opacity-50 active:scale-95 transition-all"
+            className="w-full bg-dark text-white font-semibold py-4 rounded-lg flex items-center justify-center gap-2 disabled:opacity-50 active:scale-95 transition-all"
           >
             {loading ? 'Joining...' : 'Join Now'} <ArrowRight className="w-5 h-5" />
           </button>

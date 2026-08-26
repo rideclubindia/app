@@ -193,7 +193,7 @@ const PolicyAcceptance: React.FC<PolicyAcceptanceProps> = ({ onAccept }) => {
                 <ShieldCheck className="w-6 h-6 text-white" />
               </div>
               <div className="flex-1 min-w-0">
-                <h2 className="text-[18px] font-bold text-white mb-1.5">App Permissions Access</h2>
+                <h2 className="text-[18px] font-semibold text-white mb-1.5">App Permissions Access</h2>
                 <p className="text-[13px] text-[#8B919D] leading-relaxed">
                   Ride Club requires the following permissions to ensure safety and real-time alerts. You have the right to revoke access at any time in settings.
                 </p>
@@ -215,7 +215,7 @@ const PolicyAcceptance: React.FC<PolicyAcceptanceProps> = ({ onAccept }) => {
 
         {/* ====== PERMISSIONS ACCORDION ====== */}
         <div className="px-4 pb-4 flex-1 min-h-0 flex flex-col">
-          <div className="bg-white/[0.03] backdrop-blur-xl border border-white/[0.06] rounded-[24px] flex flex-col h-full overflow-hidden">
+          <div className="bg-white/[0.03] backdrop-blur-xl border border-white/[0.06] rounded-[8px] flex flex-col h-full overflow-hidden">
             
             {/* Agree to All Header */}
             <div 
@@ -224,7 +224,7 @@ const PolicyAcceptance: React.FC<PolicyAcceptanceProps> = ({ onAccept }) => {
             >
               <div className="flex items-center gap-3.5">
                 <OrangeCheck checked={agreedAll} onChange={handleAgreeAll} />
-                <span className="text-[16px] font-bold text-white">I agree to all</span>
+                <span className="text-[16px] font-semibold text-white">I agree to all</span>
               </div>
               <ChevronDown className={`w-5 h-5 text-gray-500 transition-transform duration-300 ${showDetails ? 'rotate-180' : ''}`} />
             </div>
@@ -242,7 +242,7 @@ const PolicyAcceptance: React.FC<PolicyAcceptanceProps> = ({ onAccept }) => {
                       </PermIcon>
                       <div className="flex-1 min-w-0 pt-0.5">
                         <div className="flex items-center justify-between mb-1.5">
-                          <span className="text-[14px] font-bold text-white">Location Access</span>
+                          <span className="text-[14px] font-semibold text-white">Location Access</span>
                           <OrangeCheck checked={cb1} onChange={setCb1} />
                         </div>
                         <p className="text-[12px] text-[#6B7280] leading-relaxed">
@@ -262,7 +262,7 @@ const PolicyAcceptance: React.FC<PolicyAcceptanceProps> = ({ onAccept }) => {
                       </PermIcon>
                       <div className="flex-1 min-w-0 pt-0.5">
                         <div className="flex items-center justify-between mb-1.5">
-                          <span className="text-[14px] font-bold text-white">Notifications</span>
+                          <span className="text-[14px] font-semibold text-white">Notifications</span>
                           <OrangeCheck checked={cb2} onChange={setCb2} />
                         </div>
                         <p className="text-[12px] text-[#6B7280] leading-relaxed">
@@ -282,7 +282,7 @@ const PolicyAcceptance: React.FC<PolicyAcceptanceProps> = ({ onAccept }) => {
                       </PermIcon>
                       <div className="flex-1 min-w-0 pt-0.5">
                         <div className="flex items-center justify-between mb-1.5">
-                          <span className="text-[14px] font-bold text-white">Camera & Photos</span>
+                          <span className="text-[14px] font-semibold text-white">Camera & Photos</span>
                           <OrangeCheck checked={cb3} onChange={setCb3} />
                         </div>
                         <p className="text-[12px] text-[#6B7280] leading-relaxed">
@@ -302,7 +302,7 @@ const PolicyAcceptance: React.FC<PolicyAcceptanceProps> = ({ onAccept }) => {
                       </PermIcon>
                       <div className="flex-1 min-w-0 pt-0.5">
                         <div className="flex items-center justify-between mb-1.5">
-                          <span className="text-[14px] font-bold text-white">Terms & Privacy</span>
+                          <span className="text-[14px] font-semibold text-white">Terms & Privacy</span>
                           <OrangeCheck checked={cb4} onChange={setCb4} />
                         </div>
                         <p className="text-[12px] text-[#6B7280] leading-relaxed">
@@ -329,7 +329,7 @@ const PolicyAcceptance: React.FC<PolicyAcceptanceProps> = ({ onAccept }) => {
         <button 
           onClick={handleAccept}
           disabled={!isFormValid || isSubmitting}
-          className={`w-full h-[64px] rounded-[24px] font-bold text-[17px] transition-all flex items-center justify-between px-7 ${
+          className={`w-full h-[64px] rounded-[8px] font-semibold text-[17px] transition-all flex items-center justify-between px-7 ${
             isFormValid 
               ? 'text-white active:scale-[0.97] shadow-[0_8px_32px_rgba(255,90,31,0.35)]' 
               : 'bg-white/[0.04] text-white/30 cursor-not-allowed border border-white/[0.06]'

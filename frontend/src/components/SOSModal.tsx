@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { X, AlertCircle, Navigation, Phone, Undo2 } from 'lucide-react';
+import { X, AlertCircle, Phone, Undo2, Navigation, ShieldCheck, ShieldOff } from 'lucide-react';
 import { useToast } from './ToastContext';
 
 interface SOSData {
@@ -87,180 +87,144 @@ export const SOSModal: React.FC<Props> = ({
     }
   };
 
+  const handleCall = () => {
+    const phoneMatch = data.emergencyContact.match(/\+?\d[\d\-\s]+/);
+    if (phoneMatch) {
+      window.location.href = `tel:${phoneMatch[0].replace(/[\s-]/g, '')}`;
+    } else {
+      showToast('Could not extract a valid phone number.', 'error');
+    }
+  };
+
   return (
-    <div className="fixed inset-0 z-[100] bg-dark/60 backdrop-blur-md overflow-y-auto p-4 flex flex-col">
-      <div className="w-full max-w-md mx-auto my-auto flex flex-col gap-4 py-8">
-        {/* Header Options */}
-        <div className="flex justify-between items-center">
-          <div className="bg-danger px-4 py-1.5 rounded-full text-sm font-bold text-white shadow-lg">
-            Emergency mode
+    <div className="fixed inset-0 z-[100] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
+      <div className="w-full max-w-sm bg-white rounded-[8px] shadow-2xl overflow-hidden max-h-[92vh] flex flex-col animate-in fade-in zoom-in-95 duration-200">
+        
+        {/* Header */}
+        <div className="bg-gradient-to-r from-red-600 to-red-500 px-4 py-3 flex items-center justify-between shrink-0">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="w-9 h-9 rounded-full bg-white/20 border border-white/30 flex items-center justify-center shrink-0 animate-pulse">
+              <AlertCircle className="w-5 h-5 text-white" />
+            </div>
+            <div className="min-w-0">
+              <span className="block text-[9px] font-bold text-white/70 uppercase tracking-[0.2em] leading-none">Emergency Mode</span>
+              <h2 className="text-[15px] font-semibold text-white leading-tight truncate mt-0.5">
+                {isReceiving ? 'SOS Alert Received' : 'Send SOS Alert'}
+              </h2>
+            </div>
           </div>
           <button 
             onClick={onClose}
-            className="w-10 h-10 rounded-full bg-white flex items-center justify-center text-dark hover:bg-gray-200 transition-colors"
+            className="w-8 h-8 rounded-full bg-white/15 hover:bg-white/25 flex items-center justify-center text-white transition-colors shrink-0"
           >
-            <X className="w-5 h-5" />
+            <X className="w-4 h-4" />
           </button>
         </div>
 
-        {/* Top Card: Action */}
-        <div className="bg-white shadow-2xl rounded-[32px] p-6 flex flex-col items-center">
-          <div className="w-20 h-20 rounded-full bg-danger/10 flex items-center justify-center mb-6">
-            <div className="w-14 h-14 rounded-full bg-danger flex items-center justify-center animate-pulse shadow-[0_0_30px_rgba(255,59,48,0.5)]">
-              <AlertCircle className="w-7 h-7 text-white" />
-            </div>
-          </div>
-          
-          <h2 className="text-3xl font-bold text-dark mb-3 text-center">
-            {isReceiving ? 'SOS Alert Received' : 'Send SOS alert'}
-          </h2>
-          
-          <p className="text-gray-500 text-center mb-4 px-4 font-medium">
+        {/* Body */}
+        <div className="flex-1 overflow-y-auto hide-scrollbar p-4 flex flex-col gap-3">
+
+          <p className="text-[12px] text-gray-500 font-medium leading-relaxed">
             {isReceiving 
-              ? `${data.riderName} has triggered an emergency SOS. Please respond immediately or contact their emergency contact.`
-              : 'Share your live location, rider details, and emergency information with your group and emergency contacts.'}
+              ? <><strong className="text-[#111111]">{data.riderName}</strong> has triggered an emergency SOS. Respond immediately or contact their emergency contact.</>
+              : 'Shares your live location, rider details and emergency info with your group and emergency contacts.'}
           </p>
 
-          {!isReceiving && (
+          {!isReceiving ? (
             <>
               <button
                 onClick={handleTrigger}
                 disabled={sending || isSent}
-                className={`w-full ${isSent ? 'bg-green-500 hover:bg-green-600' : 'bg-danger hover:bg-danger/90'} text-white font-black text-lg py-4 rounded-xl mb-3 transition-colors disabled:opacity-50`}
+                className={`w-full ${isSent ? 'bg-green-500 hover:bg-green-600' : 'bg-red-500 hover:bg-red-600'} text-white font-semibold text-[14px] py-3 rounded-xl transition-colors disabled:opacity-50 active:scale-[0.98] shadow-lg ${isSent ? 'shadow-green-500/25' : 'shadow-red-500/25'}`}
               >
-                {sending ? 'Sending...' : isSent ? 'SOS Alert Sent!' : 'Trigger emergency alert'}
+                {sending ? 'Sending...' : isSent ? 'SOS Alert Sent!' : 'Trigger Emergency Alert'}
               </button>
 
-              {/* Error + retry — shown when the trigger call failed */}
               {sendError && !isSent && (
-                <div className="w-full bg-danger/10 border border-danger/20 rounded-xl p-4 mb-3 flex flex-col gap-2">
-                  <p className="text-danger text-sm font-bold">{sendError}</p>
+                <div className="bg-red-50 border border-red-100 rounded-xl p-3 flex flex-col gap-2">
+                  <p className="text-red-500 text-[12px] font-semibold">{sendError}</p>
                   <button
                     onClick={handleTrigger}
                     disabled={sending}
-                    className="w-full bg-danger hover:bg-danger/90 text-white font-bold py-3 rounded-xl transition-colors disabled:opacity-50"
+                    className="w-full bg-red-500 hover:bg-red-600 text-white font-semibold py-2 rounded-lg text-[12px] transition-colors disabled:opacity-50"
                   >
                     {sending ? 'Retrying...' : 'Try Again'}
                   </button>
                 </div>
               )}
 
-              {/* Revoke SOS button — only visible after sending */}
               {isSent && (
                 <button 
                   onClick={handleRevoke}
                   disabled={isRevoking}
-                  className="w-full bg-amber-500 hover:bg-amber-600 text-white font-bold py-4 rounded-xl mb-3 transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+                  className="w-full bg-amber-500 hover:bg-amber-600 text-white font-semibold py-2.5 rounded-xl text-[13px] transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
                 >
-                  <Undo2 className="w-5 h-5" />
-                  {isRevoking ? 'Revoking...' : 'Revoke SOS — False alarm'}
+                  <Undo2 className="w-4 h-4" />
+                  {isRevoking ? 'Revoking...' : 'Revoke SOS — False Alarm'}
                 </button>
               )}
 
-              <button 
+              {/* Crash Detection Toggle */}
+              <button
                 onClick={onToggleCrashDetection}
-                className="w-full bg-gray-100 hover:bg-gray-200 text-dark font-bold py-4 rounded-xl transition-colors"
+                className="w-full bg-gray-50 hover:bg-gray-100 border border-gray-200 rounded-xl px-3 py-2.5 flex items-center justify-between transition-colors"
               >
-                {isCrashDetectionActive ? 'Crash detection monitoring is active' : 'Enable Crash Detection'}
+                <span className="flex items-center gap-2 text-[12px] font-semibold text-[#111111]">
+                  {isCrashDetectionActive ? <ShieldCheck className="w-4 h-4 text-green-500" /> : <ShieldOff className="w-4 h-4 text-gray-400" />}
+                  Crash Detection
+                </span>
+                <span className={`text-[10px] font-bold px-2 py-1 rounded-full ${isCrashDetectionActive ? 'bg-green-100 text-green-600' : 'bg-gray-200 text-gray-500'}`}>
+                  {isCrashDetectionActive ? 'ACTIVE' : 'OFF'}
+                </span>
               </button>
             </>
-          )}
-          {isReceiving && (
+          ) : (
             <button 
               onClick={onClose}
-              className="w-full bg-danger hover:bg-danger/90 text-white font-black text-lg py-4 rounded-xl mb-4 transition-colors"
+              className="w-full bg-red-500 hover:bg-red-600 text-white font-semibold text-[14px] py-3 rounded-xl transition-colors active:scale-[0.98] shadow-lg shadow-red-500/25"
             >
               Acknowledge & Stop Alarm
             </button>
           )}
-        </div>
 
-        {/* Middle Card: Before you send & Actions */}
-        {!isReceiving && (
-          <div className="bg-[#f2f4f7] rounded-[32px] p-6 relative overflow-hidden">
-            <div className="absolute left-0 top-8 w-4 h-14 bg-[#facc15] rounded-r-full" />
-            <div className="pl-4 mb-6">
-              <h3 className="text-[22px] font-bold text-dark mb-2">Before you send</h3>
-              <p className="text-[#64748b] text-[15px] leading-relaxed font-medium">
-                Use SOS only for urgent situations such as crash, injury, medical emergency, or if you are stranded off route.
-              </p>
-            </div>
-            <div className="flex gap-3">
-              <button 
-                onClick={() => {
-                  const phoneMatch = data.emergencyContact.match(/\+?\d[\d\-\s]+/);
-                  if (phoneMatch) {
-                    window.location.href = `tel:${phoneMatch[0].replace(/[\s-]/g, '')}`;
-                  } else {
-                    showToast('Could not extract a valid phone number.', 'error');
-                  }
-                }}
-                className="flex-1 bg-[#111827] hover:bg-black text-white font-bold py-4 rounded-[24px] transition-colors text-center text-[15px]"
-              >
-                Call contact
-              </button>
-              <button 
-                onClick={handleNavigate}
-                className="flex-1 bg-[#f97316] hover:bg-[#ea580c] text-white font-bold py-4 rounded-[24px] transition-colors text-center text-[15px]"
-              >
-                Navigate
-              </button>
-            </div>
-          </div>
-        )}
-        {isReceiving && (
-          <div className="bg-[#f2f4f7] rounded-[32px] p-6 flex gap-3">
+          {/* Actions Row */}
+          <div className="grid grid-cols-2 gap-2">
             <button 
-              onClick={() => {
-                const phoneMatch = data.emergencyContact.match(/\+?\d[\d\-\s]+/);
-                if (phoneMatch) {
-                  window.location.href = `tel:${phoneMatch[0].replace(/[\s-]/g, '')}`;
-                } else {
-                  showToast('Could not extract a valid phone number.', 'error');
-                }
-              }}
-              className="flex-1 bg-[#111827] hover:bg-black text-white font-bold py-4 rounded-[24px] transition-colors text-center text-[15px]"
+              onClick={handleCall}
+              className="bg-[#111111] hover:bg-black text-white font-semibold py-2.5 rounded-xl transition-colors text-center text-[12px] flex items-center justify-center gap-1.5 active:scale-[0.98]"
             >
-              Call contact
+              <Phone className="w-3.5 h-3.5" /> Call Contact
             </button>
             <button 
               onClick={handleNavigate}
-              className="flex-1 bg-[#f97316] hover:bg-[#ea580c] text-white font-bold py-4 rounded-[24px] transition-colors text-center text-[15px]"
+              className="bg-[#FF5A00] hover:bg-[#ff6a1a] text-white font-semibold py-2.5 rounded-xl transition-colors text-center text-[12px] flex items-center justify-center gap-1.5 active:scale-[0.98]"
             >
-              Navigate
+              <Navigation className="w-3.5 h-3.5" /> Navigate
             </button>
           </div>
-        )}
 
-        {/* Bottom Card: Shared Data */}
-        <div className="bg-white shadow-2xl rounded-[32px] p-6">
-          <h3 className="text-xl font-bold text-dark mb-2">
-            {isReceiving ? 'Emergency Information' : 'Data shared instantly'}
-          </h3>
-          <p className="text-gray-500 text-sm mb-6">
-            {isReceiving 
-              ? 'This information was sent in the SOS packet.' 
-              : 'This information will be sent in the SOS packet to help your ride team respond faster.'}
-          </p>
-
-          <div className="flex flex-col gap-3">
-            <DataRow label="Current coordinates" value={data.coordinates} />
-            <DataRow label="Rider name" value={data.riderName} />
-            <DataRow label="Bike details" value={data.bikeDetails} />
-            <DataRow label="Blood group" value={data.bloodGroup} />
-            <DataRow label="Emergency contact" value={data.emergencyContact} />
+          {/* Shared Data */}
+          <div className="pt-1">
+            <h3 className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2">
+              {isReceiving ? 'Emergency Information' : 'Data Shared Instantly'}
+            </h3>
+            <div className="grid grid-cols-2 gap-1.5">
+              <DataTile label="Coordinates" value={data.coordinates} />
+              <DataTile label="Rider" value={data.riderName} />
+              <DataTile label="Bike" value={data.bikeDetails} />
+              <DataTile label="Blood Group" value={data.bloodGroup} />
+              <DataTile label="Emergency Contact" value={data.emergencyContact} wide />
+            </div>
           </div>
         </div>
-
-
       </div>
     </div>
   );
 };
 
-const DataRow = ({ label, value }: { label: string, value: string }) => (
-  <div className="bg-gray-50 rounded-full px-5 py-3 flex justify-between items-center border border-gray-100">
-    <span className="text-gray-500 font-medium text-sm">{label}</span>
-    <span className="text-dark font-bold text-sm truncate max-w-[50%]">{value}</span>
+const DataTile = ({ label, value, wide }: { label: string, value: string, wide?: boolean }) => (
+  <div className={`bg-gray-50 rounded-lg px-2.5 py-2 border border-gray-100 ${wide ? 'col-span-2' : ''}`}>
+    <span className="block text-[9px] font-bold text-gray-400 uppercase tracking-wider leading-none mb-1">{label}</span>
+    <span className="block text-[11px] font-semibold text-[#111111] truncate">{value || '--'}</span>
   </div>
 );
