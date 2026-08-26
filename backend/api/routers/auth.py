@@ -110,6 +110,52 @@ def firebase_login(request: Request, data: FirebaseLoginData, db: Session = Depe
     )
     return {"access_token": access_token, "token_type": "bearer"}
 
+class SupabaseLoginData(BaseModel):
+    access_token: str
+    name: Optional[str] = None
+
+@router.post("/supabase-login", response_model=Token)
+@limiter.limit("5/minute")
+def supabase_login(request: Request, data: SupabaseLoginData, db: Session = Depends(get_db)):
+    import jwt
+
+    if not settings.SUPABASE_JWT_SECRET:
+        raise HTTPException(status_code=500, detail="SUPABASE_JWT_SECRET not configured")
+
+    try:
+        decoded = jwt.decode(data.access_token, settings.SUPABASE_JWT_SECRET, algorithms=["HS256"], audience="authenticated")
+    except Exception as e:
+        logger.warning(f"Supabase token verification failed: {e}")
+        raise HTTPException(status_code=401, detail="Invalid or expired Supabase token")
+
+    email = decoded.get("email")
+    supabase_uid = decoded.get("sub")
+    if not email or not supabase_uid:
+        raise HTTPException(status_code=401, detail="Invalid Supabase token")
+
+    user = db.query(User).filter(User.email == email).first()
+    if not user:
+        user = User(
+            name=data.name or email.split("@")[0],
+            email=email,
+            hashed_password=get_password_hash(supabase_uid),
+            role=UserRole.RIDER
+        )
+        db.add(user)
+        try:
+            db.commit()
+        except IntegrityError:
+            db.rollback()
+            raise HTTPException(status_code=409, detail="Email already registered")
+        db.refresh(user)
+
+    access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+    access_token = create_access_token(
+        data={"sub": user.email, "role": user.role.value, "uid": supabase_uid},
+        expires_delta=access_token_expires,
+    )
+    return {"access_token": access_token, "token_type": "bearer"}
+
 def get_deterministic_uuid(string: str) -> str:
     hash_val = 0
     for char in string:
