@@ -1,0 +1,3 @@
+INFO:     127.0.0.1:57618 - "POST /api/v1/auth/emailjs-login HTTP/1.1" 500 Internal Server Error
+INFO:     127.0.0.1:53018 - "POST /api/v1/auth/emailjs-login HTTP/1.1" 500 Internal Server Error
+INFO:     127.0.0.1:53070 - "POST /api/v1/auth/emailjs-login HTTP/1.1" 500 Internal Server Error

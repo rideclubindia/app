@@ -1,5 +1,8 @@
 @import "tailwindcss";
 
+@custom-variant landscape (@media (orientation: landscape));
+@custom-variant portrait (@media (orientation: portrait));
+
 @theme {
   --color-primary: #F97316;
   --color-secondary: #FB923C;

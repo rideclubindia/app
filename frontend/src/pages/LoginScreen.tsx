@@ -6,7 +6,100 @@ import { apiClient } from '../lib/apiClient';
 import { useToast } from '../components/ToastContext';
 import { ArrowRight, Mail } from 'lucide-react';
 import loginBackground from '../assets/Login.jpg';
+import loginLandscape from '../assets/landscape.png';
 import darkLogo from '../assets/Logos/Logo for Dark Backgrounds 2.svg';
+
+interface AuthFormProps {
+  step: 'email' | 'otp';
+  email: string;
+  otpInput: string;
+  isLoading: boolean;
+  setEmail: (v: string) => void;
+  setOtpInput: (v: string) => void;
+  setStep: (s: 'email' | 'otp') => void;
+  onSendOtp: (e: React.FormEvent) => void;
+  onVerifyOtp: (e: React.FormEvent) => void;
+}
+
+const AuthForm = ({ step, email, otpInput, isLoading, setEmail, setOtpInput, setStep, onSendOtp, onVerifyOtp }: AuthFormProps) => (
+  <div className="bg-[#333]/0 backdrop-blur-md border border-white/10 rounded-2xl p-5 shadow-xl flex flex-col gap-4">
+    {step === 'email' ? (
+      <form onSubmit={onSendOtp} className="flex flex-col gap-4">
+        <div className="flex flex-col gap-2">
+          <label className="text-[13px] font-medium text-white-400">Enter your Email Address</label>
+          <div className="relative flex items-center">
+            <Mail className="absolute left-4 w-5 h-5 text-white-400" />
+            <input 
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="rider@example.com" 
+              className="w-full h-[54px] bg-white/5 border border-white/10 rounded-xl pl-12 pr-4 text-white placeholder-white-500 focus:outline-none focus:border-[#ef4523] focus:ring-1 focus:ring-[#ef4523] transition-all"
+              required
+            />
+          </div>
+        </div>
+        <button 
+          type="submit"
+          disabled={isLoading}
+          className="relative w-full flex items-center justify-center h-[54px] rounded-xl font-semibold text-[15px] text-white active:scale-[0.97] transition-all shadow-[0_8px_24px_rgba(255,106,0,0.25)] disabled:opacity-70 bg-[#ef4523]"
+        >
+          <div className="flex items-center gap-3">
+            {isLoading ? (
+              <svg className="animate-spin w-5 h-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+            ) : (
+              <span>Send Magic Code</span>
+            )}
+          </div>
+          {!isLoading && <ArrowRight className="absolute right-5 w-5 h-5" />}
+        </button>
+      </form>
+    ) : (
+      <form onSubmit={onVerifyOtp} className="flex flex-col gap-4">
+        <div className="flex flex-col gap-1">
+          <label className="text-[13px] font-medium text-white-400">Verification Code</label>
+          <p className="text-xs text-white-500 mb-2">We sent a 6-digit code to {email}</p>
+          <input 
+            type="text"
+            inputMode="numeric"
+            maxLength={6}
+            value={otpInput}
+            onChange={(e) => setOtpInput(e.target.value.replace(/[^0-9]/g, ''))}
+            placeholder="------"
+            className="w-full h-[54px] bg-white/5 border border-white/10 rounded-xl px-4 text-center text-2xl tracking-widest text-white placeholder-gray-500 focus:outline-none focus:border-[#ef4523] focus:ring-1 focus:ring-[#ef4523] transition-all"
+            required
+          />
+        </div>
+        <button 
+          type="submit"
+          disabled={isLoading || otpInput.length < 6}
+          className="relative w-full flex items-center justify-center h-[54px] rounded-xl font-semibold text-[15px] text-white active:scale-[0.97] transition-all shadow-[0_8px_24px_rgba(255,106,0,0.25)] disabled:opacity-70 bg-[#ef4523]"
+        >
+          <div className="flex items-center gap-3">
+            {isLoading ? (
+              <svg className="animate-spin w-5 h-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+            ) : (
+              <span>Verify & Login</span>
+            )}
+          </div>
+        </button>
+        <button 
+          type="button" 
+          onClick={() => setStep('email')}
+          className="text-xs text-white-400 hover:text-white transition-colors"
+        >
+          Used wrong email? Go back
+        </button>
+      </form>
+    )}
+  </div>
+);
 
 const LoginScreen = () => {
   const navigate = useNavigate();
@@ -20,9 +113,20 @@ const LoginScreen = () => {
   // Store the locally generated OTP for verification
   const generatedOtpRef = useRef<string | null>(null);
 
+  const [isLandscape, setIsLandscape] = useState(
+    () => window.matchMedia('(orientation: landscape)').matches
+  );
+
+  useEffect(() => {
+    const mq = window.matchMedia('(orientation: landscape)');
+    const handler = (e: MediaQueryListEvent) => setIsLandscape(e.matches);
+    mq.addEventListener('change', handler);
+    return () => mq.removeEventListener('change', handler);
+  }, []);
+
   // Initialize EmailJS
   useEffect(() => {
-    emailjs.init("bJiRaIAxixJjBY9PR");
+    emailjs.init(import.meta.env.VITE_EMAILJS_PUBLIC_KEY as string);
   }, []);
 
   const handleSendOtp = async (e: React.FormEvent) => {
@@ -40,15 +144,18 @@ const LoginScreen = () => {
 
       // 2. Send via EmailJS
       await emailjs.send(
-        "service_hynumqg", 
-        "template_v4xp3qt", 
+        import.meta.env.VITE_EMAILJS_SERVICE_ID as string, 
+        import.meta.env.VITE_EMAILJS_TEMPLATE_ID as string, 
         {
           rideclubemail: `Your Verification Code is: ${generated}`,
-          reply_to: email, // If the template uses this to determine recipient
-          // NOTE: Some EmailJS templates use specific fields like 'to_email' or 'user_email' for the recipient. 
-          // Assuming the template routes properly via the variables set here.
+          // Passing multiple common recipient variables. 
+          // Make sure your EmailJS Template "To Email" field contains one of these (e.g. {{to_email}})
+          reply_to: email, 
           to_email: email, 
-          user_email: email
+          user_email: email,
+          email: email,
+          to: email,
+          recipient: email
         }
       );
       
@@ -128,7 +235,7 @@ const LoginScreen = () => {
     <div 
       className="w-full h-[100dvh] text-white flex flex-col relative overflow-hidden font-sans"
       style={{
-        backgroundImage: `url(${loginBackground})`,
+        backgroundImage: `url(${isLandscape ? loginLandscape : loginBackground})`,
         backgroundSize: 'cover',
         backgroundPosition: 'center 55%',
       }}
@@ -143,183 +250,81 @@ const LoginScreen = () => {
       {/* Bottom fade only — bikes visible in middle, dark at bottom for buttons */}
       <div className="absolute inset-0 z-0" style={{ background: 'linear-gradient(to top, rgba(0,0,0,0.95) 0%, rgba(0,0,0,0.8) 30%, rgba(0,0,0,0.2) 55%, transparent 70%)' }}></div>
 
-      {/* ====== SCROLLABLE CONTENT ====== */}
-      <div className="relative z-10 flex-1 flex flex-col overflow-y-auto hide-scrollbar">
-        
-        {/* Logo */}
-        <div className="px-6 pt-4 pb-2 shrink-0">
-          <img src={darkLogo} alt="Ride Club" className="h-32 w-auto drop-shadow-[0_2px_8px_rgba(255,255,255,0.15)] object-left object-contain" />
-        </div>
-
-        {/* Hero Section */}
-        <div className="px-6 pt-3 pb-3 shrink-0">
-          <h1 className="text-[42px] font-extrabold leading-[1.05] tracking-tight mb-4">
-            Two Wheels,<br/>
-            <span className="text-[#ef4523]">One Soul</span>
-          </h1>
+      {/* ====== PORTRAIT LAYOUT ====== */}
+      {!isLandscape && (
+        <div className="relative z-10 flex-1 flex flex-col gap-4 px-6 pt-4 pb-6 overflow-y-auto hide-scrollbar">
           
-          <p className="text-[#B7BDC8] text-[16px] leading-relaxed mb-4">
-            Discover rides. Meet riders.<br/>
-            Create unforgettable journeys.
-          </p>
+          {/* Logo */}
+          <img src={darkLogo} alt="Ride Club" className="h-32 w-auto drop-shadow-[0_2px_8px_rgba(255,255,255,0.15)] object-left object-contain" />
 
-          {/* Community Avatars */}
-          <div className="flex items-center gap-4 mb-3">
-            <div className="flex -space-x-3">
-              <img src="https://images.unsplash.com/photo-1633332755192-727a05c4013d?w=100&h=100&fit=crop&crop=faces" alt="" className="w-12 h-12 rounded-full border-[2.5px] border-[#273a5a]/60 object-cover" />
-              <img src="https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&h=100&fit=crop&crop=faces" alt="" className="w-12 h-12 rounded-full border-[2.5px] border-[#273a5a]/60 object-cover" />
-              <img src="https://images.unsplash.com/photo-1527980965255-d3b416303d12?w=100&h=100&fit=crop&crop=faces" alt="" className="w-12 h-12 rounded-full border-[2.5px] border-[#273a5a]/60 object-cover" />
+          {/* Hero Section */}
+          <div className="flex flex-col gap-3">
+            <h1 className="text-[42px] font-extrabold leading-[1.05] tracking-tight">
+              Beyond
+              <span className="text-[#ef4523]"> Miles</span>
+            </h1>
+            
+            <p className="text-[#B7BDC8] text-[16px] leading-relaxed">
+              Discover rides. Meet riders.<br/>
+              Create unforgettable journeys.
+            </p>
+
+            {/* Community Avatars */}
+            <div className="flex items-center gap-4">
+              <div className="flex -space-x-3">
+                <img src="https://images.unsplash.com/photo-1633332755192-727a05c4013d?w=100&h=100&fit=crop&crop=faces" alt="" className="w-12 h-12 rounded-full border-[2.5px] border-[#273a5a]/60 object-cover" />
+                <img src="https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&h=100&fit=crop&crop=faces" alt="" className="w-12 h-12 rounded-full border-[2.5px] border-[#273a5a]/60 object-cover" />
+                <img src="https://images.unsplash.com/photo-1527980965255-d3b416303d12?w=100&h=100&fit=crop&crop=faces" alt="" className="w-12 h-12 rounded-full border-[2.5px] border-[#273a5a]/60 object-cover" />
+              </div>
+              <div className="flex flex-col">
+                <p className="text-white text-[15px] font-semibold">10K+ riders</p>
+                <p className="text-gray-400 text-[13px]">already with us</p>
+              </div>
             </div>
-            <div>
-              <p className="text-white text-[15px] font-semibold">10K+ riders</p>
-              <p className="text-gray-400 text-[13px]">already with us</p>
-            </div>
+            <div className="w-10 h-[3px] bg-[#ef4523] rounded-full"></div>
           </div>
-          <div className="w-10 h-[3px] bg-[#ef4523] rounded-full"></div>
-        </div>
 
-        {/* Feature Cards Row */}
-        <div className="px-6 pb-6 shrink-0 mt-4">
+          {/* ====== AUTH FORM ====== */}
+          <AuthForm step={step} email={email} otpInput={otpInput} isLoading={isLoading} setEmail={setEmail} setOtpInput={setOtpInput} setStep={setStep} onSendOtp={handleSendOtp} onVerifyOtp={handleVerifyOtp} />
+
+          {/* Feature Cards Row */}
           <div className="grid grid-cols-3 gap-3">
-            {/* Find Rides */}
             <div className="flex flex-col items-center text-center gap-2.5 py-3">
               <div className="w-14 h-14 rounded-xl bg-white/5 backdrop-blur-xl border border-white/10 flex items-center justify-center">
                 <svg className="w-7 h-7 text-[#ef4523]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                  <circle cx="7" cy="17" r="3"/>
-                  <circle cx="17" cy="17" r="3"/>
-                  <path d="M10 17h4"/>
-                  <path d="M5.5 14.5L8 8h5l3 5"/>
-                  <path d="M13 8l3-3"/>
-                  <path d="M16 5h2v2"/>
+                  <circle cx="7" cy="17" r="3"/><circle cx="17" cy="17" r="3"/><path d="M10 17h4"/><path d="M5.5 14.5L8 8h5l3 5"/><path d="M13 8l3-3"/><path d="M16 5h2v2"/>
                 </svg>
               </div>
-              <div>
+              <div className="flex flex-col">
                 <p className="text-white text-[13px] font-semibold">Find Rides</p>
                 <p className="text-gray-500 text-[11px]">Near you</p>
               </div>
             </div>
-            {/* Ride Together */}
             <div className="flex flex-col items-center text-center gap-2.5 py-3">
               <div className="w-14 h-14 rounded-xl bg-white/5 backdrop-blur-xl border border-white/10 flex items-center justify-center">
                 <svg className="w-7 h-7 text-[#ef4523]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
-                  <circle cx="9" cy="7" r="4"/>
-                  <path d="M22 21v-2a4 4 0 0 0-3-3.87"/>
-                  <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                  <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
                 </svg>
               </div>
-              <div>
+              <div className="flex flex-col">
                 <p className="text-white text-[13px] font-semibold">Ride Together</p>
                 <p className="text-gray-500 text-[11px]">Build connections</p>
               </div>
             </div>
-            {/* Explore More */}
             <div className="flex flex-col items-center text-center gap-2.5 py-3">
               <div className="w-14 h-14 rounded-xl bg-white/5 backdrop-blur-xl border border-white/10 flex items-center justify-center">
                 <svg className="w-7 h-7 text-[#ef4523]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
-                  <circle cx="12" cy="10" r="3"/>
-                  <path d="M12 2v2"/>
+                  <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/><path d="M12 2v2"/>
                 </svg>
               </div>
-              <div>
+              <div className="flex flex-col">
                 <p className="text-white text-[13px] font-semibold">Explore More</p>
                 <p className="text-gray-500 text-[11px]">New places</p>
               </div>
             </div>
           </div>
-        </div>
 
-        {/* ====== AUTH FORM ====== */}
-        <div className="px-6 pb-2 shrink-0 space-y-4">
-          
-          <div className="bg-[#1e293b]/70 backdrop-blur-xl border border-white/10 rounded-2xl p-5 shadow-xl">
-            
-            {step === 'email' ? (
-              <form onSubmit={handleSendOtp} className="flex flex-col gap-4">
-                <div className="space-y-1.5">
-                  <label className="text-[13px] font-medium text-gray-400 ml-1">Email Address</label>
-                  <div className="relative flex items-center">
-                    <Mail className="absolute left-4 w-5 h-5 text-gray-400" />
-                    <input 
-                      type="email"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      placeholder="rider@example.com"
-                      className="w-full h-[54px] bg-white/5 border border-white/10 rounded-xl pl-12 pr-4 text-white placeholder-gray-500 focus:outline-none focus:border-[#ef4523] focus:ring-1 focus:ring-[#ef4523] transition-all"
-                      required
-                    />
-                  </div>
-                </div>
-
-                <button 
-                  type="submit"
-                  disabled={isLoading}
-                  className="relative w-full flex items-center justify-center h-[54px] rounded-xl font-semibold text-[15px] text-white active:scale-[0.97] transition-all shadow-[0_8px_24px_rgba(255,106,0,0.25)] disabled:opacity-70 bg-[#ef4523]"
-                >
-                  <div className="flex items-center gap-3">
-                    {isLoading ? (
-                      <svg className="animate-spin w-5 h-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                      </svg>
-                    ) : (
-                      <span>Send Magic Code</span>
-                    )}
-                  </div>
-                  {!isLoading && <ArrowRight className="absolute right-5 w-5 h-5" />}
-                </button>
-              </form>
-            ) : (
-              <form onSubmit={handleVerifyOtp} className="flex flex-col gap-4">
-                <div className="space-y-1.5">
-                  <label className="text-[13px] font-medium text-gray-400 ml-1">Verification Code</label>
-                  <p className="text-xs text-gray-500 mb-2 ml-1">We sent a 6-digit code to {email}</p>
-                  <input 
-                    type="text"
-                    inputMode="numeric"
-                    maxLength={6}
-                    value={otpInput}
-                    onChange={(e) => setOtpInput(e.target.value.replace(/[^0-9]/g, ''))}
-                    placeholder="------"
-                    className="w-full h-[54px] bg-white/5 border border-white/10 rounded-xl px-4 text-center text-2xl tracking-widest text-white placeholder-gray-500 focus:outline-none focus:border-[#ef4523] focus:ring-1 focus:ring-[#ef4523] transition-all"
-                    required
-                  />
-                </div>
-
-                <button 
-                  type="submit"
-                  disabled={isLoading || otpInput.length < 6}
-                  className="relative w-full flex items-center justify-center h-[54px] rounded-xl font-semibold text-[15px] text-white active:scale-[0.97] transition-all shadow-[0_8px_24px_rgba(255,106,0,0.25)] disabled:opacity-70 bg-[#ef4523]"
-                >
-                  <div className="flex items-center gap-3">
-                    {isLoading ? (
-                      <svg className="animate-spin w-5 h-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                      </svg>
-                    ) : (
-                      <span>Verify & Login</span>
-                    )}
-                  </div>
-                </button>
-                
-                <button 
-                  type="button" 
-                  onClick={() => setStep('email')}
-                  className="text-xs text-gray-400 mt-2 hover:text-white transition-colors"
-                >
-                  Used wrong email? Go back
-                </button>
-              </form>
-            )}
-
-          </div>
-
-        </div>
-
-        {/* Legal */}
-        <div className="px-6 pb-8 shrink-0 mt-4">
+          {/* Legal */}
           <p className="text-center text-xs text-gray-500 leading-relaxed">
             By continuing, you agree to our{' '}
             <button onClick={() => navigate('/terms')} className="text-[#ef4523] font-medium">Terms of Service</button>
@@ -327,8 +332,80 @@ const LoginScreen = () => {
             <button onClick={() => navigate('/privacy-policy')} className="text-[#ef4523] font-medium">Privacy Policy</button>.
           </p>
         </div>
+      )}
 
-      </div>
+      {/* ====== LANDSCAPE LAYOUT ====== */}
+      {isLandscape && (
+        <div className="relative z-10 flex-1 flex flex-col overflow-hidden">
+          
+          {/* Middle Row — Branding Left | Form Right */}
+          <div className="flex-1 flex flex-row overflow-hidden gap-8 items-center px-10">
+            
+            {/* Left Column — Branding + Feature Cards */}
+            <div className="w-[40%] flex flex-col gap-1 shrink-0">
+              <img src={darkLogo} alt="Ride Club" className="h-24 w-auto drop-shadow-[0_2px_8px_rgba(255,255,255,0.15)] object-contain object-left" />
+              
+              <div className="flex flex-col gap-2">
+                <h1 className="text-[40px] font-extrabold leading-[1.05] tracking-tight">
+                  Beyond
+                  <span className="text-[#ef4523]"> Miles</span>
+                </h1>
+                <p className="text-[#B7BDC8] text-[14px] leading-relaxed   mb-2">
+                  Discover rides. Meet riders.
+                  Create unforgettable journeys.
+                </p>
+              </div>
+
+              <div className="w-40 h-[3px] bg-[#ef4523] rounded-full mb-3"></div>
+
+              {/* Feature Cards */}
+              <div className="grid grid-cols-3 gap-3">
+                <div className="flex flex-col items-center text-center gap-1.5">
+                  <div className="w-10 h-10 rounded-lg bg-white/5 backdrop-blur-xl border border-white/10 flex items-center justify-center">
+                    <svg className="w-5 h-5 text-[#ef4523]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                      <circle cx="7" cy="17" r="3"/><circle cx="17" cy="17" r="3"/><path d="M10 17h4"/><path d="M5.5 14.5L8 8h5l3 5"/><path d="M13 8l3-3"/><path d="M16 5h2v2"/>
+                    </svg>
+                  </div>
+                  <p className="text-white text-[11px] font-semibold">Find Rides</p>
+                </div>
+                <div className="flex flex-col items-center text-center gap-1.5">
+                  <div className="w-10 h-10 rounded-lg bg-white/5 backdrop-blur-xl border border-white/10 flex items-center justify-center">
+                    <svg className="w-5 h-5 text-[#ef4523]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                    </svg>
+                  </div>
+                  <p className="text-white text-[11px] font-semibold">Ride Together</p>
+                </div>
+                <div className="flex flex-col items-center text-center gap-1.5">
+                  <div className="w-10 h-10 rounded-lg bg-white/5 backdrop-blur-xl border border-white/10 flex items-center justify-center">
+                    <svg className="w-5 h-5 text-[#ef4523]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/><path d="M12 2v2"/>
+                    </svg>
+                  </div>
+                  <p className="text-white text-[11px] font-semibold">Explore More</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Right Column — Auth Form Only */}
+            <div className="flex-1 flex flex-col justify-center min-w-0">
+              <div className="w-full max-w-md">
+                <AuthForm step={step} email={email} otpInput={otpInput} isLoading={isLoading} setEmail={setEmail} setOtpInput={setOtpInput} setStep={setStep} onSendOtp={handleSendOtp} onVerifyOtp={handleVerifyOtp} />
+              </div>
+            </div>
+          </div>
+
+          {/* Bottom — Legal (full width, centered) */}
+          <div className="shrink-0 pb-4">
+            <p className="text-center text-[11px] text-gray-500 leading-relaxed">
+              By continuing, you agree to our{' '}
+              <button onClick={() => navigate('/terms')} className="text-[#ef4523] font-medium">Terms of Service</button>
+              {' '}and{' '}
+              <button onClick={() => navigate('/privacy-policy')} className="text-[#ef4523] font-medium">Privacy Policy</button>.
+            </p>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -53,7 +53,7 @@ const Home = lazy(() => import('./pages/Home'));
 const SplashScreen = lazy(() => import('./pages/SplashScreen'));
 const LoginScreen = lazy(() => import('./pages/LoginScreen'));
 const AlertsFeed = lazy(() => import('./pages/AlertsFeed'));
-const Profile = lazy(() => import('./pages/Profile'));
+const ProfileHMI = lazy(() => import('./features/profile/ProfileHMI'));
 const MyRides = lazy(() => import('./pages/MyRides'));
 const IncidentDetail = lazy(() => import('./pages/IncidentDetail'));
 const RoutesScreen = lazy(() => import('./pages/Routes'));
@@ -62,8 +62,8 @@ const SavedLocationPicker = lazy(() => import('./pages/SavedLocationPicker'));
 const SavedLocationsList = lazy(() => import('./pages/SavedLocationsList'));
 const MyIncidents = lazy(() => import('./pages/MyIncidents'));
 const EditProfile = lazy(() => import('./pages/EditProfile'));
-const Groups = lazy(() => import('./pages/Groups'));
-const RideDashboard = lazy(() => import('./pages/RidePlus/RideDashboard'));
+const GroupsHMI = lazy(() => import('./features/groups/GroupsHMI'));
+const RidePlusHMI = lazy(() => import('./features/rides/RidePlusHMI'));
 const RideHistory = lazy(() => import('./pages/RideHistory'));
 const CreateRide = lazy(() => import('./pages/RidePlus/CreateRide'));
 const JoinRide = lazy(() => import('./pages/RidePlus/JoinRide'));
@@ -138,7 +138,7 @@ const BodyStyler = ({ isWebsiteDomain }: { isWebsiteDomain: boolean }) => {
 };
 
 const RequireAuth = ({ children }: { children: React.ReactNode }) => {
-  const [user, setUser] = useState<FirebaseUser | null>(null);
+  const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [banned, setBanned] = useState(false);
   const [warning, setWarning] = useState(false);
@@ -147,31 +147,57 @@ const RequireAuth = ({ children }: { children: React.ReactNode }) => {
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
-      if (!currentUser) {
+      const rieToken = localStorage.getItem('rie_token');
+      let effectiveUser: any = currentUser;
+
+      if (!currentUser && rieToken) {
+        try {
+          const payloadBase64 = rieToken.split('.')[1];
+          const decodedPayload = JSON.parse(atob(payloadBase64));
+          effectiveUser = {
+            uid: decodedPayload.uid,
+            email: decodedPayload.sub,
+            displayName: decodedPayload.sub.split('@')[0],
+            getIdToken: async () => rieToken,
+            photoURL: null
+          };
+        } catch (e) {
+          console.error("Invalid rie_token", e);
+        }
+      }
+
+      if (!effectiveUser) {
         setUser(null);
         setLoading(false);
         return;
       }
 
-      setUser(currentUser);
-      const userId = getDeterministicUuid(currentUser.uid);
+      setUser(effectiveUser);
+      const userId = getDeterministicUuid(effectiveUser.uid);
       
-      try {
-        const idToken = await currentUser.getIdToken();
-        const apiBase = import.meta.env.VITE_API_URL || 'http://localhost:8000';
-        const res = await fetch(`${apiBase}/api/v1/auth/supabase-token`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ id_token: idToken })
-        });
-        if (res.ok) {
-          const { access_token } = await res.json();
-          setSupabaseToken(access_token);
-        } else {
-          console.error('Failed to exchange Firebase token for Supabase token');
+      // If logged in via Firebase, fetch Supabase token.
+      if (currentUser) {
+        try {
+          const idToken = await currentUser.getIdToken();
+          const apiBase = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+          const res = await fetch(`${apiBase}/api/v1/auth/supabase-token`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id_token: idToken })
+          });
+          if (res.ok) {
+            const { access_token } = await res.json();
+            setSupabaseToken(access_token);
+          } else {
+            console.error('Failed to exchange Firebase token for Supabase token');
+          }
+        } catch (err) {
+          console.error('Error fetching Supabase token', err);
         }
-      } catch (err) {
-        console.error('Error fetching Supabase token', err);
+      } else if (rieToken) {
+        // Clear Supabase token to fallback to Anon key. Supabase will reject the local RIE token with a 401
+        // because it's not signed by Supabase's JWT secret.
+        setSupabaseToken('');
       }
 
       try {
@@ -184,9 +210,9 @@ const RequireAuth = ({ children }: { children: React.ReactNode }) => {
         if (!profileRes.data) {
           await supabase.from('profiles').upsert({
             id: userId,
-            full_name: currentUser.displayName || currentUser.email?.split('@')[0] || 'User',
-            email: currentUser.email || '',
-            avatar_url: currentUser.photoURL || undefined,
+            full_name: effectiveUser.displayName || effectiveUser.email?.split('@')[0] || 'User',
+            email: effectiveUser.email || '',
+            avatar_url: effectiveUser.photoURL || undefined,
             status: 'active'
           }, { onConflict: 'id' });
         } else {
@@ -337,15 +363,15 @@ const Layout = () => {
   const isProfileRoute = location.pathname === '/profile';
   const isGroupsRoute = location.pathname === '/groups';
   const isGroupDashRoute = location.pathname === '/group-ride-dashboard';
-  const isFullPageRoute = isHomeRoute || isRidePlusRoute || isProfileRoute || isGroupsRoute || isGroupDashRoute;
+  const isFullPageRoute = isHomeRoute || isGroupDashRoute || isRidePlusRoute;
 
   return (
     <div className="w-full h-full flex portrait:flex-col landscape:flex-row overflow-hidden">
       <LeftNavigationRail />
       <div className="flex-1 min-w-0 min-h-0">
         <RiderCockpitLayout
-          leftPanelWidth={isFullPageRoute ? '100%' : (isMapReporting ? '50%' : '32%')}
-          variant={isFullPageRoute ? 'light' : 'dark'}
+          leftPanelWidth={isFullPageRoute ? '100%' : (isMapReporting ? '50%' : '35%')}
+          variant={isMapRoute ? "dark" : "light"}
           mapChildren={
             !isHomeRoute && (
               <div className="relative w-full h-full">
@@ -649,8 +675,8 @@ function App() {
                 <Route element={<RequireAuth><Layout /></RequireAuth>}>
                   <Route path="/home" element={<Home />} />
                   <Route path="/map" element={<MapView />} />
-                  <Route path="/groups" element={<Groups />} />
-                  <Route path="/ride-plus" element={<RideDashboard />} />
+                  <Route path="/groups" element={<GroupsHMI />} />
+                  <Route path="/ride-plus" element={<RidePlusHMI />} />
                   <Route path="/ride-history" element={<RideHistory />} />
                   <Route path="/my-rides" element={<MyRides />} />
                   <Route path="/ride-plus/create" element={<CreateRide />} />
@@ -658,7 +684,7 @@ function App() {
                   <Route path="/ride-plus/live/:id" element={<LiveRide />} />
                   <Route path="/group-ride-dashboard" element={<GroupRideDashboard />} />
                   <Route path="/alerts" element={<AlertsFeed />} />
-                  <Route path="/profile" element={<Profile />} />
+                  <Route path="/profile" element={<ProfileHMI />} />
                   <Route path="/support" element={<SupportCenter />} />
                   <Route path="/support/:ticketId" element={<SupportChat />} />
                 </Route>

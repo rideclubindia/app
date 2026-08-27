@@ -1,7 +1,7 @@
 import axios from 'axios';
 
-// Backend URL
-export const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+// Backend URL - in dev, Vite proxy forwards /api to the backend
+export const API_BASE_URL = import.meta.env.VITE_API_URL || '';
 
 export const apiClient = axios.create({
   baseURL: API_BASE_URL,

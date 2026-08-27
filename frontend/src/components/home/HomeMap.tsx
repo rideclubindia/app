@@ -47,7 +47,7 @@ export const HomeMap: React.FC<HomeMapProps> = ({ userLocation, onMapLoad }) => 
 
     map.current = new maplibregl.Map({
       container: mapContainer.current,
-      style: 'idb://basemaps.cartocdn.com/gl/voyager-gl-style/style.json',
+      style: 'https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json',
       center: [initialLng, initialLat],
       zoom: 14,
       attributionControl: false,

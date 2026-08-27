@@ -8,7 +8,7 @@ interface RiderCockpitLayoutProps {
   rightPanel?: React.ReactNode;
   bottomBar?: React.ReactNode;
   topRail?: React.ReactNode; // For backwards compatibility
-  leftPanelWidth?: '32%' | '50%' | '60%' | '100%';
+  leftPanelWidth?: '32%' | '35%' | '50%' | '60%' | '100%';
   variant?: 'dark' | 'light';
 }
 
@@ -18,10 +18,12 @@ export const RiderCockpitLayout: React.FC<RiderCockpitLayoutProps> = ({
   leftPanel,
   bottomBar,
   topRail,
-  leftPanelWidth = '32%',
-  variant = 'dark'
+  leftPanelWidth = '35%',
+  variant = 'light'
 }) => {
-  let widthClass = 'w-[40%] max-w-[400px]';
+  let widthClass = 'w-[40%] max-w-[400px]'; // default fallback
+  if (leftPanelWidth === '35%') widthClass = 'portrait:w-full portrait:h-[50%] landscape:w-[35%] landscape:min-w-[270px] landscape:max-w-[340px]';
+  if (leftPanelWidth === '32%') widthClass = 'w-[32%] max-w-[400px]';
   if (leftPanelWidth === '50%') widthClass = 'w-[50%] max-w-[550px]';
   if (leftPanelWidth === '60%') widthClass = 'w-[60%] max-w-[650px]';
   if (leftPanelWidth === '100%') widthClass = 'w-full';
@@ -41,7 +43,7 @@ export const RiderCockpitLayout: React.FC<RiderCockpitLayoutProps> = ({
       )}
 
       {/* MAIN CONTENT AREA */}
-      <div className="flex-1 w-full max-w-[1400px] mx-auto relative flex flex-row overflow-hidden gap-1 min-h-0">
+      <div className="flex-1 w-full max-w-[1400px] mx-auto relative flex portrait:flex-col landscape:flex-row overflow-hidden gap-1 min-h-0">
 
         {/* LEFT PANEL */}
         {leftPanel && (
