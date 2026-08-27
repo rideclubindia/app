@@ -51,6 +51,19 @@ const GroupsHMI = () => {
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      let activeUid = currentUser?.uid;
+      const rieToken = localStorage.getItem('rie_token');
+      if (!activeUid && rieToken) {
+        try {
+          const payload = JSON.parse(atob(rieToken.split('.')[1]));
+          if (payload.uid) activeUid = payload.uid;
+        } catch (e) {}
+      }
+
+      if (activeUid) {
+        const mockUser = currentUser || { uid: activeUid };
+        setUser(mockUser);
+        fetchGroups(mockUser);
       } else {
         navigate('/login');
       }

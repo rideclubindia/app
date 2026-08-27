@@ -27,7 +27,16 @@ const RidePlusHMI = () => {
   // Wait for Firebase auth to fully initialize
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, (user) => {
-      setCurrentUid(user?.uid || null);
+      let activeUid = user?.uid;
+      const rieToken = localStorage.getItem('rie_token');
+      if (!activeUid && rieToken) {
+        try {
+          const payload = JSON.parse(atob(rieToken.split('.')[1]));
+          if (payload.uid) activeUid = payload.uid;
+        } catch (e) {}
+      }
+      
+      setCurrentUid(activeUid || null);
       setAuthReady(true);
     });
     return () => unsub();
