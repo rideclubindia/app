@@ -1,12 +1,20 @@
 {
   "projects": {
-    "default": "laksham-ride"
+    "default": "laksham-ride",
+    "website": "rideclubindia-project"
   },
   "targets": {
     "laksham-ride": {
       "hosting": {
         "lakshamride": [
           "laksham-ride"
+        ]
+      }
+    },
+    "rideclubindia-project": {
+      "hosting": {
+        "lakshamride": [
+          "rideclubindia-project"
         ]
       }
     }
