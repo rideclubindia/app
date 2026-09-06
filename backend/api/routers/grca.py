@@ -1,6 +1,12 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy.orm import Session
 from typing import Dict
 
+from core.database import get_db
+from core.limiter import limiter
+from fastapi import Request
+from models.models import User
+from api.deps import get_current_user, require_ride_access
 from schemas.grca_schemas import GRCABatchRequest, GRCADashboardResponse
 from services.grca_service import grca_engine
 
@@ -10,23 +16,26 @@ router = APIRouter(prefix="/grca", tags=["Group Ride Cohesion Algorithm"])
 active_rides: Dict[str, GRCADashboardResponse] = {}
 
 @router.post("/ingest", response_model=GRCADashboardResponse)
-async def ingest_rider_data(batch: GRCABatchRequest):
+@limiter.limit("60/minute")
+def ingest_rider_data(request: Request, batch: GRCABatchRequest, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     """
     Ingest a batch of rider data, calculate cohesion metrics, and return the dashboard state.
     """
+    require_ride_access(db, batch.ride_id, user)
     try:
         dashboard_response = grca_engine.process_batch(batch)
         # Store latest state in memory for polling clients
         active_rides[batch.ride_id] = dashboard_response
         return dashboard_response
     except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail="Failed to process ride telemetry batch") from e
 
 @router.get("/dashboard/{ride_id}", response_model=GRCADashboardResponse)
-async def get_dashboard(ride_id: str):
+def get_dashboard(ride_id: str, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     """
     Retrieve the latest GRCA dashboard metrics for a specific ride.
     """
+    require_ride_access(db, ride_id, user)
     if ride_id not in active_rides:
         # Return an empty state instead of 404 so the frontend dashboard displays directly
         return GRCADashboardResponse(

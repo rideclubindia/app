@@ -1,9 +1,12 @@
 import logging
 from typing import Optional
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
+from sqlalchemy.orm import Session
 from pydantic import BaseModel, Field
+from core.database import get_db
+from core.limiter import limiter
 from models.models import User
-from api.deps import get_current_user
+from api.deps import get_current_user, require_ride_access
 from core.config import settings
 
 logger = logging.getLogger(__name__)
@@ -21,7 +24,9 @@ class SOSDispatchRequest(BaseModel):
 
 
 @router.post("/dispatch")
-async def dispatch_sos(payload: SOSDispatchRequest, user: User = Depends(get_current_user)):
+@limiter.limit("5/hour")
+async def dispatch_sos(request: Request, payload: SOSDispatchRequest, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    require_ride_access(db, payload.ride_id, user)
     maps_link = f"https://www.google.com/maps?q={payload.lat},{payload.lng}"
     body = f"SOS from {user.name}: I need help. My live location is {maps_link}."
     if payload.message:

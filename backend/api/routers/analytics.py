@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import text
 from core.database import get_db
 from models.models import LocationUpdate, Ride, User
-from api.deps import get_current_user
+from api.deps import get_current_user, require_ride_access
 from analytics.engines import get_ride_total_distance
 
 router = APIRouter(tags=["analytics"])
@@ -30,6 +30,7 @@ def get_ride_route(ride_id: str, db: Session = Depends(get_db), user: User = Dep
     """
     Route Replay Engine: Return route coordinates in chronological order.
     """
+    require_ride_access(db, ride_id, user)
     if _table_exists(db, "ride_locations"):
         query = text("""
             SELECT latitude as lat, longitude as lon, timestamp, speed, NULL::double precision as altitude
@@ -56,10 +57,11 @@ def get_ride_route(ride_id: str, db: Session = Depends(get_db), user: User = Dep
     return {"ride_id": ride_id, "route": route}
 
 @router.get("/ride/{ride_id}/group-intelligence")
-def get_group_intelligence(ride_id: str, db: Session = Depends(get_db)):
+def get_group_intelligence(ride_id: str, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     """
     Group Intelligence Engine: Calculates distance to leader, tail rider, etc.
     """
+    require_ride_access(db, ride_id, user)
     try:
         use_ride_locations = _table_exists(db, "ride_locations")
 

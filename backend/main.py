@@ -100,5 +100,6 @@ def prometheus_metrics():
 app.mount("/socket.io", socketio.ASGIApp(sio, socketio_path="socket.io"))
 
 if __name__ == "__main__":
+    import os
     import uvicorn
-    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
+    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=os.getenv("ENV", "development") != "production")

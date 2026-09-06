@@ -1,6 +1,5 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import emailjs from '@emailjs/browser';
 import { supabase } from '../lib/supabase';
 import { apiClient } from '../lib/apiClient';
 import { useToast } from '../components/ToastContext';
@@ -112,9 +111,6 @@ const LoginScreen = () => {
   const [step, setStep] = useState<'email' | 'otp'>('email');
   const [email, setEmail] = useState('');
   const [otpInput, setOtpInput] = useState('');
-  
-  // Store the locally generated OTP for verification
-  const generatedOtpRef = useRef<string | null>(null);
 
   const [isLandscape, setIsLandscape] = useState(
     () => window.matchMedia('(orientation: landscape)').matches
@@ -135,45 +131,23 @@ const LoginScreen = () => {
     }
   }, [navigate]);
 
-  // Initialize EmailJS
-  useEffect(() => {
-    emailjs.init("bJiRaIAxixJjBY9PR");
-  }, []);
-
   const handleSendOtp = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email || !email.includes('@')) {
       showToast("Please enter a valid email.", "error");
       return;
     }
-    
+
     setIsLoading(true);
     try {
-      // 1. Generate 6-digit OTP
-      const generated = Math.floor(100000 + Math.random() * 900000).toString();
-      generatedOtpRef.current = generated;
-
-      // 2. Send via EmailJS
-      await emailjs.send(
-        "service_hynumqg", 
-        "template_v4xp3qt", 
-        {
-          rideclubemail: `Your Verification Code is: ${generated}`,
-          // Passing multiple common recipient variables. 
-          reply_to: email, 
-          to_email: email, 
-          user_email: email,
-          email: email,
-          to: email,
-          recipient: email
-        }
-      );
-      
+      // The backend generates and emails the code; the browser never sees it.
+      await apiClient.post('/api/v1/auth/request-otp', { email });
       setStep('otp');
       showToast(`Verification code sent to ${email}`, 'success');
     } catch (error: any) {
       console.error(error);
-      showToast("Failed to send code via EmailJS.", 'error');
+      const detail = error?.response?.data?.detail;
+      showToast(detail || "Failed to send verification code.", 'error');
     } finally {
       setIsLoading(false);
     }
@@ -186,66 +160,43 @@ const LoginScreen = () => {
       return;
     }
 
-    if (otpInput !== generatedOtpRef.current) {
-      showToast("Invalid verification code.", "error");
-      return;
-    }
-
     setIsLoading(true);
     try {
-      // Exchange email for RIE custom backend token if backend is up
-      try {
-        const response = await apiClient.post('/api/v1/auth/emailjs-login', {
-          email: email
-        });
-        
-        if (response.data?.access_token) {
-          localStorage.setItem('rie_token', response.data.access_token);
-        }
-      } catch (backendErr) {
-        console.warn("Backend auth service bypassed; continuing with client session:", backendErr);
-        // Fallback local token
-        localStorage.setItem('rie_token', 'local_dev_token_' + Date.now());
-      }
-      
-      // Deterministic UUID logic to sync with Supabase profiles
-      const getDeterministicUuid = async (str: string) => {
-        let hashVal = 0;
-        for (let i = 0; i < str.length; i++) {
-          const code = str.charCodeAt(i);
-          hashVal = code + ((hashVal << 5) - hashVal);
-          hashVal = hashVal & 0xFFFFFFFF;
-          if (hashVal > 0x7FFFFFFF) hashVal -= 0x100000000;
-        }
-        const hexVal = Math.abs(hashVal).toString(16).padStart(12, '0');
-        return `00000000-0000-0000-0000-${hexVal}`;
-      };
+      // The backend is the sole authority on whether this code is correct.
+      const response = await apiClient.post('/api/v1/auth/verify-otp', {
+        email,
+        otp: otpInput,
+      });
 
-      // Since EmailJS has no concept of a user session, we bypass Supabase Auth 
-      // but we still need a profile entry for websocket associations.
-      const encoder = new TextEncoder();
-      const data = encoder.encode(email);
-      const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-      const hashArray = Array.from(new Uint8Array(hashBuffer));
-      const dummyUid = hashArray.map(b => b.toString(16).padStart(2, '0')).join('').substring(0, 28);
-      const supabaseUuid = await getDeterministicUuid(dummyUid);
-
-      try {
-        await supabase.from('profiles').upsert({
-          id: supabaseUuid,
-          full_name: email.split('@')[0],
-          email: email,
-          status: 'active'
-        }, { onConflict: 'email' }).select();
-      } catch (dbErr) {
-        console.warn("Profile upsert notice:", dbErr);
+      const accessToken = response.data?.access_token;
+      const uid = response.data?.uid;
+      if (!accessToken) {
+        throw new Error('No session was issued by the server.');
       }
-      
+      localStorage.setItem('rie_token', accessToken);
+
+      // Keep the Supabase profile row in sync using the server-assigned id
+      // (never a client-chosen id) for websocket/profile association.
+      if (uid) {
+        try {
+          await supabase.from('profiles').upsert({
+            id: uid,
+            full_name: email.split('@')[0],
+            email: email,
+            status: 'active'
+          }, { onConflict: 'email' }).select();
+        } catch (dbErr) {
+          console.warn("Profile upsert notice:", dbErr);
+        }
+      }
+
       showToast("Successfully logged in!", 'success');
       navigate('/home', { replace: true });
-      
+
     } catch (error: any) {
-      showToast("Login Failed: " + (error.message || error), 'error');
+      // Authentication failure must never grant access.
+      const detail = error?.response?.data?.detail;
+      showToast(detail || "Invalid verification code.", 'error');
     } finally {
       setIsLoading(false);
     }

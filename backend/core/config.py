@@ -21,7 +21,7 @@ class Settings(BaseSettings):
 
     # CORS
     ALLOWED_ORIGINS: str = Field(
-        "http://localhost:5173,http://localhost:5174,http://127.0.0.1:5173,http://127.0.0.1:5174,https://app.rideclub.in,*",
+        "http://localhost:5173,http://localhost:5174,http://127.0.0.1:5173,http://127.0.0.1:5174,https://app.rideclub.in",
         env="ALLOWED_ORIGINS",
     )
 
@@ -31,6 +31,12 @@ class Settings(BaseSettings):
 
     # Firebase
     FIREBASE_SERVICE_ACCOUNT_PATH: str = Field("", env="FIREBASE_SERVICE_ACCOUNT_PATH")
+
+    # EmailJS (server-side OTP delivery — see core/email.py)
+    EMAILJS_SERVICE_ID: str = Field("", env="EMAILJS_SERVICE_ID")
+    EMAILJS_TEMPLATE_ID: str = Field("", env="EMAILJS_TEMPLATE_ID")
+    EMAILJS_PUBLIC_KEY: str = Field("", env="EMAILJS_PUBLIC_KEY")
+    EMAILJS_PRIVATE_KEY: str = Field("", env="EMAILJS_PRIVATE_KEY")
 
     # TomTom (default fallback is the currently hardcoded key from the frontend - rotate this ASAP)
     TOMTOM_API_KEY: str = Field("GkjXLzDVKuB5KI8iXmBBYKVtYTDu6LhJ", env="TOMTOM_API_KEY")

@@ -3,16 +3,17 @@ from sqlalchemy.orm import Session
 from sqlalchemy import func
 from core.database import get_db
 from models.models import User, RideEvent, LocationUpdate, RideStop
-from api.deps import get_current_user
+from api.deps import get_current_user, require_ride_access
 from analytics.engines import calculate_ride_analytics, calculate_safety_score
 
 router = APIRouter(tags=["dashboard"])
 
 @router.get("/ride/{ride_id}")
-def get_ride_dashboard(ride_id: int, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+def get_ride_dashboard(ride_id: str, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     """
     Dashboard API: Returns aggregated analytics for a specific ride.
     """
+    require_ride_access(db, ride_id, user)
     analytics = calculate_ride_analytics(db, ride_id)
     safety = calculate_safety_score(db, ride_id, user.id)
     
