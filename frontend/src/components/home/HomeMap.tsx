@@ -14,7 +14,7 @@ import { offlineProtocol } from '../../lib/offlineProtocol';
 let protocolRegistered = false;
 if (!protocolRegistered) {
   try {
-    maplibregl.addProtocol('idb', offlineProtocol);
+    maplibregl.addProtocol('https', offlineProtocol);
     protocolRegistered = true;
   } catch (e) {
     // Protocol might already be registered in HMR

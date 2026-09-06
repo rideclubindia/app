@@ -1,0 +1,206 @@
+[
+  {
+    "name": "base",
+    "url": "https://greenshift-road.myshopify.com/cdn/shop/t/12/assets/base.css?v=60360239572926534081775890990"
+  },
+  {
+    "name": "animations",
+    "url": "https://greenshift-road.myshopify.com/cdn/shop/t/12/assets/animations.css?v=12192442003836073311754053668"
+  },
+  {
+    "name": "custom",
+    "url": "https://greenshift-road.myshopify.com/cdn/shop/t/12/assets/custom.css?v=90984791580318533111754053697"
+  },
+  {
+    "name": "component-card",
+    "url": "https://greenshift-road.myshopify.com/cdn/shop/t/12/assets/component-card.css?v=85028636392429131601754053677"
+  },
+  {
+    "name": "swiper-bundle.min",
+    "url": "https://greenshift-road.myshopify.com/cdn/shop/t/12/assets/swiper-bundle.min.css?v=184445588905802728001754053746"
+  },
+  {
+    "name": "slick.min",
+    "url": "https://greenshift-road.myshopify.com/cdn/shop/t/12/assets/slick.min.css?v=148518180698783615261754053743"
+  },
+  {
+    "name": "placeholder",
+    "url": "https://greenshift-road.myshopify.com/cdn/shop/t/12/assets/placeholder.css?v=148425915720031846391754053720"
+  },
+  {
+    "name": "component-predictive-search",
+    "url": "https://greenshift-road.myshopify.com/cdn/shop/t/12/assets/component-predictive-search.css?v=137381882323822595631754053691"
+  },
+  {
+    "name": "component-mega-menu",
+    "url": "https://greenshift-road.myshopify.com/cdn/shop/t/12/assets/component-mega-menu.css?v=180103648502988922141754053686"
+  },
+  {
+    "name": "component-list-menu",
+    "url": "https://greenshift-road.myshopify.com/cdn/shop/t/12/assets/component-list-menu.css?v=67740596207655118111754053684"
+  },
+  {
+    "name": "component-search",
+    "url": "https://greenshift-road.myshopify.com/cdn/shop/t/12/assets/component-search.css?v=39438884133375538871754053693"
+  },
+  {
+    "name": "component-menu-drawer",
+    "url": "https://greenshift-road.myshopify.com/cdn/shop/t/12/assets/component-menu-drawer.css?v=169506207235980894361754053687"
+  },
+  {
+    "name": "component-cart-notification",
+    "url": "https://greenshift-road.myshopify.com/cdn/shop/t/12/assets/component-cart-notification.css?v=126376781013063253251754053679"
+  },
+  {
+    "name": "component-cart-items",
+    "url": "https://greenshift-road.myshopify.com/cdn/shop/t/12/assets/component-cart-items.css?v=62544743829564592451754053679"
+  },
+  {
+    "name": "component-price",
+    "url": "https://greenshift-road.myshopify.com/cdn/shop/t/12/assets/component-price.css?v=46742302843363843191754053691"
+  },
+  {
+    "name": "component-loading-overlay",
+    "url": "https://greenshift-road.myshopify.com/cdn/shop/t/12/assets/component-loading-overlay.css?v=107210514624499354881754053686"
+  },
+  {
+    "name": "component-cart-drawer",
+    "url": "https://greenshift-road.myshopify.com/cdn/shop/t/12/assets/component-cart-drawer.css?v=114418146546812350671754053678"
+  },
+  {
+    "name": "component-cart",
+    "url": "https://greenshift-road.myshopify.com/cdn/shop/t/12/assets/component-cart.css?v=120447780058486906641754053680"
+  },
+  {
+    "name": "component-totals",
+    "url": "https://greenshift-road.myshopify.com/cdn/shop/t/12/assets/component-totals.css?v=135976983058264535171754053697"
+  },
+  {
+    "name": "component-discounts",
+    "url": "https://greenshift-road.myshopify.com/cdn/shop/t/12/assets/component-discounts.css?v=152760482443307489271754053682"
+  },
+  {
+    "name": "hero-section",
+    "url": "https://greenshift-road.myshopify.com/cdn/shop/t/12/assets/hero-section.css?v=114578427511940929691754053706"
+  },
+  {
+    "name": "section-image-banner",
+    "url": "https://greenshift-road.myshopify.com/cdn/shop/t/12/assets/section-image-banner.css?v=80141281766061911791754053732"
+  },
+  {
+    "name": "section-number-counter",
+    "url": "https://greenshift-road.myshopify.com/cdn/shop/t/12/assets/section-number-counter.css?v=49707216930820715101754053735"
+  },
+  {
+    "name": "odometer",
+    "url": "https://greenshift-road.myshopify.com/cdn/shop/t/12/assets/odometer.css?v=126484587867094166491754053717"
+  },
+  {
+    "name": "section-marquee",
+    "url": "https://greenshift-road.myshopify.com/cdn/shop/t/12/assets/section-marquee.css?v=134495352803842637011754053734"
+  },
+  {
+    "name": "featured-collection",
+    "url": "https://greenshift-road.myshopify.com/cdn/shop/t/12/assets/featured-collection.css?v=111381067420067696041754053704"
+  },
+  {
+    "name": "component-slider",
+    "url": "https://greenshift-road.myshopify.com/cdn/shop/t/12/assets/component-slider.css?v=91217922973761820021754053695"
+  },
+  {
+    "name": "template-collection",
+    "url": "https://greenshift-road.myshopify.com/cdn/shop/t/12/assets/template-collection.css?v=133380834447824718261754053747"
+  },
+  {
+    "name": "quick-add",
+    "url": "https://greenshift-road.myshopify.com/cdn/shop/t/12/assets/quick-add.css?v=39979552047916393831754053723"
+  },
+  {
+    "name": "section-deal-banner",
+    "url": "https://greenshift-road.myshopify.com/cdn/shop/t/12/assets/section-deal-banner.css?v=29553222758397859501754053728"
+  },
+  {
+    "name": "slider-with-tabs",
+    "url": "https://greenshift-road.myshopify.com/cdn/shop/t/12/assets/slider-with-tabs.css?v=36423317479208791451754053744"
+  },
+  {
+    "name": "component-slideshow",
+    "url": "https://greenshift-road.myshopify.com/cdn/shop/t/12/assets/component-slideshow.css?v=3124221777823095881754053696"
+  },
+  {
+    "name": "video-section",
+    "url": "https://greenshift-road.myshopify.com/cdn/shop/t/12/assets/video-section.css?v=54542475280992825801754053749"
+  },
+  {
+    "name": "section-grid-banner",
+    "url": "https://greenshift-road.myshopify.com/cdn/shop/t/12/assets/section-grid-banner.css?v=142723945798385395031754053731"
+  },
+  {
+    "name": "component-rte",
+    "url": "https://greenshift-road.myshopify.com/cdn/shop/t/12/assets/component-rte.css?v=88047298643024562611754053693"
+  },
+  {
+    "name": "section-rich-text",
+    "url": "https://greenshift-road.myshopify.com/cdn/shop/t/12/assets/section-rich-text.css?v=95530758129654319281754053738"
+  },
+  {
+    "name": "section-main-product",
+    "url": "https://greenshift-road.myshopify.com/cdn/shop/t/12/assets/section-main-product.css?v=27488628650196136621775457661"
+  },
+  {
+    "name": "section-featured-product",
+    "url": "https://greenshift-road.myshopify.com/cdn/shop/t/12/assets/section-featured-product.css?v=180659013957884140711754053730"
+  },
+  {
+    "name": "component-accordion",
+    "url": "https://greenshift-road.myshopify.com/cdn/shop/t/12/assets/component-accordion.css?v=142790550916349056291754053675"
+  },
+  {
+    "name": "component-deferred-media",
+    "url": "https://greenshift-road.myshopify.com/cdn/shop/t/12/assets/component-deferred-media.css?v=147655623431055671021754053682"
+  },
+  {
+    "name": "component-article-card",
+    "url": "https://greenshift-road.myshopify.com/cdn/shop/t/12/assets/component-article-card.css?v=55273383240687668991754053676"
+  },
+  {
+    "name": "section-featured-blog",
+    "url": "https://greenshift-road.myshopify.com/cdn/shop/t/12/assets/section-featured-blog.css?v=135640436570438111754053729"
+  },
+  {
+    "name": "section-brand-logos",
+    "url": "https://greenshift-road.myshopify.com/cdn/shop/t/12/assets/section-brand-logos.css?v=79052501967995775831754053726"
+  },
+  {
+    "name": "component-brand-slider",
+    "url": "https://greenshift-road.myshopify.com/cdn/shop/t/12/assets/component-brand-slider.css?v=17760804538108009411754053677"
+  },
+  {
+    "name": "section-support-block",
+    "url": "https://greenshift-road.myshopify.com/cdn/shop/t/12/assets/section-support-block.css?v=144787144428586593451754053738"
+  },
+  {
+    "name": "section-footer",
+    "url": "https://greenshift-road.myshopify.com/cdn/shop/t/12/assets/section-footer.css?v=159368341674261289561754053730"
+  },
+  {
+    "name": "component-newsletter",
+    "url": "https://greenshift-road.myshopify.com/cdn/shop/t/12/assets/component-newsletter.css?v=109517268505623995801754053689"
+  },
+  {
+    "name": "component-list-payment",
+    "url": "https://greenshift-road.myshopify.com/cdn/shop/t/12/assets/component-list-payment.css?v=120513839681986052751754053685"
+  },
+  {
+    "name": "component-list-social",
+    "url": "https://greenshift-road.myshopify.com/cdn/shop/t/12/assets/component-list-social.css?v=89368494122989309341754053685"
+  },
+  {
+    "name": "disclosure",
+    "url": "https://greenshift-road.myshopify.com/cdn/shop/t/12/assets/disclosure.css?v=166475649496218492601754053700"
+  },
+  {
+    "name": "model-newsletter-section",
+    "url": "https://greenshift-road.myshopify.com/cdn/shop/t/12/assets/model-newsletter-section.css?v=95227894620349244841754053715"
+  }
+]

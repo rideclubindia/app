@@ -1,6 +1,16 @@
-import React from 'react';
+interface SpeedometerClusterProps {
+  speed: number;
+  leanAngle?: number;
+  gForce?: number;
+  isCalibrated?: boolean;
+}
 
-export const SpeedometerCluster = ({ speed }: { speed: number }) => {
+export const SpeedometerCluster = ({ 
+  speed, 
+  leanAngle = 0.0, 
+  gForce = 1.0, 
+  isCalibrated = true 
+}: SpeedometerClusterProps) => {
   // Cap speed between 0 and 200
   const displaySpeed = Math.max(0, Math.min(speed || 0, 200));
   
@@ -76,8 +86,8 @@ export const SpeedometerCluster = ({ speed }: { speed: number }) => {
 
   return (
     <div className="flex flex-col items-center justify-center w-full relative">
-      {/* Speedometer Gauge Container */}
-      <div className="relative flex flex-col items-center justify-center w-[200px] h-[200px] portrait:w-[148px] portrait:h-[148px] shrink-0 bg-[#0A0B0E] rounded-full shadow-[0_4px_20px_rgba(0,0,0,0.15)] border-4 border-[#1A1C23] overflow-hidden">
+      {/* Speedometer Gauge Container - Compact Precision Scale */}
+      <div className="relative flex flex-col items-center justify-center w-[164px] h-[164px] portrait:w-[130px] portrait:h-[130px] shrink-0 bg-[#0A0B0E] rounded-full shadow-[0_4px_16px_rgba(0,0,0,0.12)] border-[3px] border-[#1A1C23] overflow-hidden">
         
         {/* SVG Engine */}
         <svg viewBox="0 0 100 100" className="absolute inset-0 w-full h-full z-0 scale-[1.15]">
@@ -157,39 +167,69 @@ export const SpeedometerCluster = ({ speed }: { speed: number }) => {
           {/* Tick Marks & Labels */}
           {ticks}
 
-          {/* Center GPS Indicator - Moved down to avoid overlapping the 80/120 labels */}
-          <g transform="translate(50, 36)">
-            <circle cx="-7" cy="0" r="1.2" fill="#00FF41" filter="url(#glow)" />
-            <text x="3" y="1" fill="white" fontSize="3.5" fontWeight="bold" fontFamily="sans-serif" textAnchor="middle" dominantBaseline="central">GPS</text>
+          {/* Center GPS Indicator */}
+          <g transform="translate(50, 37)">
+            <circle cx="-6" cy="0" r="1" fill="#00FF41" filter="url(#glow)" />
+            <text x="2.5" y="1" fill="white" fontSize="3.2" fontWeight="bold" fontFamily="sans-serif" textAnchor="middle" dominantBaseline="central">GPS</text>
           </g>
 
           {/* Rotating Needle */}
           <g transform={`rotate(${needleAngle} 50 50)`} className="transition-all duration-300 ease-out">
-            {/* Needle Body */}
             <polygon 
               points="48.5,50 51.5,50 50.2,16 49.8,16" 
               fill="url(#needleGradient)" 
               filter="url(#needleGlow)"
             />
-            {/* Needle Highlight */}
             <line x1="50" y1="50" x2="50" y2="17" stroke="#FFFFFF" strokeWidth="0.5" />
           </g>
 
           {/* Center Pivot */}
-          <circle cx="50" cy="50" r="4.5" fill="#1A1C23" stroke="#007BFF" strokeWidth="0.8" filter="url(#needleGlow)" />
-          <circle cx="50" cy="50" r="2" fill="#8892B0" />
+          <circle cx="50" cy="50" r="4" fill="#1A1C23" stroke="#007BFF" strokeWidth="0.8" filter="url(#needleGlow)" />
+          <circle cx="50" cy="50" r="1.8" fill="#8892B0" />
         </svg>
 
-        {/* Center Text (Digital Speed) - Positioned explicitly at the bottom to avoid pivot overlap */}
-        <div className="absolute left-0 right-0 top-[120px] portrait:top-[86px] flex flex-col items-center justify-center z-10 text-center">
-          <span className="text-[34px] portrait:text-[25px] leading-none font-semibold text-white tabular-nums tracking-tighter drop-shadow-[0_0_10px_rgba(255,255,255,0.4)]">
+        {/* Center Text (Digital Speed) */}
+        <div className="absolute left-0 right-0 top-[98px] portrait:top-[74px] flex flex-col items-center justify-center z-10 text-center">
+          <span className="text-[26px] portrait:text-[20px] leading-none font-black text-white tabular-nums tracking-tight drop-shadow-[0_0_8px_rgba(255,255,255,0.4)]">
             {displaySpeed}
           </span>
-          <span className="text-[10px] font-semibold text-[#007BFF] uppercase tracking-widest mt-0.5">
+          <span className="text-[9px] font-bold text-[#007BFF] uppercase tracking-wider mt-0.5">
             KM/H
           </span>
         </div>
-        
+      </div>
+
+      {/* 6-Axis Telemetry HUD: Live Lean Angle & G-Force - Compact Size */}
+      <div className="w-[164px] portrait:w-[130px] mt-1.5 px-2.5 py-1 bg-white rounded-lg border border-gray-200/90 shadow-2xs flex items-center justify-between text-gray-950">
+        <div className="flex flex-col">
+          <span className="text-[9px] uppercase font-bold tracking-wider text-gray-500">Lean</span>
+          <span className="text-[12px] font-black tabular-nums flex items-baseline gap-0.5 text-gray-950">
+            {Math.abs(leanAngle).toFixed(1)}
+            <span className="text-[10px] font-semibold text-gray-500">°</span>
+            <span className={`text-[9px] font-black ml-0.5 ${leanAngle < -1 ? 'text-[#FF5A00]' : leanAngle > 1 ? 'text-blue-700' : 'text-gray-400'}`}>
+              {leanAngle < -1 ? 'L' : leanAngle > 1 ? 'R' : '•'}
+            </span>
+          </span>
+        </div>
+
+        <div className="h-5 w-px bg-gray-200" />
+
+        <div className="flex flex-col items-center">
+          <span className="text-[9px] uppercase font-bold tracking-wider text-gray-500">G-Force</span>
+          <span className="text-[12px] font-black tabular-nums text-gray-950">
+            {gForce.toFixed(2)}<span className="text-[9px] font-semibold text-gray-500">G</span>
+          </span>
+        </div>
+
+        <div className="h-5 w-px bg-gray-200" />
+
+        <div className="flex flex-col items-end">
+          <span className="text-[9px] uppercase font-bold tracking-wider text-gray-500">IMU</span>
+          <span className="text-[10px] font-bold text-emerald-800 flex items-center gap-1">
+            <span className={`w-1.5 h-1.5 rounded-full ${isCalibrated ? 'bg-emerald-600 animate-pulse' : 'bg-amber-500'}`} />
+            {isCalibrated ? '60Hz' : 'Idle'}
+          </span>
+        </div>
       </div>
     </div>
   );

@@ -9,6 +9,8 @@ import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import * as turf from '@turf/turf';
 import { getDeterministicUuid } from '../../lib/user';
+import img16 from '../../assets/WebsiteImages/img16.jpg';
+const imgSoloRide = img16;
 
 const CreateRide = () => {
   const navigate = useNavigate();
@@ -28,7 +30,7 @@ const CreateRide = () => {
   const [isInstant, setIsInstant] = useState(!restrictInstant);
   const [openDropdown, setOpenDropdown] = useState<'vehicle' | 'visibility' | null>(null);
   const [coverFile, setCoverFile] = useState<File | null>(null);
-  const [coverPreview, setCoverPreview] = useState<string>("https://images.unsplash.com/photo-1558981403-c5f9899a28bc?ixlib=rb-4.0.3&auto=format&fit=crop&w=1200&q=80");
+  const [coverPreview, setCoverPreview] = useState<string>(imgSoloRide);
   const coverInputRef = useRef<HTMLInputElement>(null);
 
   // --- Step 2 State (Route Planner) ---

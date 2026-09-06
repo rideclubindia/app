@@ -50,7 +50,7 @@ export const RiderCockpitLayout: React.FC<RiderCockpitLayoutProps> = ({
           <div
             className={`relative ${widthClass} flex-shrink-0 flex flex-col overflow-hidden z-10 ${
               isLight
-                ? 'bg-white border border-[#E9ECF0] rounded-[0px] shadow-[0_2px_16px_rgba(17,24,39,0.05)]'
+                ? 'bg-white border border-gray-200/80 rounded-2xl shadow-sm'
                 : 'bg-[#0D121F] border border-[#2A3040] rounded-[8px] shadow-2xl'
             }`}
           >
@@ -65,7 +65,7 @@ export const RiderCockpitLayout: React.FC<RiderCockpitLayoutProps> = ({
           <div
             className={`flex-1 flex flex-col relative z-0 min-h-0 overflow-hidden ${
               isLight
-                ? 'bg-white border border-[#E9ECF0] rounded-[20px] shadow-[0_2px_16px_rgba(17,24,39,0.05)]'
+                ? 'bg-white border border-gray-200/80 rounded-2xl shadow-sm'
                 : 'bg-[#0D121F] border border-[#2A3040] rounded-[8px] shadow-2xl'
             }`}
           >

@@ -1,0 +1,18 @@
+.featured-collection .grid--5-col-desktop .grid__item{ display: grid; }
+.featured-collection.collection .slider--tablet.product-grid{ scroll-padding-left: 0; margin-bottom: 1.5rem; }
+.featured-collection.collection .slider.slider--tablet .slider__slide{ padding: 0; }
+.featured-collection .title-wrapper--no-top-margin>.title{margin-bottom: 6px;}
+.featured-collection .title-wrapper-with-link{    margin-bottom: 70px;}
+
+
+
+
+
+
+
+
+
+
+
+
+

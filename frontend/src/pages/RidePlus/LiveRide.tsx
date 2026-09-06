@@ -26,8 +26,12 @@ import { useLocationStore } from '../../store/useLocationStore';
 import { useIncidentCategories, incidentIconMap } from '../../hooks/useIncidentCategories';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import { getDeterministicUuid } from '../../lib/user';
+import { useConfirm } from '../../components/ConfirmDialog';
+import img14 from '../../assets/WebsiteImages/img14.jpg';
+const imgSoloRide = img14;
 import { SpeedometerCluster } from '../../hmi/components/Speedometer';
 import { getRealtime, EV_LOC, EV_RIDE_EVENT, EV_RIDE_SNAPSHOT, type LocationTuple } from '../../realtime';
+import { OfflineMapDownloader } from '../../components/map/OfflineMapDownloader';
 
 const ORS_API_KEY = 'eyJvcmciOiI1YjNjZTM1OTc4NTExMTAwMDFjZjYyNDgiLCJpZCI6IjZlZTI0N2U2NGIwNjQwYTY5N2E0ZGJkMzVlZmYyMDI5IiwiaCI6Im11cm11cjY0In0=';
 
@@ -1535,6 +1539,15 @@ const LiveRide = () => {
 
                 <div className="h-px bg-gray-100 w-full" />
 
+                {(userLocation || globalLocation) && (
+                  <OfflineMapDownloader 
+                    currentLat={(userLocation || globalLocation)!.lat} 
+                    currentLng={(userLocation || globalLocation)!.lng} 
+                  />
+                )}
+
+                <div className="h-px bg-gray-100 w-full" />
+
                 <div className="flex flex-col gap-3">
                   <span className="text-[#273a5a] text-sm font-medium">Map Style</span>
                   <div className="flex gap-3">
@@ -1866,7 +1879,7 @@ const LiveRide = () => {
                     <div key={r.user_id} className={`flex items-center justify-between p-4 rounded-xl ${isMe ? 'bg-primary/5 border border-primary/20' : 'bg-gray-50'}`}>
                       <div className="flex items-center gap-3">
                         <div className="relative">
-                          <img src={r.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${r.user_id}`} alt="avatar" className="w-12 h-12 rounded-full border-2 border-white shadow-md object-cover bg-white" />
+                          <img src={r.avatar_url || imgSoloRide} alt="avatar" className="w-12 h-12 rounded-full border-2 border-white shadow-md object-cover bg-white" />
                           {r.role === 'admin' && <div className="absolute -bottom-1 -right-1 bg-yellow-400 p-1 rounded-full border-2 border-white"><Shield className="w-3 h-3 text-white" /></div>}
                         </div>
                         <div>

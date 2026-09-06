@@ -1,0 +1,77 @@
+/** Shopify CDN: Minification failed
+
+Line 60:0 Unexpected "}"
+Line 65:0 Unexpected "}"
+
+**/
+.slideshow-section .self-host-video{width: 100%;}
+.slideshow-section .self-host-video video{ width: 100%; }
+.slideshow-section .banner__media img{ height: 100%; }
+.slideshow-section .slideshow__text-wrapper.banner__content{ max-width: 1440px; }
+ .slideshow-with-tabs .slideshow__text.banner__box{ margin: 3rem 6rem; }
+.slideshow-with-tabs .banner__heading{ margin-top: 0; }
+/* swiper tabs */
+
+/* .slideshow-section .swiper.swiper-tabs{ padding: 0 4rem; } */
+.slideshow-section .swiper-tabs .swiper-slide{ padding: 4.5rem 3.5rem 0; cursor: pointer; }
+.slideshow-section .swiper-tabs .swiper-slide:before{ content: "";background: rgba(var(--color-foreground),.2); width: 1px; height: 100%; position: absolute; left: 0; top: 0; }
+.slideshow-section .swiper-tabs .swiper-slide:after{ content: "";background: rgba(var(--color-base-solid-button-labels),1); width: 2px; position: absolute; left: 0; top: 0; box-shadow: 0 0 6px 1px rgba(var(--color-base-solid-button-labels),1);  }
+@keyframes timing-line{
+  0%{ height: 0; }
+  100%{ height: 100%; }
+}
+.slideshow-section .swiper-tabs .swiper-slide > *{ margin: 0; }
+.slideshow-section .swiper-tabs .swiper-slide > *:not(:last-child){
+  margin-bottom: 5px;
+}
+.slideshow-section .swiper-tabs .swiper-slide .tab__text{ color: rgb(var(--color-text),1); }
+.slideshow-with-tabs .banner__heading span{ display: block; font-size: 80%; }
+
+/* slideshow banner */
+.slideshow-section .banner__sub_heading{ font-size: var(--h6-font-size); font-weight: var(--font-body-weight); }
+.slideshow-with-tabs h4.banner__sub_heading{ color: rgb(var(--color-base-solid-button-labels)); margin-bottom: 0; }
+.slideshow-with-tabs .swiper-slide .content-number{ margin-top: 1rem; color: rgba(var(--color-foreground),.8); }
+.slideshow-with-tabs .swiper-slide.swiper-slide-thumb-active .content-number{ color: rgb(var(--color-base-solid-button-labels)); }
+
+@media screen and (max-width: 749px) {
+.slideshow-with-tabs .slideshow__media img.desktop-slider{display:none;}
+.slideshow-with-tabs .slideshow__media img.mobile-slider{display:block;}
+.slideshow-with-tabs .slideshow__media:after{opacity:0.3;}
+.slideshow-with-tabs .banner--adapt, 
+.slideshow-with-tabs .banner--adapt_image .banner__media:not(.placeholder){ height: 100%; }
+}
+@media screen and (min-width: 750px) {
+.slideshow-with-tabs .slideshow__media img.mobile-slider{display:none;}
+.slideshow-with-tabs .slideshow__media img.desktop-slider{display:block;}
+
+} 
+
+@media screen and (min-width:1200px) and (max-width:1540px){
+  .slideshow-with-tabs .slideshow__text.banner__box{ margin: 3rem; }
+}
+@media screen and (min-width:1024px) and (max-width:1199px){
+  .slideshow-with-tabs .slideshow__text.banner__box{ margin: 3rem; padding: 3rem; }       
+ 
+}
+@media screen and (min-width:750px) and (max-width:1023px){
+  .slideshow-with-tabs .slideshow__text.banner__box{ margin: 3rem; padding: 3rem; }   
+  .slideshow-with-tabs .banner--adapt_image .banner__media:not(.placeholder),
+  /* .slideshow-with-tabs .main-swiper-slide{ min-height: 600px; } */
+}
+@media screen and (min-width:567px) and (max-width:749px){
+   .slideshow-with-tabs .slideshow__text.banner__box{ margin: 3rem; padding: 3rem; }   
+  .slideshow-with-tabs .banner--adapt_image .banner__media:not(.placeholder),
+  /* .slideshow-with-tabs .main-swiper-slide{ min-height: 600px; } */
+}
+@media screen and (min-width:320px) and (max-width:566px){
+   .slideshow-with-tabs .slideshow__text.banner__box{ margin: 3rem; padding: 3rem; }   
+  .slideshow-with-tabs .banner--adapt_image .banner__media:not(.placeholder),
+  /* .slideshow-with-tabs .main-swiper-slide{ min-height: 600px; } */
+  /* .slideshow-section .swiper.swiper-tabs { padding: 0 2rem; } */
+  .slideshow-section .swiper-tabs .swiper-slide{ padding: 2rem 2rem 0; cursor: pointer; }
+}
+
+/*place-holder area*/
+@media screen and (min-width: 750px) {
+  .slideshow-section .slideshow__media.placeholder + .slideshow__text-wrapper.banner__content{ height: auto;}
+}

@@ -1,0 +1,146 @@
+
+      
+        --font-heading-family: Inter, sans-serif;
+        --font-heading-style: normal;
+        --font-heading-style: capitalize;
+        --font-heading-weight: bold;
+        --h1-font-size: 50px;
+        --h2-font-size: 42px;
+        --h3-font-size: 34px;
+        --h4-font-size: 26px;
+        --h5-font-size: 22px;
+        --h6-font-size: 18px;
+        --heading-letter-spacing:0px;
+        --heading-line-height:1.3;
+
+
+        --font-body-family: Inter, sans-serif;
+        --font-body-style: normal;
+        --font-body-weight: 400;
+        --font-body-weight-bold: 700;
+        --body-letter-spacing:0px;
+        --body-line-height:1.6;
+        --body_font-size:16px;
+
+         
+        --color-base-text: 0, 0, 0;
+        --color-outline-text: 0, 0, 0;
+     
+        --color-shadow: 0, 0, 0;
+        --color-base-background-1: 27, 27, 27;
+        --color-base-background-2: 37, 37, 37;
+        --color-base-background-3: 37, 37, 37;
+        --color-base-background-4: 70, 70, 70;
+        --color-base-background-5: 255, 255, 255;
+        --color-base-solid-button-labels: 45, 255, 40;
+        --color-base-outline-button-labels: 255, 255, 255;
+        --color-base-accent-1: 255, 255, 255;
+        --color-base-accent-2: 255, 255, 255;
+        --color-base-accent-3: 193, 193, 193;
+        --color-base-accent-4: 255, 255, 255;
+        --color-base-accent-5: 27, 27, 27;
+        --color-overlay: 27, 27, 27;
+        --color-text: 193, 193, 193;
+        --color-base-link: 190, 190, 190;
+        --color-border: 255, 255, 255;
+        --payment-terms-background-color: #1b1b1b;
+
+      
+        --gradient-base-background-1: #1b1b1b;
+        --gradient-base-background-2: #252525;
+        --gradient-base-background-3: #252525;
+        --gradient-base-background-4: linear-gradient(90deg, rgba(70, 70, 70, 0.9), rgba(193, 193, 193, 1) 49.71%, rgba(70, 70, 70, 0.9) 99.46%);
+        --gradient-base-background-5: #ffffff;
+
+
+        --media-padding: px;
+        --media-border-opacity: 0.0;
+        --media-border-width: 0px;
+        --media-radius: 0px;
+        --media-shadow-opacity: 0.0;
+        --media-shadow-horizontal-offset: 0px;
+        --media-shadow-vertical-offset: 0px;
+        --media-shadow-blur-radius: 0px;
+
+        --page-width: 164rem;
+        --page-full-width-spacing: 8%;
+        --page-width-margin: 0rem;
+        
+        --card-image-padding: 0.0rem;
+        --card-corner-radius: 0.0rem;
+        --card-text-alignment: left;
+        --card-border-width: 0.0rem;
+        --card-border-opacity: 1.0;
+        --card-shadow-opacity: 0.0;
+        --card-shadow-horizontal-offset: 0.0rem;
+        --card-shadow-vertical-offset: 0.0rem;
+        --card-shadow-blur-radius: 0.0rem;
+
+        --badge-corner-radius: 0.0rem;
+
+    
+        --popup-background: 27, 27, 27;
+        --popup-border-width: 1px;
+        --popup-border-opacity: 0.15;
+        --popup-corner-radius: 0px;
+        --popup-shadow-opacity: 0.25;
+        --popup-shadow-horizontal-offset: 0px;
+        --popup-shadow-vertical-offset: 0px;
+        --popup-shadow-blur-radius: 15px;
+
+        --drawer-border-width: 0px;
+        --drawer-border-opacity: 0.45;
+        --drawer-shadow-opacity: 0.0;
+        --drawer-shadow-horizontal-offset: 0px;
+        --drawer-shadow-vertical-offset: 4px;
+        --drawer-shadow-blur-radius: 0px;
+
+        --spacing-sections-desktop: 0px;
+        --spacing-sections-mobile: 0px;
+
+        --grid-desktop-vertical-spacing: 40px;
+        --grid-desktop-horizontal-spacing: 40px;
+        --grid-mobile-vertical-spacing: 20px;
+        --grid-mobile-horizontal-spacing: 20px;
+        --sidebar-width:400px;
+
+      
+        --text-boxes-border-opacity: 1.0;
+        --text-boxes-border-width: 0px;
+        --text-boxes-radius: 0px;
+        --text-boxes-shadow-opacity: 0.0;
+        --text-boxes-shadow-horizontal-offset: 0px;
+        --text-boxes-shadow-vertical-offset: 0px;
+        --text-boxes-shadow-blur-radius: 0px;
+        --button_style:none;
+        --button_font-family:var(--font-body-family);
+        --button-height:44px;
+        --buttons-radius: 22px;
+        --buttons-radius-outset: 22px;
+        --buttons-border-width: 0px;
+        --buttons-border-opacity: 0.0;
+        --buttons-shadow-opacity: 1.0;
+        --buttons-shadow-horizontal-offset: 0px;
+        --buttons-shadow-vertical-offset: 0px;
+        --buttons-shadow-blur-radius: 15px;
+        --buttons-border-offset: 0.3px;
+
+        --inputs-height:50px;
+        --inputs-radius: 0px;
+        --inputs-border-width: 1px;
+        --inputs-border-opacity: 0.1;
+        --inputs-shadow-opacity: 0.05;
+        --inputs-shadow-horizontal-offset: 0px;
+        --inputs-margin-offset: 0px;
+        --inputs-shadow-vertical-offset: 0px;
+        --inputs-shadow-blur-radius: 15px;
+        --inputs-radius-outset: 0px;
+
+        --variant-pills-radius: 10px;
+        --variant-pills-border-width: 1px;
+        --variant-pills-border-opacity: 0.3;
+        --variant-pills-shadow-opacity: 0.0;
+        --variant-pills-shadow-horizontal-offset: 0px;
+        --variant-pills-shadow-vertical-offset: 0px;
+        --variant-pills-shadow-blur-radius: 0px;
+      

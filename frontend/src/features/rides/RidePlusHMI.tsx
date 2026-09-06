@@ -8,6 +8,10 @@ import { useToast } from '../../components/ToastContext';
 import { getDeterministicUuid } from '../../lib/user';
 import { useConfirm } from '../../components/ConfirmDialog';
 import { apiClient } from '../../lib/apiClient';
+import { IncidentDrawer } from '../../components/IncidentDrawer';
+
+import img15 from '../../assets/WebsiteImages/img15.jpg';
+const imgGroupRide = img15;
 import { Activity, AlertTriangle, ShieldCheck, Play, RefreshCw } from 'lucide-react';
 const RidePlusHMI = () => {
     const confirm = useConfirm();
@@ -245,7 +249,7 @@ const RidePlusHMI = () => {
                   
                   {/* Image Side (Ride Card) */}
                   <div className="relative w-full sm:w-[42%] h-[150px] sm:h-auto shrink-0 bg-gray-900">
-                    <img src={(ride.image_url && !ride.image_url.includes('blob:')) ? ride.image_url : "https://images.unsplash.com/photo-1558981806-ec527fa84c39?auto=format&fit=crop&w=800&q=80"} alt="Ride cover" className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
+                    <img src={(ride.image_url && !ride.image_url.includes('blob:')) ? ride.image_url : imgGroupRide} alt="Ride cover" className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
                     
                     {/* Dark gradient overlay for readability */}
                     <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent sm:bg-gradient-to-r sm:from-transparent sm:via-black/60 sm:to-black/90"></div>

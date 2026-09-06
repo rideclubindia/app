@@ -1,7 +1,9 @@
-export const getDeterministicUuid = (str: string) => {
+export const getDeterministicUuid = (str?: string | null) => {
+  if (!str) return '00000000-0000-0000-0000-000000000000';
+  const strVal = String(str);
   let hash = 0;
-  for (let i = 0; i < str.length; i++) {
-    hash = str.charCodeAt(i) + ((hash << 5) - hash);
+  for (let i = 0; i < strVal.length; i++) {
+    hash = strVal.charCodeAt(i) + ((hash << 5) - hash);
   }
   const hex = Math.abs(hash).toString(16).padStart(12, '0');
   return `00000000-0000-0000-0000-${hex}`;

@@ -105,6 +105,7 @@ const WebsiteCommunity = lazy(() => import('./pages/Website/Community'));
 const WebsiteSafety = lazy(() => import('./pages/Website/Safety'));
 const WebsiteAppInfo = lazy(() => import('./pages/Website/TheApp'));
 const WebsiteAbout = lazy(() => import('./pages/Website/AboutUs'));
+const WebsiteArchitecture = lazy(() => import('./pages/Website/Architecture'));
 const WebsiteContact = lazy(() => import('./pages/Website/Contact'));
 export const ADMIN_EMAIL = 'iharsharoyal@gmail.com';
 
@@ -112,7 +113,14 @@ const BodyStyler = ({ isWebsiteDomain }: { isWebsiteDomain: boolean }) => {
   const location = useLocation();
   useEffect(() => {
     const root = document.getElementById('root');
-    if (isWebsiteDomain && location.pathname === '/') {
+    const websitePages = [
+      '/', '/features', '/community', '/safety', '/app', '/about', '/contact',
+      '/architecture', '/specs',
+      '/download', '/pricing', '/careers', '/press', '/blog', '/privacy',
+      '/terms', '/cookies', '/guidelines', '/website', '/dev-website'
+    ];
+    const isWebpage = isWebsiteDomain || websitePages.includes(location.pathname) || location.pathname.startsWith('/website');
+    if (isWebpage) {
       document.body.style.overflow = 'auto';
       document.body.style.height = 'auto';
       document.body.style.overscrollBehaviorY = 'auto';
@@ -155,7 +163,7 @@ const RequireAuth = ({ children }: { children: React.ReactNode }) => {
           const payloadBase64 = rieToken.split('.')[1];
           const decodedPayload = JSON.parse(atob(payloadBase64));
           effectiveUser = {
-            uid: decodedPayload.uid,
+            uid: decodedPayload.uid || decodedPayload.sub,
             email: decodedPayload.sub,
             displayName: decodedPayload.sub.split('@')[0],
             getIdToken: async () => rieToken,
@@ -164,6 +172,18 @@ const RequireAuth = ({ children }: { children: React.ReactNode }) => {
         } catch (e) {
           console.error("Invalid rie_token", e);
         }
+      }
+
+      // On localhost / development: automatically provide a dev user session so developer doesn't have to log in every time
+      const isLocalDev = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+      if (!currentUser && !rieToken && isLocalDev) {
+        effectiveUser = {
+          uid: 'dev-local-user-id',
+          email: 'dev@rideclub.local',
+          displayName: 'Dev Rider',
+          getIdToken: async () => 'dev-token',
+          photoURL: null
+        };
       }
 
       if (!effectiveUser) {
@@ -214,7 +234,7 @@ const RequireAuth = ({ children }: { children: React.ReactNode }) => {
             email: effectiveUser.email || '',
             avatar_url: effectiveUser.photoURL || undefined,
             status: 'active'
-          }, { onConflict: 'id' });
+          }, { onConflict: 'email' });
         } else {
           setBanned(profileRes.data.status === 'suspended' || profileRes.data.status === 'banned');
           setWarning(profileRes.data.status === 'warning');
@@ -363,7 +383,9 @@ const Layout = () => {
   const isProfileRoute = location.pathname === '/profile';
   const isGroupsRoute = location.pathname === '/groups';
   const isGroupDashRoute = location.pathname === '/group-ride-dashboard';
-  const isFullPageRoute = isHomeRoute || isGroupDashRoute || isRidePlusRoute;
+  const isAlertsRoute = location.pathname === '/alerts';
+  const isSupportRoute = location.pathname.startsWith('/support');
+  const isFullPageRoute = isHomeRoute || isGroupDashRoute || isRidePlusRoute || isProfileRoute || isGroupsRoute || isAlertsRoute || isSupportRoute;
 
   return (
     <div className="w-full h-full flex portrait:flex-col landscape:flex-row overflow-hidden">
@@ -371,9 +393,9 @@ const Layout = () => {
       <div className="flex-1 min-w-0 min-h-0">
         <RiderCockpitLayout
           leftPanelWidth={isFullPageRoute ? '100%' : (isMapReporting ? '50%' : '35%')}
-          variant={isMapRoute ? "dark" : "light"}
+          variant="light"
           mapChildren={
-            !isHomeRoute && (
+            !isFullPageRoute && (
               <div className="relative w-full h-full">
                 {(activeNavigation || currentRide) && (
                   <NavigationOverlay
@@ -554,7 +576,24 @@ function App() {
   const hostname = window.location.hostname;
   const isAdminDomain = hostname.startsWith('admin');
   const isSupportDomain = hostname.startsWith('support');
-  const isWebsiteDomain = hostname === 'rideclub.in' || hostname === 'www.rideclub.in';
+  const searchParams = new URLSearchParams(window.location.search);
+  const websitePaths = [
+    '/', '/features', '/community', '/safety', '/app', '/about', '/contact',
+    '/architecture', '/specs',
+    '/download', '/pricing', '/careers', '/press', '/blog', '/privacy',
+    '/terms', '/cookies', '/guidelines', '/website', '/dev-website'
+  ];
+  const isWebsitePath = websitePaths.includes(window.location.pathname) || window.location.pathname.startsWith('/website');
+  const storedMode = localStorage.getItem('rideclub_mode');
+
+  const isWebsiteDomain =
+    hostname === 'rideclub.in' ||
+    hostname === 'www.rideclub.in' ||
+    hostname === 'website.localhost' ||
+    storedMode === 'website' ||
+    searchParams.get('view') === 'website' ||
+    searchParams.get('website') === 'true' ||
+    (isWebsitePath && storedMode !== 'app');
 
   useEffect(() => {
     useNavigationStore.getState().init();
@@ -653,6 +692,8 @@ function App() {
                     <Route path="/safety" element={<WebsiteSafety />} />
                     <Route path="/app" element={<WebsiteAppInfo />} />
                     <Route path="/about" element={<WebsiteAbout />} />
+                    <Route path="/architecture" element={<WebsiteArchitecture />} />
+                    <Route path="/specs" element={<WebsiteArchitecture />} />
                     <Route path="/contact" element={<WebsiteContact />} />
                     <Route path="/download" element={<WebsitePage title="Download" />} />
                     <Route path="/pricing" element={<WebsitePage title="Pricing" />} />
@@ -688,6 +729,10 @@ function App() {
                   <Route path="/support" element={<SupportCenter />} />
                   <Route path="/support/:ticketId" element={<SupportChat />} />
                 </Route>
+
+                {/* Dev-only website preview (no auth) */}
+                <Route path="/website" element={<WebsiteHome />} />
+                <Route path="/dev-website" element={<WebsiteHome />} />
 
                 {/* Dev-only home preview (no auth) */}
                 {import.meta.env.DEV && (

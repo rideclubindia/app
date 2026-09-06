@@ -7,6 +7,17 @@ import { useLocationStore } from '../store/useLocationStore';
 import { useIncidentCategories } from '../hooks/useIncidentCategories';
 import { filterActiveIncidents } from '../lib/incidentExpiry';
 import { addIncidentMarker, pruneIncidentMarkers } from '../components/map/IncidentMarkers';
+import { offlineProtocol } from '../lib/offlineProtocol';
+
+let protocolRegistered = false;
+if (!protocolRegistered) {
+  try {
+    maplibregl.addProtocol('https', offlineProtocol);
+    protocolRegistered = true;
+  } catch (e) {
+    // Protocol might already be registered
+  }
+}
 
 export interface MapEngineProps {
   userLocation: { lat: number; lng: number } | null;
