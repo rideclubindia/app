@@ -41,18 +41,18 @@ export const MapControls: React.FC<{ map?: maplibregl.Map | null }> = ({ map }) 
   };
 
   return (
-    <div className="absolute top-3 right-3 z-20 flex flex-col gap-1.5">
-      <button onClick={handleCompass} className="w-9 h-9 bg-[#161C28]/80 backdrop-blur-md rounded-[10px] flex items-center justify-center text-[#C0C6D0] hover:text-white hover:bg-[#1E2536] transition-colors border border-[#2A3040]/40" aria-label="Compass">
-        <Compass size={16} />
+    <div className="absolute bottom-[120px] right-3 z-20 flex flex-col gap-2">
+      <button onClick={handleCompass} className="w-11 h-11 card-app flex items-center justify-center text-gray-700 hover:text-[#FF6B22] transition-colors cursor-pointer" aria-label="Reset compass orientation">
+        <Compass size={18} />
       </button>
-      <button onClick={handleRecenter} className="w-9 h-9 bg-[#161C28]/80 backdrop-blur-md rounded-[10px] flex items-center justify-center text-[#C0C6D0] hover:text-white hover:bg-[#1E2536] transition-colors border border-[#2A3040]/40" aria-label="Recenter">
-        <Focus size={16} />
+      <button onClick={handleRecenter} className="w-11 h-11 card-app flex items-center justify-center text-gray-700 hover:text-[#FF6B22] transition-colors cursor-pointer" aria-label="Recenter on my location">
+        <Focus size={18} />
       </button>
-      <button onClick={handleLayers} className="w-9 h-9 bg-[#161C28]/80 backdrop-blur-md rounded-[10px] flex items-center justify-center text-[#C0C6D0] hover:text-white hover:bg-[#1E2536] transition-colors border border-[#2A3040]/40" aria-label="Layers">
-        <Layers size={16} />
+      <button onClick={handleLayers} className="w-11 h-11 card-app flex items-center justify-center text-gray-700 hover:text-[#FF6B22] transition-colors cursor-pointer" aria-label="Toggle map layer">
+        <Layers size={18} />
       </button>
-      <button onClick={handleSound} className="w-9 h-9 bg-[#161C28]/80 backdrop-blur-md rounded-[10px] flex items-center justify-center text-[#C0C6D0] hover:text-white hover:bg-[#1E2536] transition-colors border border-[#2A3040]/40" aria-label="Sound">
-        {isMuted ? <VolumeX size={16} /> : <Volume2 size={16} />}
+      <button onClick={handleSound} className="w-11 h-11 card-app flex items-center justify-center text-gray-700 hover:text-[#FF6B22] transition-colors cursor-pointer" aria-label={isMuted ? 'Unmute navigation audio' : 'Mute navigation audio'}>
+        {isMuted ? <VolumeX size={18} /> : <Volume2 size={18} />}
       </button>
     </div>
   );

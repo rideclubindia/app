@@ -32,6 +32,7 @@ const imgSoloRide = img14;
 import { SpeedometerCluster } from '../../hmi/components/Speedometer';
 import { getRealtime, EV_LOC, EV_RIDE_EVENT, EV_RIDE_SNAPSHOT, type LocationTuple } from '../../realtime';
 import { OfflineMapDownloader } from '../../components/map/OfflineMapDownloader';
+import { useOrientationLock } from '../../hooks/useOrientationLock';
 
 const ORS_API_KEY = 'eyJvcmciOiI1YjNjZTM1OTc4NTExMTAwMDFjZjYyNDgiLCJpZCI6IjZlZTI0N2U2NGIwNjQwYTY5N2E0ZGJkMzVlZmYyMDI5IiwiaCI6Im11cm11cjY0In0=';
 
@@ -39,7 +40,12 @@ const LiveRide = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { showToast } = useToast();
-  
+
+  // The Ride screen is one of only two screens allowed to be landscape —
+  // locks on mount, and this hook restores portrait automatically on
+  // unmount (back button, end ride, tab switch, or any other exit).
+  useOrientationLock('landscape');
+
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<maplibregl.Map | null>(null);
   
@@ -289,6 +295,12 @@ const LiveRide = () => {
     });
     map.current = m;
 
+    // Ride navigation must stay locked onto the rider automatically —
+    // riders shouldn't be able to accidentally (or deliberately) drag the
+    // map away from the route while riding. Panning is disabled outright
+    // rather than just re-centering after the fact.
+    m.dragPan.disable();
+
     // Asynchronously try to get GPS and fly to it later
     if (globalLocation && map.current) {
       map.current.flyTo({ center: [globalLocation.lng, globalLocation.lat], zoom: 20, duration: 1000 });
@@ -328,12 +340,11 @@ const LiveRide = () => {
           });
         }
 
-        m.on('dragstart', () => {
-          setIsFollowingUser(false);
-        });
-        m.on('touchstart', () => {
-          setIsFollowingUser(false);
-        });
+        // Panning itself is disabled (dragPan.disable() above), and the
+        // camera is meant to stay auto-following at all times — so this no
+        // longer drops out of follow mode on drag/touch. (Tapping a
+        // specific rider marker still switches the view via
+        // `focusedRiderId`, which is a deliberate, separate action.)
 
         if (routeFeature && (ride?.status === 'ended' || ride?.status === 'arrived')) {
           setIsFollowingUser(false);

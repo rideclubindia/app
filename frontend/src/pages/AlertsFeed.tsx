@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import { supabase } from '../lib/supabase';
 import { useToast } from '../components/ToastContext';
-import { useIncidentCategories, incidentIconMap } from '../hooks/useIncidentCategories';
+import { useIncidentCategories, resolvePinIcon } from '../hooks/useIncidentCategories';
 import { filterActiveIncidents } from '../lib/incidentExpiry';
 
 const filters = ['All', 'Traffic Jam', 'Accidents', 'Road Closed', 'Vibe Check', 'Hazard'];
@@ -132,8 +132,7 @@ const AlertsFeed = () => {
             </div>
           ) : (
             filteredAlerts.map(alert => {
-              const cat = reportTypes.find(t => t.id === alert.category);
-              const IconComp = cat ? incidentIconMap[cat.iconName] : AlertTriangle;
+              const IconComp = resolvePinIcon(alert, reportTypes);
               return (
                 <div 
                   key={alert.id} 
@@ -142,7 +141,7 @@ const AlertsFeed = () => {
                 >
                   {/* Category Icon */}
                   <div className="w-9 h-9 rounded-full bg-white border-2 border-gray-100 shadow-sm flex items-center justify-center flex-shrink-0">
-                    <IconComp className={`w-4 h-4 ${cat?.color || 'text-red-500'}`} />
+                    <IconComp className="w-4 h-4 text-red-500" />
                   </div>
                   
                   {/* Content */}

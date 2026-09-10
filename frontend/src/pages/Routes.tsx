@@ -418,13 +418,16 @@ const Routes = () => {
       <title>Route Planner | Ride Club</title>
     </Helmet>
 
-    <div className="w-full h-full bg-[#E8F1F2] flex portrait:flex-col landscape:flex-row overflow-hidden">
+    {/* Plan Route isn't one of the two landscape screens (Ride and
+        Navigation) — it always uses the portrait stack, regardless of how
+        wide the window is. */}
+    <div className="w-full h-full bg-[#E8F1F2] flex flex-col overflow-hidden">
 
       {/* 1. Navigation Rail */}
       <LeftNavigationRail />
 
       {/* 2. Planner Panel */}
-      <div className="flex flex-col portrait:w-full portrait:h-[58%] portrait:order-3 portrait:border-t landscape:w-[340px] landscape:min-w-[300px] landscape:max-w-[380px] landscape:h-full landscape:order-2 landscape:border-r bg-[#F7F8FA] shrink-0 z-10 shadow-[4px_0_15px_rgba(0,0,0,0.05)] border-gray-200">
+      <div className="flex flex-col w-full h-[58%] order-3 border-t bg-[#F7F8FA] shrink-0 z-10 shadow-[4px_0_15px_rgba(0,0,0,0.05)] border-gray-200">
 
         {/* Header */}
         <div className="flex items-center gap-3 shrink-0 px-4 pt-3 pb-2">
@@ -654,8 +657,13 @@ const Routes = () => {
           ))}
         </div>
 
-        {/* Sticky Start Button */}
-        <div className="shrink-0 p-3 border-t border-gray-200 bg-[#F7F8FA]">
+        {/* Sticky Start Button — the panel sits flush against the bottom of
+            the screen in portrait, which is exactly where the floating pill
+            nav bar (fixed, not part of this flex layout) also sits. Extra
+            bottom padding here keeps this button (and the route cards
+            scrolled to the bottom, e.g. their traffic/incident badges)
+            clear of it instead of rendering underneath. */}
+        <div className="shrink-0 p-3 pb-[92px] border-t border-gray-200 bg-[#F7F8FA]">
           <button 
             onClick={() => {
               const selected = routeOptions.find(r => r.id === selectedRoute);
@@ -685,7 +693,7 @@ const Routes = () => {
       </div>
 
       {/* 3. Map Area */}
-      <div className="portrait:w-full portrait:flex-1 portrait:order-1 landscape:flex-1 landscape:h-full landscape:order-3 relative z-0 overflow-hidden">
+      <div className="w-full flex-1 order-1 relative z-0 overflow-hidden">
         <div ref={mapContainer} className="absolute inset-0 w-full h-full" />
         <div className="absolute top-0 left-0 right-0 h-16 bg-gradient-to-b from-black/10 to-transparent pointer-events-none z-10" />
 

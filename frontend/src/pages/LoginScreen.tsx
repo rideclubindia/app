@@ -24,27 +24,28 @@ interface AuthFormProps {
 }
 
 const AuthForm = ({ step, email, otpInput, isLoading, setEmail, setOtpInput, setStep, onSendOtp, onVerifyOtp }: AuthFormProps) => (
-  <div className="bg-[#333]/0 backdrop-blur-md border border-white/10 rounded-2xl p-5 shadow-xl flex flex-col gap-4">
+  <div className="bg-white/15 backdrop-blur-xl rounded-[24px] p-5 flex flex-col gap-4 shadow-[0_2px_4px_rgba(184,88,20,0.08),0_16px_36px_-14px_rgba(184,88,20,0.28)]">
     {step === 'email' ? (
       <form onSubmit={onSendOtp} className="flex flex-col gap-4">
         <div className="flex flex-col gap-2">
-          <label className="text-[13px] font-medium text-white-400">Enter your Email Address</label>
+          <label className="text-[13px] font-medium text-white/80">Enter your Email Address</label>
           <div className="relative flex items-center">
-            <Mail className="absolute left-4 w-5 h-5 text-white-400" />
-            <input 
+            <Mail className="absolute left-4 w-5 h-5 text-[#8a4a1f]" />
+            <input
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="rider@example.com" 
-              className="w-full h-[54px] bg-white/5 border border-white/10 rounded-xl pl-12 pr-4 text-white placeholder-white-500 focus:outline-none focus:border-[#ef4523] focus:ring-1 focus:ring-[#ef4523] transition-all"
+              placeholder="rider@example.com"
+              className="w-full h-[54px] bg-white/85 rounded-xl pl-12 pr-4 text-[#3a2416] placeholder-[#a98a72] focus:outline-none focus:ring-2 focus:ring-[var(--rc-primary)] transition-all"
               required
             />
           </div>
         </div>
-        <button 
+        <button
           type="submit"
           disabled={isLoading}
-          className="relative w-full flex items-center justify-center h-[54px] rounded-xl font-semibold text-[15px] text-white active:scale-[0.97] transition-all shadow-[0_8px_24px_rgba(255,106,0,0.25)] disabled:opacity-70 bg-[#ef4523]"
+          className="relative w-full flex items-center justify-center h-[54px] rounded-xl font-semibold text-[15px] text-white active:scale-[0.97] transition-all hover:brightness-110 disabled:opacity-70"
+          style={{ background: 'var(--rc-gradient-brand)' }}
         >
           <div className="flex items-center gap-3">
             {isLoading ? (
@@ -62,23 +63,24 @@ const AuthForm = ({ step, email, otpInput, isLoading, setEmail, setOtpInput, set
     ) : (
       <form onSubmit={onVerifyOtp} className="flex flex-col gap-4">
         <div className="flex flex-col gap-1">
-          <label className="text-[13px] font-medium text-white-400">Verification Code</label>
-          <p className="text-xs text-white-500 mb-2">We sent a 6-digit code to {email}</p>
-          <input 
+          <label className="text-[13px] font-medium text-white/80">Verification Code</label>
+          <p className="text-xs text-white/60 mb-2">We sent a 6-digit code to {email}</p>
+          <input
             type="text"
             inputMode="numeric"
             maxLength={6}
             value={otpInput}
             onChange={(e) => setOtpInput(e.target.value.replace(/[^0-9]/g, ''))}
             placeholder="------"
-            className="w-full h-[54px] bg-white/5 border border-white/10 rounded-xl px-4 text-center text-2xl tracking-widest text-white placeholder-gray-500 focus:outline-none focus:border-[#ef4523] focus:ring-1 focus:ring-[#ef4523] transition-all"
+            className="w-full h-[54px] bg-white/85 rounded-xl px-4 text-center text-2xl tracking-widest text-[#3a2416] placeholder-[#a98a72] focus:outline-none focus:ring-2 focus:ring-[var(--rc-primary)] transition-all"
             required
           />
         </div>
-        <button 
+        <button
           type="submit"
           disabled={isLoading || otpInput.length < 6}
-          className="relative w-full flex items-center justify-center h-[54px] rounded-xl font-semibold text-[15px] text-white active:scale-[0.97] transition-all shadow-[0_8px_24px_rgba(255,106,0,0.25)] disabled:opacity-70 bg-[#ef4523]"
+          className="relative w-full flex items-center justify-center h-[54px] rounded-xl font-semibold text-[15px] text-white active:scale-[0.97] transition-all hover:brightness-110 disabled:opacity-70"
+          style={{ background: 'var(--rc-gradient-brand)' }}
         >
           <div className="flex items-center gap-3">
             {isLoading ? (
@@ -91,10 +93,10 @@ const AuthForm = ({ step, email, otpInput, isLoading, setEmail, setOtpInput, set
             )}
           </div>
         </button>
-        <button 
-          type="button" 
+        <button
+          type="button"
           onClick={() => setStep('email')}
-          className="text-xs text-white-400 hover:text-white transition-colors"
+          className="text-xs text-white/70 hover:text-white transition-colors"
         >
           Used wrong email? Go back
         </button>
@@ -232,7 +234,7 @@ const LoginScreen = () => {
           <div className="flex flex-col gap-3">
             <h1 className="text-[42px] font-extrabold leading-[1.05] tracking-tight">
               Beyond
-              <span className="text-[#ef4523]"> Miles</span>
+              <span className="text-[var(--rc-primary)]"> Miles</span>
             </h1>
             
             <p className="text-[#B7BDC8] text-[16px] leading-relaxed">
@@ -252,7 +254,7 @@ const LoginScreen = () => {
                 <p className="text-gray-400 text-[13px]">already with us</p>
               </div>
             </div>
-            <div className="w-10 h-[3px] bg-[#ef4523] rounded-full"></div>
+            <div className="w-10 h-[3px] bg-[var(--rc-primary)] rounded-full"></div>
           </div>
 
           {/* ====== AUTH FORM ====== */}
@@ -262,7 +264,7 @@ const LoginScreen = () => {
           <div className="grid grid-cols-3 gap-3">
             <div className="flex flex-col items-center text-center gap-2.5 py-3">
               <div className="w-14 h-14 rounded-xl bg-white/5 backdrop-blur-xl border border-white/10 flex items-center justify-center">
-                <svg className="w-7 h-7 text-[#ef4523]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                <svg className="w-7 h-7 text-[var(--rc-primary)]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
                   <circle cx="7" cy="17" r="3"/><circle cx="17" cy="17" r="3"/><path d="M10 17h4"/><path d="M5.5 14.5L8 8h5l3 5"/><path d="M13 8l3-3"/><path d="M16 5h2v2"/>
                 </svg>
               </div>
@@ -273,7 +275,7 @@ const LoginScreen = () => {
             </div>
             <div className="flex flex-col items-center text-center gap-2.5 py-3">
               <div className="w-14 h-14 rounded-xl bg-white/5 backdrop-blur-xl border border-white/10 flex items-center justify-center">
-                <svg className="w-7 h-7 text-[#ef4523]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                <svg className="w-7 h-7 text-[var(--rc-primary)]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
                 </svg>
               </div>
@@ -284,7 +286,7 @@ const LoginScreen = () => {
             </div>
             <div className="flex flex-col items-center text-center gap-2.5 py-3">
               <div className="w-14 h-14 rounded-xl bg-white/5 backdrop-blur-xl border border-white/10 flex items-center justify-center">
-                <svg className="w-7 h-7 text-[#ef4523]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                <svg className="w-7 h-7 text-[var(--rc-primary)]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/><path d="M12 2v2"/>
                 </svg>
               </div>
@@ -298,9 +300,9 @@ const LoginScreen = () => {
           {/* Legal */}
           <p className="text-center text-xs text-gray-500 leading-relaxed">
             By continuing, you agree to our{' '}
-            <button onClick={() => navigate('/terms')} className="text-[#ef4523] font-medium">Terms of Service</button>
+            <button onClick={() => navigate('/terms')} className="text-[var(--rc-primary)] font-medium">Terms of Service</button>
             {' '}and{' '}
-            <button onClick={() => navigate('/privacy-policy')} className="text-[#ef4523] font-medium">Privacy Policy</button>.
+            <button onClick={() => navigate('/privacy-policy')} className="text-[var(--rc-primary)] font-medium">Privacy Policy</button>.
           </p>
         </div>
       )}
@@ -319,7 +321,7 @@ const LoginScreen = () => {
               <div className="flex flex-col gap-2">
                 <h1 className="text-[40px] font-extrabold leading-[1.05] tracking-tight">
                   Beyond
-                  <span className="text-[#ef4523]"> Miles</span>
+                  <span className="text-[var(--rc-primary)]"> Miles</span>
                 </h1>
                 <p className="text-[#B7BDC8] text-[14px] leading-relaxed   mb-2">
                   Discover rides. Meet riders.
@@ -327,13 +329,13 @@ const LoginScreen = () => {
                 </p>
               </div>
 
-              <div className="w-40 h-[3px] bg-[#ef4523] rounded-full mb-3"></div>
+              <div className="w-40 h-[3px] bg-[var(--rc-primary)] rounded-full mb-3"></div>
 
               {/* Feature Cards */}
               <div className="grid grid-cols-3 gap-3">
                 <div className="flex flex-col items-center text-center gap-1.5">
                   <div className="w-10 h-10 rounded-lg bg-white/5 backdrop-blur-xl border border-white/10 flex items-center justify-center">
-                    <svg className="w-5 h-5 text-[#ef4523]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                    <svg className="w-5 h-5 text-[var(--rc-primary)]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
                       <circle cx="7" cy="17" r="3"/><circle cx="17" cy="17" r="3"/><path d="M10 17h4"/><path d="M5.5 14.5L8 8h5l3 5"/><path d="M13 8l3-3"/><path d="M16 5h2v2"/>
                     </svg>
                   </div>
@@ -341,7 +343,7 @@ const LoginScreen = () => {
                 </div>
                 <div className="flex flex-col items-center text-center gap-1.5">
                   <div className="w-10 h-10 rounded-lg bg-white/5 backdrop-blur-xl border border-white/10 flex items-center justify-center">
-                    <svg className="w-5 h-5 text-[#ef4523]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                    <svg className="w-5 h-5 text-[var(--rc-primary)]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
                       <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
                     </svg>
                   </div>
@@ -349,7 +351,7 @@ const LoginScreen = () => {
                 </div>
                 <div className="flex flex-col items-center text-center gap-1.5">
                   <div className="w-10 h-10 rounded-lg bg-white/5 backdrop-blur-xl border border-white/10 flex items-center justify-center">
-                    <svg className="w-5 h-5 text-[#ef4523]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                    <svg className="w-5 h-5 text-[var(--rc-primary)]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
                       <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/><path d="M12 2v2"/>
                     </svg>
                   </div>
@@ -370,9 +372,9 @@ const LoginScreen = () => {
           <div className="shrink-0 pb-4">
             <p className="text-center text-[11px] text-gray-500 leading-relaxed">
               By continuing, you agree to our{' '}
-              <button onClick={() => navigate('/terms')} className="text-[#ef4523] font-medium">Terms of Service</button>
+              <button onClick={() => navigate('/terms')} className="text-[var(--rc-primary)] font-medium">Terms of Service</button>
               {' '}and{' '}
-              <button onClick={() => navigate('/privacy-policy')} className="text-[#ef4523] font-medium">Privacy Policy</button>.
+              <button onClick={() => navigate('/privacy-policy')} className="text-[var(--rc-primary)] font-medium">Privacy Policy</button>.
             </p>
           </div>
         </div>

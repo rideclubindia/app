@@ -1,6 +1,10 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
-import { Car, Ban, Waves, Shield, Hammer, AlertTriangle, MoreHorizontal, Flame } from 'lucide-react';
+import {
+  Car, Ban, Waves, Shield, Hammer, AlertTriangle, MoreHorizontal, Flame,
+  Utensils, PartyPopper, Music, ShoppingBag, Fuel, Coffee, CalendarDays,
+  ParkingCircle, Store, Drama, Landmark, Pencil
+} from 'lucide-react';
 import { VibeCheckIcon } from '../components/VibeCheckIcon';
 
 export interface IncidentCategory {
@@ -30,8 +34,58 @@ export const incidentIconMap: Record<string, any> = {
   AlertTriangle,
   MoreHorizontal,
   Flame,
-  Fire: Flame
+  Fire: Flame,
+  // Custom icons a rider can pick for an "Other" report — the marker on the
+  // map uses whichever one they chose instead of a generic fallback.
+  Utensils,
+  PartyPopper,
+  Music,
+  ShoppingBag,
+  Fuel,
+  Coffee,
+  CalendarDays,
+  ParkingCircle,
+  Store,
+  Drama,
+  Landmark,
+  Pencil
 };
+
+export interface CustomIconOption {
+  key: string;
+  label: string;
+}
+
+// The picker shown when a rider selects "Other" — keep this list small and
+// add to it here as new custom incident types come up.
+export const CUSTOM_ICON_OPTIONS: CustomIconOption[] = [
+  { key: 'Utensils', label: 'Food' },
+  { key: 'PartyPopper', label: 'Festival' },
+  { key: 'Music', label: 'Music' },
+  { key: 'ShoppingBag', label: 'Shopping' },
+  { key: 'Fuel', label: 'Fuel' },
+  { key: 'Coffee', label: 'Cafe' },
+  { key: 'CalendarDays', label: 'Event' },
+  { key: 'ParkingCircle', label: 'Parking' },
+  { key: 'Store', label: 'Store' },
+  { key: 'Drama', label: 'Entertainment' },
+  { key: 'Landmark', label: 'Attraction' },
+  { key: 'Pencil', label: 'Custom' },
+];
+
+// Every screen that renders a pin (map markers, list rows, detail pages)
+// should resolve its icon through this: a custom "Other" report carries its
+// own icon_name, everything else falls back to the fixed category icon.
+export function resolvePinIcon(
+  pin: { category?: string; icon_name?: string | null },
+  categories: IncidentCategory[]
+): any {
+  if (pin.icon_name && incidentIconMap[pin.icon_name]) {
+    return incidentIconMap[pin.icon_name];
+  }
+  const cat = categories.find(c => c.id === pin.category) || categories.find(c => c.id === 'Other');
+  return cat ? incidentIconMap[cat.iconName] || MoreHorizontal : MoreHorizontal;
+}
 
 export function useIncidentCategories() {
   const [categories, setCategories] = useState<IncidentCategory[]>(DEFAULT_CATEGORIES);

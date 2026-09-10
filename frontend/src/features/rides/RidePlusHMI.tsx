@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Users, MapPin, Navigation2, Clock, ChevronRight, LogOut, Calendar, Edit2 } from 'lucide-react';
+import { Plus, Users, MapPin, Navigation2, Clock, ChevronRight, LogOut, Calendar, Edit2, Compass, ShieldAlert } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { auth } from '../../lib/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
@@ -214,6 +214,32 @@ const RidePlusHMI = () => {
             <div className="text-left">
               <span className={`block font-semibold text-[15px] leading-tight ${activeRides.length > 0 ? 'text-gray-400' : 'text-[#111111]'}`}>Join Ride</span>
               <span className="block text-[11px] text-gray-400 font-medium mt-0.5">Enter a ride code</span>
+            </div>
+          </button>
+
+          <button
+            onClick={() => navigate('/explore')}
+            className="group relative bg-white border border-gray-100 p-4 rounded-[8px] shadow-sm flex flex-col items-start gap-3 hover:-translate-y-0.5 active:scale-[0.98] transition-all duration-300 overflow-hidden"
+          >
+            <div className="bg-indigo-50 p-2.5 rounded-xl flex items-center justify-center border border-indigo-100 group-hover:bg-indigo-100 transition-colors">
+              <Compass className="w-5 h-5 text-indigo-500" />
+            </div>
+            <div className="text-left">
+              <span className="block font-semibold text-[15px] leading-tight text-[#111111]">Find a Ride</span>
+              <span className="block text-[11px] text-gray-400 font-medium mt-0.5">Browse rides near you</span>
+            </div>
+          </button>
+
+          <button
+            onClick={() => navigate('/map', { state: { reportMode: true } })}
+            className="group relative bg-white border border-gray-100 p-4 rounded-[8px] shadow-sm flex flex-col items-start gap-3 hover:-translate-y-0.5 active:scale-[0.98] transition-all duration-300 overflow-hidden"
+          >
+            <div className="bg-red-50 p-2.5 rounded-xl flex items-center justify-center border border-red-100 group-hover:bg-red-100 transition-colors">
+              <ShieldAlert className="w-5 h-5 text-red-500" />
+            </div>
+            <div className="text-left">
+              <span className="block font-semibold text-[15px] leading-tight text-[#111111]">Report Incident</span>
+              <span className="block text-[11px] text-gray-400 font-medium mt-0.5">Flag a hazard or crash</span>
             </div>
           </button>
         </div>

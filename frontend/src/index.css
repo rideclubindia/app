@@ -48,6 +48,142 @@
   --transition-spatial: 220ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
+/* =========================================
+   RIDECLUB — CANONICAL DESIGN TOKENS
+   The single source of truth for the light "app" surfaces (Home, Profile,
+   Ride discovery/detail, bottom nav). Every card/button/gradient utility
+   below reads from these — never hardcode a new color/radius/shadow when
+   one of these already represents the same concept.
+   ========================================= */
+:root {
+  /* Base */
+  --rc-bg: #FBFAFF;
+  --rc-bg-warm: #FFFCF8;
+  --rc-bg-cool: #F8F7FF;
+
+  /* Ambient gradient colors */
+  --rc-lavender-50: #F1EFFF;
+  --rc-lavender-100: #E9E5FF;
+  --rc-lavender-200: #DDD7FF;
+
+  --rc-peach-50: #FFF4ED;
+  --rc-peach-100: #FFEADF;
+  --rc-peach-200: #FFDCCB;
+
+  --rc-orange-400: #FF8A3D;
+  --rc-orange-500: #FF6B22;
+  --rc-orange-600: #F4511E;
+
+  /* Primary brand */
+  --rc-primary: #FF6B22;
+  --rc-primary-hover: #F85C18;
+  --rc-primary-active: #E94E0D;
+
+  /* Typography */
+  --rc-text-primary: #171827;
+  --rc-text-secondary: #626477;
+  --rc-text-tertiary: #9294A5;
+  --rc-text-disabled: #B7B8C4;
+  --rc-text-on-primary: #FFFFFF;
+
+  /* Surfaces */
+  --rc-surface: rgba(255, 255, 255, 0.72);
+  --rc-surface-solid: #FFFFFF;
+  --rc-surface-soft: rgba(255, 255, 255, 0.52);
+  --rc-surface-hover: rgba(255, 255, 255, 0.86);
+  --rc-surface-active: rgba(255, 255, 255, 0.96);
+
+  /* Borders — intentionally extremely subtle */
+  --rc-border-subtle: rgba(23, 24, 39, 0.055);
+  --rc-border-light: rgba(23, 24, 39, 0.08);
+  --rc-border-focus: rgba(255, 107, 34, 0.35);
+
+  /* Status */
+  --rc-success: #42B883;
+  --rc-success-soft: #EAF8F1;
+  --rc-warning: #F4A62A;
+  --rc-warning-soft: #FFF5E3;
+  --rc-error: #E85D67;
+  --rc-error-soft: #FFF0F1;
+  --rc-info: #6D72E8;
+  --rc-info-soft: #F0F0FF;
+
+  /* Ambient backgrounds */
+  --rc-gradient-page:
+    radial-gradient(900px 600px at 8% 8%, rgba(221, 215, 255, 0.38), transparent 65%),
+    radial-gradient(800px 550px at 92% 15%, rgba(255, 220, 203, 0.30), transparent 65%),
+    radial-gradient(700px 500px at 50% 100%, rgba(235, 231, 255, 0.28), transparent 70%),
+    #FBFAFF;
+  --rc-gradient-warm: linear-gradient(135deg, #FFF9F5 0%, #F7F5FF 48%, #F2EFFF 100%);
+  --rc-gradient-brand: linear-gradient(135deg, #FF9A4D 0%, #FF6B22 52%, #FF5A24 100%);
+
+  /* Typography scale */
+  --rc-font-display: 32px;
+  --rc-font-h1: 28px;
+  --rc-font-h2: 22px;
+  --rc-font-h3: 18px;
+  --rc-font-body: 15px;
+  --rc-font-body-sm: 14px;
+  --rc-font-caption: 12px;
+  --rc-font-label: 13px;
+  --rc-line-display: 1.08;
+  --rc-line-heading: 1.15;
+  --rc-line-body: 1.45;
+  --rc-line-caption: 1.35;
+  --rc-weight-regular: 400;
+  --rc-weight-medium: 500;
+  --rc-weight-semibold: 600;
+  --rc-weight-bold: 700;
+
+  /* Spacing scale */
+  --rc-space-1: 4px;
+  --rc-space-2: 8px;
+  --rc-space-3: 12px;
+  --rc-space-4: 16px;
+  --rc-space-5: 20px;
+  --rc-space-6: 24px;
+  --rc-space-7: 28px;
+  --rc-space-8: 32px;
+  --rc-space-10: 40px;
+  --rc-space-12: 48px;
+
+  /* Radius scale */
+  --rc-radius-xs: 8px;
+  --rc-radius-sm: 12px;
+  --rc-radius-md: 12px;
+  --rc-radius-lg: 12px;
+  --rc-radius-xl: 12px;
+  --rc-radius-2xl: 12px;
+  --rc-radius-pill: 999px;
+
+  /* Elevation — deliberately almost-imperceptible */
+  --rc-shadow-none: none;
+  --rc-shadow-soft: 0 8px 30px rgba(34, 30, 55, 0.055);
+  --rc-shadow-card: 0 12px 40px rgba(34, 30, 55, 0.065);
+  --rc-shadow-floating: 0 18px 55px rgba(34, 30, 55, 0.09);
+
+  /* Glass / blur */
+  --rc-glass-blur: 18px;
+  --rc-glass-blur-heavy: 28px;
+  --rc-glass-bg: rgba(255, 255, 255, 0.62);
+  --rc-glass-bg-strong: rgba(255, 255, 255, 0.78);
+
+  /* Controls */
+  --rc-control-sm: 36px;
+  --rc-control-md: 44px;
+  --rc-control-lg: 52px;
+  --rc-icon-sm: 16px;
+  --rc-icon-md: 20px;
+  --rc-icon-lg: 24px;
+
+  /* Motion */
+  --rc-duration-fast: 120ms;
+  --rc-duration-normal: 180ms;
+  --rc-duration-slow: 280ms;
+  --rc-ease-standard: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --rc-ease-emphasized: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
 @layer utilities {
   .text-speed {
     font-size: 42px;
@@ -72,6 +208,186 @@
   .transition-spatial {
     transition: all 220ms cubic-bezier(0.22, 1, 0.36, 1);
   }
+
+  /* Soft-card design language: blended surfaces, no hard borders/shadows.
+     Cards sit as a tonal shift on the page's warm gradient rather than a
+     bordered box on top of it. Reused across light-theme screens. */
+  .bg-canvas-soft {
+    background: linear-gradient(160deg, #FFDCC0 0%, #FFC9A0 18%, #FFE1CB 45%, #FFF1E4 72%, #FFFAF5 100%);
+  }
+  .card-soft {
+    background-color: rgba(255, 255, 255, 0.82);
+    border-radius: 12px;
+  }
+  .card-soft-tint {
+    background-color: rgba(255, 226, 204, 0.45);
+    border-radius: 12px;
+  }
+  .card-soft-accent {
+    background: linear-gradient(135deg, #FF8A3D 0%, #FF5A00 100%);
+    border-radius: 12px;
+  }
+
+  /* Flat "app-shell" design language — a distinct, more literal system than the
+     soft/blended one above: a flat pale background (no gradient), plain white
+     circular icon buttons, a big pastel "notch" card with a tab cutout at the
+     top, square selector chips, and a solid black pill for the primary action. */
+  .bg-canvas-flat {
+    background-color: #F1EFF6;
+  }
+  .icon-btn-flat {
+    background-color: #FFFFFF;
+    border-radius: 9999px;
+  }
+  .notch-card {
+    position: relative;
+    border-radius: 28px;
+    padding-top: 28px;
+  }
+  .notch-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 64px;
+    height: 14px;
+    background-color: rgba(255, 255, 255, 0.6);
+    border-radius: 0 0 12px 12px;
+  }
+  .chip-select {
+    background-color: #FFFFFF;
+    border-radius: 20px;
+    border: 2px solid transparent;
+  }
+  .chip-select-active {
+    border-color: currentColor;
+  }
+  .btn-pill-dark {
+    background-color: #111111;
+    color: #FFFFFF;
+    border-radius: 9999px;
+  }
+
+  /* "RideClub app" design language — now driven by the --rc-* token system
+     above. Background is an almost-white page with felt-not-seen ambient
+     gradients; cards are translucent/blurred glass surfaces with a
+     near-invisible border, not opaque boxes; shadows are barely perceptible. */
+  .bg-app-canvas {
+    background: var(--rc-gradient-page);
+  }
+  .card-app {
+    background-color: var(--rc-surface);
+    backdrop-filter: blur(var(--rc-glass-blur));
+    -webkit-backdrop-filter: blur(var(--rc-glass-blur));
+    border-radius: var(--rc-radius-lg);
+  }
+  .card-app-lg {
+    background-color: var(--rc-surface);
+    backdrop-filter: blur(var(--rc-glass-blur));
+    -webkit-backdrop-filter: blur(var(--rc-glass-blur));
+    border: 1px solid var(--rc-border-subtle);
+    border-radius: var(--rc-radius-2xl);
+    box-shadow: var(--rc-shadow-card);
+  }
+  .btn-app-primary {
+    background: var(--rc-gradient-brand);
+    color: var(--rc-text-on-primary);
+    border-radius: var(--rc-radius-pill);
+  }
+  .icon-badge {
+    border-radius: var(--rc-radius-pill);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .nav-bar-app {
+    background-color: var(--rc-glass-bg-strong);
+    backdrop-filter: blur(var(--rc-glass-blur));
+    -webkit-backdrop-filter: blur(var(--rc-glass-blur));
+    border: 1px solid var(--rc-border-subtle);
+    border-radius: var(--rc-radius-pill);
+    box-shadow: var(--rc-shadow-floating);
+  }
+  .nav-fab-app {
+    background: var(--rc-gradient-brand);
+    border-radius: var(--rc-radius-pill);
+    box-shadow: 0 8px 20px -6px rgba(255, 107, 34, 0.45);
+  }
+
+  /* Bento Grid system — shared layout primitive for "main content" screens.
+     Mobile-first: 1 col -> 2 col (tablet) -> 4 col (desktop). Tiles reuse the
+     same --rc-* surface/radius/shadow tokens as .card-app so a bento tile and
+     a regular card are visually identical, just laid out on a grid. Size
+     variants (--wide, --lg, --tall) let one tile dominate instead of a
+     uniform grid of identical boxes. */
+  .bento-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: var(--rc-space-3);
+  }
+  @media (min-width: 640px) {
+    .bento-grid { grid-template-columns: repeat(2, 1fr); gap: var(--rc-space-4); }
+  }
+  @media (min-width: 1024px) {
+    .bento-grid { grid-template-columns: repeat(4, 1fr); }
+  }
+  .bento-tile {
+    background-color: var(--rc-surface);
+    backdrop-filter: blur(var(--rc-glass-blur));
+    -webkit-backdrop-filter: blur(var(--rc-glass-blur));
+    border: 1px solid var(--rc-border-subtle);
+    border-radius: var(--rc-radius-2xl);
+    grid-column: span 1;
+    grid-row: span 1;
+    transition: transform var(--rc-duration-normal) var(--rc-ease-standard),
+      box-shadow var(--rc-duration-normal) var(--rc-ease-standard);
+  }
+  .bento-tile:hover {
+    transform: scale(1.02);
+    box-shadow: var(--rc-shadow-floating);
+  }
+  /* Tiles that carry their own visual (a photo banner) skip the surface
+     paint/border but keep the same radius, clipping and hover behavior. */
+  .bento-tile--media {
+    background-color: transparent;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    border: none;
+    box-shadow: none;
+  }
+  .bento-tile--wide {
+    grid-column: span 1;
+  }
+  .bento-tile--tall {
+    grid-row: span 1;
+  }
+  .bento-tile--lg {
+    grid-column: span 1;
+    grid-row: span 1;
+  }
+  @media (min-width: 640px) {
+    .bento-tile--wide { grid-column: span 2; }
+    .bento-tile--tall { grid-row: span 2; }
+    .bento-tile--lg { grid-column: span 2; grid-row: span 2; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .bento-tile {
+      transition: none;
+    }
+    .bento-tile:hover {
+      transform: none;
+    }
+  }
+
+  /* Dark/HMI equivalent: same blended-surface idea, tuned for the cockpit palette. */
+  .bg-canvas-soft-hmi {
+    background: linear-gradient(180deg, #0A0C12 0%, #0D1118 55%, #0F1320 100%);
+  }
+  .card-soft-hmi {
+    background-color: rgba(19, 24, 35, 0.65);
+    border-radius: 12px;
+  }
 }
 
 .rider-theme {
@@ -87,6 +403,8 @@ html, body {
   margin: 0;
   padding: 0;
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
   overscroll-behavior-y: none;
   overflow: hidden;
   height: 100%;
@@ -126,6 +444,15 @@ html, body {
 @keyframes wheelSpin {
   from { transform: rotate(0deg); }
   to { transform: rotate(360deg); }
+}
+
+/* "Rotate your device" prompt icon — rocks between portrait and landscape
+   orientation instead of spinning all the way around, since a full spin
+   doesn't read as "turn this 90 degrees". */
+@keyframes rotateDeviceHint {
+  0%, 15% { transform: rotate(0deg); }
+  50%, 65% { transform: rotate(-90deg); }
+  100% { transform: rotate(0deg); }
 }
 
 details.maplibregl-ctrl.maplibregl-ctrl-attrib.maplibregl-compact.maplibregl-compact-show {

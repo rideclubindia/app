@@ -87,7 +87,14 @@ export const MapEngine: React.FC<MapEngineProps> = ({
     map.current.on('dragstart', () => { isFollowingRef.current = false; setIsFollowingUser(false); });
     map.current.on('touchstart', () => { isFollowingRef.current = false; setIsFollowingUser(false); });
 
+    // MapLibre only measures its container once at creation, so a later
+    // layout resize (e.g. a panel collapsing/expanding around it) leaves the
+    // canvas stuck at its old size unless we watch the container ourselves.
+    const ro = new ResizeObserver(() => map.current?.resize());
+    ro.observe(mapContainer.current);
+
     return () => {
+      ro.disconnect();
       userMarkerRef.current?.remove();
       destMarkerRef.current?.remove();
       map.current?.remove();
@@ -337,6 +344,7 @@ export const MapEngine: React.FC<MapEngineProps> = ({
             lng,
             lat,
             category: alert.category,
+            iconName: alert.icon_name,
             categories: reportTypes,
             markersRef: incidentMarkersRef.current
           });

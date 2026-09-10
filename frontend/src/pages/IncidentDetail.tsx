@@ -8,7 +8,7 @@ import { useLocationStore } from '../store/useLocationStore';
 import { supabase } from '../lib/supabase';
 import { useToast } from '../components/ToastContext';
 import { LeftNavigationRail } from '../components/LeftNavigationRail';
-import { useIncidentCategories, incidentIconMap } from '../hooks/useIncidentCategories';
+import { useIncidentCategories, incidentIconMap, resolvePinIcon } from '../hooks/useIncidentCategories';
 import { onAuthStateChanged } from 'firebase/auth';
 import { auth } from '../lib/firebase';
 import { getDeterministicUuid, isWithinHours } from '../lib/user';
@@ -123,7 +123,7 @@ const IncidentDetail = () => {
 
     // Category icon marker with pulsing ring
     const cat = reportTypes.find(t => t.id === pin.category) || reportTypes[7];
-    const IconComp = cat ? incidentIconMap[cat.iconName] : AlertTriangle;
+    const IconComp = resolvePinIcon(pin, reportTypes);
 
     const el = document.createElement('div');
     const root = createRoot(el);
@@ -308,22 +308,21 @@ const IncidentDetail = () => {
   }
 
   return (
-    <div className="w-full h-full bg-white flex flex-col landscape:flex-row font-sans relative">
+    <div className="w-full h-full bg-white flex flex-col font-sans relative">
 
-      {/* Side Navigation Rail (landscape only) */}
-      <div className="hidden landscape:flex h-full shrink-0">
-        <LeftNavigationRail />
-      </div>
+      {/* Nav rail renders itself as the portrait bottom pill (regular
+          screens never use the landscape side rail). */}
+      <LeftNavigationRail />
 
       {/* Hero Map (Takes remaining height/width) */}
-      <div className="w-full flex-1 relative flex-shrink-0 landscape:order-2">
+      <div className="w-full flex-1 relative flex-shrink-0">
         <div className="absolute inset-0 z-0">
           <div ref={mapContainer} className="w-full h-full" />
         </div>
         <div className="absolute inset-0 bg-gradient-to-b from-[#273a5a]/40 via-transparent to-transparent z-10 pointer-events-none"></div>
 
         {/* Floating Header Controls */}
-        <div className="absolute portrait:top-12 landscape:top-4 left-0 right-0 px-4 z-20 flex justify-between items-center pointer-events-none">
+        <div className="absolute top-12 left-0 right-0 px-4 z-20 flex justify-between items-center pointer-events-none">
           <button onClick={() => navigate(-1)} className="pointer-events-auto w-[44px] h-[44px] bg-white shadow-md rounded-full flex items-center justify-center text-[#273a5a] hover:bg-gray-50 transition-colors border border-gray-100">
             <ChevronLeft className="w-6 h-6" />
           </button>
@@ -362,7 +361,7 @@ const IncidentDetail = () => {
       </div>
 
       {/* Incident Details - side panel in landscape, bottom sheet in portrait */}
-      <div className="bg-[#F7F8FA] rounded-t-lg -mt-[24px] z-20 relative portrait:px-5 portrait:pt-7 portrait:pb-[108px] landscape:order-1 landscape:w-[360px] landscape:h-full landscape:mt-0 landscape:rounded-none landscape:border-r landscape:border-gray-200 landscape:overflow-y-auto hide-scrollbar landscape:px-4 landscape:pt-4 landscape:pb-[104px] flex-shrink-0">
+      <div className="bg-[#F7F8FA] rounded-t-lg -mt-[24px] z-20 relative px-5 pt-7 pb-[108px] hide-scrollbar flex-shrink-0">
 
         {/* Header */}
         <div className="flex items-center justify-between mb-3">
@@ -370,7 +369,7 @@ const IncidentDetail = () => {
             <div className="w-9 h-9 rounded-full border-2 border-white shadow-md flex items-center justify-center shrink-0 bg-white">
               {(() => {
                 const cat = reportTypes.find(t => t.id === pin.category) || reportTypes[7];
-                const IconComponent = cat ? incidentIconMap[cat.iconName] : AlertTriangle;
+                const IconComponent = resolvePinIcon(pin, reportTypes);
                 return <IconComponent className={`w-4 h-4 ${cat?.color || 'text-red-500'}`} />;
               })()}
             </div>
@@ -444,7 +443,7 @@ const IncidentDetail = () => {
       </div>
 
       {/* Bottom Action Bar (H:88px) - panel width in landscape */}
-      <div className="absolute bottom-0 w-full landscape:left-[56px] landscape:w-[360px] h-[88px] bg-white border-t border-gray-200 flex items-center justify-between px-3 sm:px-4 z-30 shadow-[0_-10px_30px_rgba(0,0,0,0.05)] gap-2 sm:gap-3">
+      <div className="absolute bottom-0 w-full h-[88px] bg-white border-t border-gray-200 flex items-center justify-between px-3 sm:px-4 z-30 shadow-[0_-10px_30px_rgba(0,0,0,0.05)] gap-2 sm:gap-3">
         
         <div className="flex gap-2 flex-1">
           {userVote !== null ? (

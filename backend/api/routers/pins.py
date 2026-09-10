@@ -1,8 +1,11 @@
 import logging
-from fastapi import APIRouter, Depends, BackgroundTasks, Response, HTTPException, Request
+import time
+import secrets as secrets_lib
+from fastapi import APIRouter, Depends, BackgroundTasks, Response, HTTPException, Request, UploadFile, File
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 from core.database import get_db
+from core.config import settings
 from core.limiter import limiter
 from models.models import Pin, User
 from api.routers.websockets import broadcast_new_pin
@@ -10,10 +13,69 @@ from pydantic import BaseModel, Field
 from api.deps import get_current_user
 from geoalchemy2.elements import WKTElement
 import json
+import httpx
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["pins"])
+
+INCIDENT_PHOTO_BUCKET = "incident-photos"
+ALLOWED_PHOTO_MIME_TYPES = {"image/jpeg", "image/png", "image/webp"}
+MAX_PHOTO_BYTES = 10 * 1024 * 1024  # matches the bucket's own 10MB limit
+
+
+@router.post("/photo-upload")
+@limiter.limit("30/minute")
+async def upload_incident_photo(
+    request: Request,
+    file: UploadFile = File(...),
+    user: User = Depends(get_current_user),
+):
+    """Proxies an incident-photo upload through the service-role key.
+
+    The incident-photos storage bucket requires an `authenticated` Supabase
+    session (see supabase/migrations/20260716_security_and_integrity_hardening.sql),
+    but this app authenticates riders via Firebase/rie_token, never a real
+    Supabase Auth session — so the client can never satisfy that RLS policy
+    directly. This endpoint re-verifies the caller's own token via
+    get_current_user, then uploads on their behalf with the service role.
+    """
+    if not settings.SUPABASE_URL or not settings.SUPABASE_SERVICE_ROLE_KEY:
+        raise HTTPException(status_code=500, detail="Photo upload is not configured on the server")
+
+    content_type = file.content_type or "application/octet-stream"
+    if content_type not in ALLOWED_PHOTO_MIME_TYPES:
+        raise HTTPException(status_code=400, detail="Only JPEG, PNG, or WebP images are allowed")
+
+    content = await file.read()
+    if len(content) > MAX_PHOTO_BYTES:
+        raise HTTPException(status_code=400, detail="Image exceeds the 10MB size limit")
+
+    ext = (file.filename or "").rsplit(".", 1)[-1].lower() if file.filename and "." in file.filename else "jpg"
+    object_name = f"{int(time.time() * 1000)}-{secrets_lib.token_hex(6)}.{ext}"
+
+    upload_url = f"{settings.SUPABASE_URL}/storage/v1/object/{INCIDENT_PHOTO_BUCKET}/{object_name}"
+    try:
+        async with httpx.AsyncClient(timeout=20.0) as client:
+            resp = await client.post(
+                upload_url,
+                content=content,
+                headers={
+                    "Authorization": f"Bearer {settings.SUPABASE_SERVICE_ROLE_KEY}",
+                    "apikey": settings.SUPABASE_SERVICE_ROLE_KEY,
+                    "Content-Type": content_type,
+                },
+            )
+    except httpx.HTTPError as e:
+        logger.exception(f"Photo upload request failed: {e}")
+        raise HTTPException(status_code=502, detail="Failed to reach photo storage")
+
+    if resp.status_code >= 300:
+        logger.error(f"Photo upload rejected by storage: {resp.status_code} {resp.text}")
+        raise HTTPException(status_code=502, detail="Failed to upload photo")
+
+    public_url = f"{settings.SUPABASE_URL}/storage/v1/object/public/{INCIDENT_PHOTO_BUCKET}/{object_name}"
+    return {"url": public_url}
 
 class PinCreate(BaseModel):
     category: str

@@ -21,3 +21,6 @@ __pycache__/
 # Editor/OS
 .DS_Store
 .idea/
+
+# Supabase CLI local cache
+supabase/.temp/

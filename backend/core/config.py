@@ -10,6 +10,14 @@ class Settings(BaseSettings):
     JWT_SECRET: str = Field("supersecretjwtkey_change_in_prod", env="JWT_SECRET")
     SUPABASE_JWT_SECRET: str = Field("", env="SUPABASE_JWT_SECRET")
     ALGORITHM: str = "HS256"
+
+    # Supabase project + service-role key, used server-side only (never sent
+    # to the client) so authenticated-but-not-Supabase-Auth requests (this
+    # app only ever holds the anon key client-side) can still write to
+    # RLS-locked resources like the incident-photos storage bucket, after
+    # get_current_user has verified the caller's own token.
+    SUPABASE_URL: str = Field("", env="SUPABASE_URL")
+    SUPABASE_SERVICE_ROLE_KEY: str = Field("", env="SUPABASE_SERVICE_ROLE_KEY")
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 7 # 7 days
     
     # Database (Set this to your Supabase PostgreSQL connection string)

@@ -15,6 +15,7 @@ export function addIncidentMarker(
     lng: number;
     lat: number;
     category?: string;
+    iconName?: string | null;
     categories: IncidentCategory[];
     markersRef: { [key: string]: maplibregl.Marker };
     onClick?: () => void;
@@ -23,7 +24,10 @@ export function addIncidentMarker(
   if (opts.markersRef[opts.id]) return null;
 
   const cat = opts.categories.find(c => c.id === opts.category);
-  const IconComp = cat ? incidentIconMap[cat.iconName] : AlertTriangle;
+  // A custom "Other" report carries its own icon_name; everything else
+  // falls back to the fixed category icon.
+  const IconComp = (opts.iconName && incidentIconMap[opts.iconName])
+    || (cat ? incidentIconMap[cat.iconName] : AlertTriangle);
   const colorClass = cat?.color || 'text-red-500';
 
   const el = document.createElement('div');

@@ -12,9 +12,15 @@ export interface LocationState {
   error: string | null;
   isTracking: boolean;
   isMapReporting: boolean;
+  // Drives how much of the screen the map gets on /map:
+  // 'default' = normal split view, 'full' = map fills the screen while the
+  // rider is picking where an incident happened, 'form' = the report sheet
+  // needs real room once a pin is placed.
+  mapPanelMode: 'default' | 'full' | 'form';
   activeRouteGeoJSON: any | null;
   setActiveRouteGeoJSON: (geojson: any) => void;
   setIsMapReporting: (val: boolean) => void;
+  setMapPanelMode: (mode: 'default' | 'full' | 'form') => void;
   startTracking: () => void;
   stopTracking: () => void;
   fetchLocationOnce: () => Promise<{lat: number, lng: number, locationName: string | null}>;
@@ -51,9 +57,11 @@ export const useLocationStore = create<LocationState>()(
     error: null,
     isTracking: false,
     isMapReporting: false,
+    mapPanelMode: 'default',
     activeRouteGeoJSON: null,
     setActiveRouteGeoJSON: (geojson: any) => set({ activeRouteGeoJSON: geojson }),
     setIsMapReporting: (val: boolean) => set({ isMapReporting: val }),
+    setMapPanelMode: (mode: 'default' | 'full' | 'form') => set({ mapPanelMode: mode }),
 
     startTracking: () => {
       if (get().isTracking) return;
