@@ -8,6 +8,7 @@ import { Helmet } from 'react-helmet-async';
 import { CockpitLayout } from '../components/spatial/CockpitLayout';
 import { SpatialMembrane } from '../components/spatial/SpatialMembrane';
 import { LeftGravityWell } from '../components/spatial/LeftGravityWell';
+import { getAppUser } from '../lib/user';
 
 const getDistanceKm = (lat1: number, lon1: number, lat2: number, lon2: number) => {
   const R = 6371;
@@ -64,10 +65,11 @@ const MyRides = () => {
     };
 
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-      if (currentUser) {
-        fetchHistory(currentUser.uid);
+      const appUser = getAppUser(currentUser);
+      if (appUser) {
+        fetchHistory(appUser.uid);
       } else {
-        navigate('/login');
+        navigate('/login', { replace: true });
       }
     });
     return () => unsubscribe();

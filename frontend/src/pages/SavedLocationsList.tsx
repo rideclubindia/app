@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { auth } from '../lib/firebase';
 import { useToast } from '../components/ToastContext';
-import { getDeterministicUuid } from '../lib/user';
+import { getDeterministicUuid, getAppUser } from '../lib/user';
 import { Helmet } from 'react-helmet-async';
 
 const SavedLocationsList = () => {
@@ -62,10 +62,10 @@ const SavedLocationsList = () => {
 
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged((user) => {
-      if (user) {
+      if (getAppUser(user)) {
         fetchSavedLocations();
       } else {
-        navigate('/login');
+        navigate('/login', { replace: true });
       }
     });
     return () => unsubscribe();

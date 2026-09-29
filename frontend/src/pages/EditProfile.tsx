@@ -3,7 +3,7 @@ import { ArrowLeft, Save, Loader2, User, Phone, Droplet, ShieldAlert, Bike, Hash
 import { useNavigate } from 'react-router-dom';
 import { auth } from '../lib/firebase';
 import { supabase } from '../lib/supabase';
-import { getDeterministicUuid } from '../lib/user';
+import { getDeterministicUuid, getAppUser } from '../lib/user';
 import { useToast } from '../components/ToastContext';
 import { Helmet } from 'react-helmet-async';
 
@@ -48,9 +48,9 @@ const EditProfile = () => {
   useEffect(() => {
     const fetchProfile = async () => {
       try {
-        const uid = auth.currentUser?.uid;
+        const uid = getAppUser(auth.currentUser)?.uid;
         if (!uid) {
-          navigate('/login');
+          navigate('/login', { replace: true });
           return;
         }
         

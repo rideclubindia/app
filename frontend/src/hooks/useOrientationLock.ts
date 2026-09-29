@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { Capacitor } from '@capacitor/core';
 
-export type LockOrientation = 'portrait' | 'landscape';
+export type LockOrientation = 'portrait' | 'landscape' | 'any';
 
 // Real orientation locking, not just a CSS media-query layout swap:
 // - On native (Android/iOS via Capacitor), uses the ScreenOrientation
@@ -14,7 +14,9 @@ const applyLock = async (orientation: LockOrientation) => {
   try {
     if (Capacitor.isNativePlatform()) {
       const { ScreenOrientation } = await import('@capacitor/screen-orientation');
-      await ScreenOrientation.lock({ orientation });
+      // 'any' hands rotation back to the user (device auto-rotate)
+      if (orientation === 'any') await ScreenOrientation.unlock();
+      else await ScreenOrientation.lock({ orientation });
       return;
     }
   } catch (e) {
@@ -22,9 +24,8 @@ const applyLock = async (orientation: LockOrientation) => {
   }
   try {
     const so = (screen as any).orientation;
-    if (so?.lock) {
-      await so.lock(orientation);
-    }
+    if (orientation === 'any') so?.unlock?.();
+    else if (so?.lock) await so.lock(orientation);
   } catch (e) {
     // Not supported here (most desktop browsers, iOS Safari, etc.) — the
     // page's own portrait:/landscape: responsive classes still apply

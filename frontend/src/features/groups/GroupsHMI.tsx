@@ -9,7 +9,7 @@ import { auth } from '../../lib/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 import { useToast } from '../../components/ToastContext';
 import { useConfirm } from '../../components/ConfirmDialog';
-import { getDeterministicUuid } from '../../lib/user';
+import { getDeterministicUuid, getAppUser } from '../../lib/user';
 import { useLocationStore } from '../../store/useLocationStore';
 
 const GroupsHMI = () => {
@@ -42,6 +42,10 @@ const GroupsHMI = () => {
 
   const [infoTab, setInfoTab] = useState<'chat' | 'incidents' | 'members'>('chat');
   const [listFilter, setListFilter] = useState<'all' | 'public' | 'private'>('all');
+  const [lastMessages, setLastMessages] = useState<Record<string, any>>({});
+  const [lastSeen, setLastSeen] = useState<Record<string, number>>(() => {
+    try { return JSON.parse(localStorage.getItem('rc_group_seen') || '{}'); } catch { return {}; }
+  });
 
   // Group Info sub-screens (Group Media / Shared Locations / Ride Plans / Pinned / Add Members)
   const [groupInfoView, setGroupInfoView] = useState<'main' | 'media' | 'locations' | 'ridePlans' | 'pinned' | 'addMembers'>('main');
@@ -82,7 +86,7 @@ const GroupsHMI = () => {
         setUser(mockUser);
         fetchGroups(mockUser);
       } else {
-        navigate('/login');
+        navigate('/login', { replace: true });
       }
       setLoadingAuth(false);
     });
@@ -139,7 +143,20 @@ const GroupsHMI = () => {
 
       const { data, error } = await query;
       if (error) throw error;
-      if (data) setGroups(data);
+      if (data) {
+        setGroups(data);
+        const ids = data.map((g: any) => g.id);
+        if (ids.length) {
+          const { data: recent } = await supabase.from('messages')
+            .select('group_id, user_id, username, content, message_type, created_at')
+            .in('group_id', ids)
+            .order('created_at', { ascending: false })
+            .limit(Math.min(500, ids.length * 20));
+          const latest: Record<string, any> = {};
+          (recent || []).forEach((m: any) => { if (!latest[m.group_id]) latest[m.group_id] = m; });
+          setLastMessages(latest);
+        }
+      }
     } catch (e) {
       showToast('Failed to fetch groups', 'error');
     }
@@ -147,10 +164,17 @@ const GroupsHMI = () => {
 
   const handleSearch = async (query: string) => {
     setSearchQuery(query);
+    const exact = query.trim();
+    if (/^[0-9a-f-]{36}$/i.test(exact)) {
+      const { data } = await supabase.from('groups').select('*, group_members(count)').eq('id', exact).limit(1);
+      if (data?.length) setGroups(prev => (prev.some(g => g.id === data[0].id) ? prev : [...prev, data[0]]));
+      return;
+    }
     if (query.trim().length === 5) {
       try {
         const { data, error } = await supabase.from('groups')
           .select('*, group_members(count)')
+          .eq('is_private', false)
           .ilike('id', `${query.trim()}%`);
         
         if (error) throw error;
@@ -555,6 +579,28 @@ const GroupsHMI = () => {
     );
   }
 
+  const myMemberId = getDeterministicUuid(user.uid);
+  const unreadTotal = groups.filter(g => {
+    const last = lastMessages[g.id];
+    return last && new Date(last.created_at).getTime() > (lastSeen[g.id] || 0) && last.user_id !== myMemberId;
+  }).length;
+  const formatWhen = (iso: string) => {
+    const d = new Date(iso);
+    const now = new Date();
+    if (d.toDateString() === now.toDateString()) return d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+    const y = new Date(now); y.setDate(now.getDate() - 1);
+    if (d.toDateString() === y.toDateString()) return 'Yesterday';
+    return d.toLocaleDateString([], { day: 'numeric', month: 'short' });
+  };
+  const openConversation = (group: any) => {
+    setActiveGroup(group);
+    setInfoTab('chat');
+    setLastSeen(prev => {
+      const next = { ...prev, [group.id]: Date.now() };
+      try { localStorage.setItem('rc_group_seen', JSON.stringify(next)); } catch { /* ignore */ }
+      return next;
+    });
+  };
   const groupInitials = (name: string) => name.split(' ').map((n: string) => n[0]).join('').substring(0, 2).toUpperCase();
   const openGroups = !showCreateModal && !activeGroup;
 
@@ -563,93 +609,102 @@ const GroupsHMI = () => {
 
       {/* ===== Group List — always visible in landscape; hidden behind an open chat in portrait ===== */}
       <div className={`${openGroups ? 'flex' : 'hidden'} w-full shrink-0 flex-col`}>
-        <div className="flex items-center justify-between shrink-0 px-4 pt-4 pb-2">
+        <div className="flex items-center justify-between shrink-0 px-4 pt-4 pb-3">
           <div>
-            <h1 className="text-[20px] font-black tracking-tight leading-tight">
-              <span className="text-gray-950">Ride</span><span className="text-[#FF6B22]">Club</span>
-            </h1>
-            <p className="text-[11px] text-gray-500 font-semibold">Ride Together. Go Further.</p>
+            <h1 className="text-[22px] font-bold tracking-tight text-gray-950 leading-tight">Messages</h1>
+            <p className="text-[12px] text-gray-500 font-medium">
+              {groups.length} {groups.length === 1 ? 'conversation' : 'conversations'}
+              {unreadTotal > 0 && <> · <span className="text-[#FF6B22] font-semibold">{unreadTotal} unread</span></>}
+            </p>
           </div>
-          <div className="flex items-center gap-2">
-            <button className="w-10 h-10 rounded-full bg-white flex items-center justify-center text-gray-700 active:scale-95 transition-all cursor-pointer">
-              <Search className="w-4.5 h-4.5" />
-            </button>
-            <button
-              aria-label="Create new group"
-              onClick={() => setShowCreateModal(true)}
-              className="w-10 h-10 rounded-full btn-app-primary flex items-center justify-center text-white active:scale-95 transition-all cursor-pointer"
-            >
-              <Plus className="w-4.5 h-4.5" strokeWidth={2.5} />
-            </button>
+          <button
+            aria-label="Create new group"
+            onClick={() => setShowCreateModal(true)}
+            className="h-11 pl-3 pr-4 rounded-full btn-app-primary flex items-center gap-1.5 text-white text-[13px] font-bold active:scale-95 transition-all cursor-pointer"
+          >
+            <Plus className="w-4 h-4" strokeWidth={2.5} /> New group
+          </button>
+        </div>
+
+        <div className="px-4 pb-3 shrink-0">
+          <div className="relative">
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+            <input
+              type="text"
+              placeholder="Search conversations or paste a group ID"
+              value={searchQuery}
+              onChange={(e) => handleSearch(e.target.value)}
+              className="w-full h-11 rounded-full bg-white border border-gray-200 pl-10 pr-3 text-[14px] text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#FF6B22]/40 transition-all"
+            />
           </div>
         </div>
 
-        <div className="px-4 py-3 shrink-0 flex items-center gap-2">
+        <div className="px-4 pb-2 shrink-0 flex items-center gap-2">
           {([
             { id: 'all', label: 'All', count: groups.length },
-            { id: 'public', label: 'Public', count: groups.filter(g => !g.is_private).length },
+            { id: 'public', label: 'Ride Groups', count: groups.filter(g => !g.is_private).length },
             { id: 'private', label: 'Private', count: groups.filter(g => g.is_private).length },
           ] as const).map(chip => (
             <button
               key={chip.id}
               onClick={() => setListFilter(chip.id)}
-              className={`flex items-center gap-1.5 px-3.5 py-2 rounded-full text-[12px] font-bold transition-all cursor-pointer ${
-                listFilter === chip.id ? 'btn-app-primary text-white' : 'card-app text-gray-600'
+              className={`h-9 px-3.5 rounded-full text-[13px] font-semibold transition-colors cursor-pointer border ${
+                listFilter === chip.id ? 'bg-gray-900 text-white border-gray-900' : 'bg-white text-gray-700 border-gray-200'
               }`}
             >
-              {chip.label}
-              {chip.count > 0 && (
-                <span className={`text-[10px] font-black w-4 h-4 rounded-full flex items-center justify-center ${listFilter === chip.id ? 'bg-white/25' : 'bg-gray-100'}`}>
-                  {chip.count}
-                </span>
-              )}
+              {chip.label}{chip.count > 0 && <span className={`ml-1.5 tabular-nums ${listFilter === chip.id ? 'text-white/70' : 'text-gray-400'}`}>{chip.count}</span>}
             </button>
           ))}
         </div>
 
-        <div className="px-4 pb-2 shrink-0">
-          <div className="relative">
-            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-            <input
-              type="text"
-              placeholder="Search groups or ID..."
-              value={searchQuery}
-              onChange={(e) => handleSearch(e.target.value)}
-              className="w-full h-11 card-app pl-10 pr-3 text-[13px] text-gray-900 placeholder-gray-400 font-medium focus:outline-none focus:ring-2 focus:ring-[#FF6B22]/40 transition-all"
-            />
-          </div>
-        </div>
-
         <div className="flex-1 overflow-y-auto hide-scrollbar px-4 pb-[100px]">
           {filteredGroups.length === 0 ? (
-            <div className="text-center text-gray-400 mt-10 text-[13px] font-medium px-4">No groups found.<br/>Create one or search by ID.</div>
-          ) : (
-            // Bento grid: first group is the dominant tile, the rest are
-            // equal supporting tiles (shared .bento-tile surface/hover).
-            <div className="bento-grid">
-              {filteredGroups.map((group, i) => (
-                <button
-                  key={group.id}
-                  onClick={() => { setActiveGroup(group); setInfoTab('chat'); }}
-                  className={`bento-tile ${i === 0 ? 'bento-tile--wide' : ''} p-3 flex items-center gap-3 cursor-pointer hover:bg-white/90 text-left`}
-                >
-                  <div className="w-12 h-12 rounded-full flex items-center justify-center shrink-0 bg-[#FFE3D1]">
-                    <span className="font-bold text-[15px] text-[#FF6B22]">{groupInitials(group.name)}</span>
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <h3 className="font-bold text-gray-950 text-[14px] leading-tight truncate">{group.name}</h3>
-                    <div className="flex items-center gap-1.5 mt-1">
-                      {group.is_private && <Lock className="w-3 h-3 text-gray-400" />}
-                      <span className="text-[11px] font-medium text-gray-500">
-                        {group.is_private ? 'Private group' : `${group.group_members?.[0]?.count || 0} members`}
-                      </span>
-                      <span className="text-gray-300">&middot;</span>
-                      <span className="text-[11px] font-medium text-gray-500">{group.radius} km radius</span>
-                    </div>
-                  </div>
-                </button>
-              ))}
+            <div className="mt-10 mx-auto max-w-xs text-center">
+              <div className="w-14 h-14 mx-auto rounded-full bg-orange-50 flex items-center justify-center"><MessageSquare className="w-6 h-6 text-[#FF6B22]" /></div>
+              <p className="mt-3 text-[15px] font-semibold text-gray-950">{searchQuery ? 'No conversations match' : 'No conversations yet'}</p>
+              <p className="mt-1 text-[13px] text-gray-500">{searchQuery ? 'Try another name, or paste the full ID from an invite.' : 'Join a Ride Group or create your own to start talking with riders.'}</p>
+              {!searchQuery && (
+                <button onClick={() => setShowCreateModal(true)} className="mt-4 h-11 px-5 rounded-full btn-app-primary text-white text-[13px] font-bold">Create a group</button>
+              )}
             </div>
+          ) : (
+            <ul className="rounded-2xl bg-white border border-gray-200 divide-y divide-gray-100 overflow-hidden">
+              {filteredGroups.map((group) => {
+                const last = lastMessages[group.id];
+                const unread = !!last && new Date(last.created_at).getTime() > (lastSeen[group.id] || 0) && last.user_id !== myMemberId;
+                const preview = !last
+                  ? (group.is_private ? 'Private group · no messages yet' : `${group.group_members?.[0]?.count || 0} riders · say hello`)
+                  : `${last.user_id === myMemberId ? 'You' : String(last.username || 'Rider').split(' ')[0]}: ${last.message_type === 'image' ? 'Photo' : last.message_type === 'location' ? 'Shared a location' : last.content}`;
+                return (
+                  <li key={group.id}>
+                    <button
+                      onClick={() => openConversation(group)}
+                      className="w-full flex items-center gap-3 px-3.5 py-3 text-left hover:bg-gray-50 active:bg-gray-100 transition-colors cursor-pointer"
+                    >
+                      <div className="relative shrink-0">
+                        <div className={`w-12 h-12 rounded-full flex items-center justify-center ${group.is_private ? 'bg-gray-900' : 'bg-[#FFE3D1]'}`}>
+                          <span className={`font-bold text-[15px] ${group.is_private ? 'text-white' : 'text-[#FF6B22]'}`}>{groupInitials(group.name)}</span>
+                        </div>
+                        <span className={`absolute -bottom-0.5 -right-0.5 w-5 h-5 rounded-full border-2 border-white flex items-center justify-center ${group.is_private ? 'bg-gray-700' : 'bg-[#FF6B22]'}`} title={group.is_private ? 'Private Group' : 'Ride Group'}>
+                          {group.is_private ? <Lock className="w-2.5 h-2.5 text-white" /> : <Navigation2 className="w-2.5 h-2.5 text-white fill-white" />}
+                        </span>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-baseline justify-between gap-2">
+                          <h3 className={`text-[15px] truncate ${unread ? 'font-bold text-gray-950' : 'font-semibold text-gray-900'}`}>{group.name}</h3>
+                          {last && <span className={`text-[11px] shrink-0 tabular-nums ${unread ? 'text-[#FF6B22] font-semibold' : 'text-gray-400'}`}>{formatWhen(last.created_at)}</span>}
+                        </div>
+                        <div className="flex items-center gap-2 mt-0.5">
+                          <p className={`flex-1 min-w-0 text-[13px] truncate ${unread ? 'text-gray-800 font-medium' : 'text-gray-500'}`}>{preview}</p>
+                          {unread && <span className="w-2.5 h-2.5 rounded-full bg-[#FF6B22] shrink-0" aria-label="Unread" />}
+                        </div>
+                        <p className="text-[11px] text-gray-400 mt-0.5">{group.is_private ? 'Private Group' : 'Ride Group'} · {group.radius} km</p>
+                      </div>
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
           )}
         </div>
       </div>
@@ -714,7 +769,7 @@ const GroupsHMI = () => {
               </div>
 
               <div>
-                <label className="text-[11px] font-bold text-gray-600 uppercase tracking-wider mb-1.5 block">Privacy & Access</label>
+                <label className="text-[11px] font-bold text-gray-600 uppercase tracking-wider mb-1.5 block">Group type</label>
                 <div className="grid grid-cols-2 gap-3">
                   <button
                     type="button"
@@ -726,10 +781,10 @@ const GroupsHMI = () => {
                     }`}
                   >
                     <div className="flex items-center gap-2">
-                      <Globe className="w-4 h-4" />
-                      <span className="font-bold text-[13px]">Public Group</span>
+                      <Navigation2 className="w-4 h-4" />
+                      <span className="font-bold text-[13px]">Ride Group</span>
                     </div>
-                    <span className="text-[10px] text-gray-500 font-medium">Anyone nearby can see & join</span>
+                    <span className="text-[10px] text-gray-500 font-medium">Public: riders can find and request to join</span>
                   </button>
 
                   <button
@@ -745,7 +800,7 @@ const GroupsHMI = () => {
                       <Lock className="w-4 h-4" />
                       <span className="font-bold text-[13px]">Private Group</span>
                     </div>
-                    <span className="text-[10px] text-gray-500 font-medium">Requires passcode to enter</span>
+                    <span className="text-[10px] text-gray-500 font-medium">Hidden: invite only, with passcode</span>
                   </button>
                 </div>
               </div>

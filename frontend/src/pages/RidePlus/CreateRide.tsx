@@ -12,7 +12,7 @@ import { auth } from '../../lib/firebase';
 import { useToast } from '../../components/ToastContext';
 import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
-import { getDeterministicUuid } from '../../lib/user';
+import { getDeterministicUuid, getAppUser } from '../../lib/user';
 import img16 from '../../assets/WebsiteImages/img16.jpg';
 const imgSoloRide = img16;
 
@@ -551,9 +551,9 @@ const CreateRide = () => {
 
     setLoading(true);
     try {
-      const user = auth.currentUser;
+      const user = getAppUser(auth.currentUser);
       if (!user) {
-        showToast('Not authenticated. Please log in.', 'error');
+        showToast('Your session has expired. Please log in again.', 'error');
         setLoading(false);
         return;
       }

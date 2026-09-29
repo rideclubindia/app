@@ -24,7 +24,14 @@ export const getAppUser = (firebaseUser: AppUser | null): AppUser | null => {
   return null;
 };
 
-export const formatRelativeTime = (createdAt: string) => {
+// Ends both session types (Firebase and the email-code rie_token) so logout is complete for every user
+export const signOutApp = async (signOutFirebase: () => Promise<void>) => {
+  try { localStorage.removeItem('rie_token'); } catch { /* ignore */ }
+  try { sessionStorage.clear(); } catch { /* ignore */ }
+  try { await signOutFirebase(); } catch { /* not signed in with Firebase */ }
+};
+
+export const formatRelativeTime =(createdAt: string) => {
   const diffMinutes = Math.floor((Date.now() - new Date(createdAt).getTime()) / 60000);
   if (diffMinutes < 1) return 'just now';
   if (diffMinutes < 60) return `${diffMinutes}m ago`;

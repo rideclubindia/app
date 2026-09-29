@@ -286,6 +286,15 @@ const RequireAuth = ({ children }: { children: React.ReactNode }) => {
   );
 };
 
+// Signed-in users skip the start and login screens, so Back never lands on them
+const GuestOnly = ({ children }: { children: React.ReactNode }) => {
+  const [state, setState] = useState<'checking' | 'guest' | 'user'>(() => (getAppUser(auth.currentUser) ? 'user' : 'checking'));
+  useEffect(() => onAuthStateChanged(auth, (u) => setState(getAppUser(u) ? 'user' : 'guest')), []);
+  if (state === 'user') return <Navigate to="/home" replace />;
+  if (state === 'checking') return <LoadingSpinner fullScreen />;
+  return <>{children}</>;
+};
+
 const RequireAdmin = ({ children }: { children: React.ReactNode }) => {
   const location = useLocation();
   const [user, setUser] = useState<{ email: string | null } | null>(null);
@@ -394,7 +403,8 @@ const Layout = () => {
   const allowLandscape = isLandscapeAllowedRoute(location.pathname);
 
   return (
-    <div className={`w-full h-full flex overflow-hidden ${allowLandscape ? 'portrait:flex-col landscape:flex-row' : 'flex-col'}`}>
+    // Device insets (status bar/notch, gesture bar, landscape cut-outs) applied once for every app screen; 0 where there is none
+    <div className={`w-full h-full flex overflow-hidden pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)] ${allowLandscape ? 'portrait:flex-col landscape:flex-row' : 'flex-col'}`}>
       <LeftNavigationRail />
       <div className="flex-1 min-w-0 min-h-0">
         <RiderCockpitLayout
@@ -721,9 +731,9 @@ function App() {
                   </>
                 )}
                 <Route element={<MobileShell />}>
-                {!isWebsiteDomain && <Route path="/" element={<SplashScreen />} />}
+                {!isWebsiteDomain && <Route path="/" element={<GuestOnly><SplashScreen /></GuestOnly>} />}
                 {/* Auth & Setup */}
-                <Route path="/login" element={<LoginScreen />} />
+                <Route path="/login" element={<GuestOnly><LoginScreen /></GuestOnly>} />
                 <Route path="/accept-policies" element={<PolicyAcceptance />} />
                 <Route path="/privacy-policy" element={<PrivacyPolicy />} />
                 <Route path="/terms" element={<Terms />} />

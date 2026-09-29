@@ -73,7 +73,7 @@ export const AccidentDebugPanel = ({ snap, level, availability }: { snap: Engine
   if (!import.meta.env.DEV) return null;
   if (!open) {
     return (
-      <button onClick={() => setOpen(true)} className="fixed bottom-24 left-3 z-[90] w-10 h-10 rounded-full bg-black/80 text-lime-300 flex items-center justify-center" aria-label="Accident debug">
+      <button onClick={() => setOpen(true)} className="fixed top-24 right-3 z-[90] w-10 h-10 rounded-full bg-black/80 text-lime-300 flex items-center justify-center" aria-label="Accident debug">
         <Activity className="w-5 h-5" />
       </button>
     );
@@ -82,7 +82,7 @@ export const AccidentDebugPanel = ({ snap, level, availability }: { snap: Engine
   const s = snap?.lastSignals;
   const row = (k: string, v: React.ReactNode) => <div className="flex justify-between gap-3"><span className="opacity-70">{k}</span><span className="tabular-nums">{v}</span></div>;
   return (
-    <div className="fixed bottom-24 left-3 z-[90] w-64 rounded-xl bg-black/85 text-lime-200 font-mono text-[11px] p-3 space-y-0.5">
+    <div className="fixed top-24 right-3 z-[90] w-64 rounded-xl bg-black/85 text-lime-200 font-mono text-[11px] p-3 space-y-0.5">
       <div className="flex justify-between items-center mb-1 text-white font-bold">DEV accident debug <button onClick={() => setOpen(false)} aria-label="Close"><X className="w-4 h-4" /></button></div>
       {row('sensors', availability)}
       {row('level', level)}

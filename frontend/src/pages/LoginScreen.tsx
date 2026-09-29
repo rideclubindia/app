@@ -225,7 +225,7 @@ const LoginScreen = ({ adminOnly = false, redirectTo = '/home' }: { adminOnly?: 
 
       {/* ====== PORTRAIT LAYOUT ====== */}
       {!isLandscape && (
-        <div className="relative z-10 flex-1 flex flex-col gap-4 px-6 pt-4 pb-6 overflow-y-auto hide-scrollbar">
+        <div className="relative z-10 flex-1 flex flex-col gap-4 px-6 pt-[max(16px,env(safe-area-inset-top))] pb-[max(20px,env(safe-area-inset-bottom))] overflow-y-auto hide-scrollbar">
           
           {/* Logo */}
           <img src={darkLogo} alt="Ride Club" className="h-32 w-auto drop-shadow-[0_2px_8px_rgba(255,255,255,0.15)] object-left object-contain" />
@@ -257,6 +257,8 @@ const LoginScreen = ({ adminOnly = false, redirectTo = '/home' }: { adminOnly?: 
             <div className="w-10 h-[3px] bg-[var(--rc-primary)] rounded-full"></div>
           </div>
 
+          {/* Form, features and legal sit at the bottom; spare height goes above them instead of below */}
+          <div className="mt-auto flex flex-col gap-4">
           {/* ====== AUTH FORM ====== */}
           <AuthForm step={step} email={email} otpInput={otpInput} isLoading={isLoading} setEmail={setEmail} setOtpInput={setOtpInput} setStep={setStep} onSendOtp={handleSendOtp} onVerifyOtp={handleVerifyOtp} />
 
@@ -304,6 +306,7 @@ const LoginScreen = ({ adminOnly = false, redirectTo = '/home' }: { adminOnly?: 
             {' '}and{' '}
             <button onClick={() => navigate('/privacy-policy')} className="text-[var(--rc-primary)] font-medium">Privacy Policy</button>.
           </p>
+          </div>
         </div>
       )}
 

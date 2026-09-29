@@ -54,7 +54,7 @@ const Terms = () => {
   }, []);
 
   return (
-    <div className="fixed inset-0 z-[9999] flex flex-col bg-[#273a5a] text-white overflow-hidden font-sans">
+    <div className="fixed inset-0 z-[9999] flex flex-col bg-[#273a5a] text-white overflow-hidden font-sans pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]">
       <Helmet>
         <title>Terms of Service | Ride Club</title>
         <meta name="description" content="Read the Terms of Service for using the Ride Club application." />

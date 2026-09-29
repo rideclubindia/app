@@ -167,19 +167,51 @@ export const HomeLandscape = ({ currentRide }: { currentRide?: any }) => {
     return list.slice(0, 12);
   }, [filter, rides, nearbyRides]);
 
-  const handleSearch = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!searchQuery.trim()) return;
+  const [searchError, setSearchError] = useState<string | null>(null);
+  const [searchedFor, setSearchedFor] = useState('');
+  const searchAbortRef = React.useRef<AbortController | null>(null);
+
+  const runSearch = React.useCallback(async (q: string) => {
+    searchAbortRef.current?.abort();
+    const ctrl = new AbortController();
+    searchAbortRef.current = ctrl;
     setIsSearching(true);
+    setSearchError(null);
     try {
-      const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(searchQuery)}`);
+      const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&limit=6&q=${encodeURIComponent(q)}`, { signal: ctrl.signal });
+      if (!res.ok) throw new Error(String(res.status));
       const data = await res.json();
-      setSearchResults(data.slice(0, 5));
-    } catch (err) {
-      console.error('Search failed', err);
+      setSearchResults(data.slice(0, 6));
+      setSearchedFor(q);
+    } catch (err: any) {
+      if (err?.name === 'AbortError') return;
+      setSearchResults([]);
+      setSearchError(navigator.onLine ? 'Search is unavailable right now. Try again.' : 'No internet connection.');
+      setSearchedFor(q);
     } finally {
-      setIsSearching(false);
+      if (searchAbortRef.current === ctrl) setIsSearching(false);
     }
+  }, []);
+
+  // Suggestions as you type: wait for a short pause and at least 3 characters to avoid a request per keystroke
+  useEffect(() => {
+    const q = searchQuery.trim();
+    if (q.length < 3) {
+      searchAbortRef.current?.abort();
+      setSearchResults([]);
+      setSearchError(null);
+      setSearchedFor('');
+      setIsSearching(false);
+      return;
+    }
+    const t = setTimeout(() => runSearch(q), 350);
+    return () => clearTimeout(t);
+  }, [searchQuery, runSearch]);
+
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    const q = searchQuery.trim();
+    if (q.length >= 2) runSearch(q);
   };
 
   // Tapping a result starts navigation straight away (Navigation builds the route).
@@ -239,6 +271,7 @@ export const HomeLandscape = ({ currentRide }: { currentRide?: any }) => {
           </div>
         </div>
 
+        <div className="hl-search-wrap">
         <form onSubmit={handleSearch} className="hl-search">
           <Search size={22} className="hl-search-ico" />
           <input
@@ -252,9 +285,11 @@ export const HomeLandscape = ({ currentRide }: { currentRide?: any }) => {
             <SlidersHorizontal size={20} />
           </button>
         </form>
-        {(searchResults.length > 0 || isSearching) && (
-          <div className="hl-results">
-            {isSearching && searchResults.length === 0 && <div className="hl-results-empty">Searching "{searchQuery}"…</div>}
+        {searchQuery.trim().length >= 3 && (searchResults.length > 0 || isSearching || searchError || searchedFor) && (
+          <div className="hl-results" role="listbox" aria-label="Place suggestions">
+            {isSearching && searchResults.length === 0 && <div className="hl-results-empty">Searching "{searchQuery.trim()}"…</div>}
+            {!isSearching && searchError && <div className="hl-results-empty">{searchError}</div>}
+            {!isSearching && !searchError && searchedFor && searchResults.length === 0 && <div className="hl-results-empty">No places found for "{searchedFor}"</div>}
             {searchResults.map((r, i) => (
               <button key={i} type="button" onClick={() => selectDestination(r)} className="hl-result">
                 <MapPin size={18} />
@@ -263,6 +298,7 @@ export const HomeLandscape = ({ currentRide }: { currentRide?: any }) => {
             ))}
           </div>
         )}
+        </div>
 
         <div className="hl-banner">
           <p className="hl-banner-hi">{greeting}</p>

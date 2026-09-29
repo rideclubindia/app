@@ -1,12 +1,12 @@
 import React, { useEffect, useState } from 'react';
-import { Settings, Bell, Car, ShieldCheck, Check, Bike, LogOut, Heart, ChevronLeft, History, UsersRound, LifeBuoy, MapPin, Target, Sunrise, Mountain, Route as RouteIcon } from 'lucide-react';
+import { Settings, Bell, ShieldCheck, Check, Bike, LogOut, Heart, ChevronLeft, ChevronRight, History, UsersRound, LifeBuoy, MapPin, Target, Sunrise, Mountain, Route as RouteIcon } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { auth } from '../../lib/firebase';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
 import { supabase } from '../../lib/supabase';
 import { useToast } from '../../components/ToastContext';
 import { Helmet } from 'react-helmet-async';
-import { getDeterministicUuid } from '../../lib/user';
+import { getDeterministicUuid, getAppUser, signOutApp } from '../../lib/user';
 import { useLocationStore } from '../../store/useLocationStore';
 
 const getDistanceKm = (lat1: number, lon1: number, lat2: number, lon2: number) => {
@@ -196,7 +196,7 @@ const ProfileHMI = () => {
         setUser(currentUser || { uid: activeUid });
         fetchUserData(activeUid);
       } else {
-        navigate('/login');
+        navigate('/login', { replace: true });
       }
     });
     return () => unsubscribe();
@@ -204,12 +204,11 @@ const ProfileHMI = () => {
 
   const handleLogout = async () => {
     try {
-      sessionStorage.clear();
       Object.keys(localStorage).forEach(key => {
         if (key.startsWith('ride_club_permissions_accepted_')) localStorage.removeItem(key);
       });
-      await signOut(auth);
-      navigate('/login');
+      await signOutApp(() => signOut(auth));
+      navigate('/login', { replace: true });
     } catch (e) {
       showToast('Failed to logout', 'error');
     }
@@ -263,72 +262,68 @@ const ProfileHMI = () => {
     <div className="w-full h-full bg-app-canvas flex flex-col font-sans overflow-hidden">
 
       {/* Header */}
-      <div className="flex items-center justify-between shrink-0 px-4 pt-4 pb-2">
-        <button onClick={() => navigate(-1)} aria-label="Go back" className="w-10 h-10 rounded-full bg-white flex items-center justify-center transition-all active:scale-95 cursor-pointer">
-          <ChevronLeft className="w-[18px] h-[18px] text-gray-700" strokeWidth={2} />
+      <div className="flex items-center justify-between shrink-0 px-4 pt-4 pb-2 max-w-[560px] w-full mx-auto">
+        <button onClick={() => navigate(-1)} aria-label="Go back" className="w-11 h-11 rounded-full bg-white border border-gray-200 flex items-center justify-center active:scale-95 cursor-pointer">
+          <ChevronLeft className="w-5 h-5 text-gray-800" strokeWidth={2} />
         </button>
-        <div className="flex gap-2.5">
-          <button onClick={() => navigate('/alerts')} aria-label="Alerts" className="relative w-10 h-10 rounded-full bg-white flex items-center justify-center transition-all active:scale-95 cursor-pointer">
-            <Bell className="w-[18px] h-[18px] text-gray-700" strokeWidth={2} />
-            <span className="absolute top-2 right-2.5 w-1.5 h-1.5 bg-[#FF6B22] rounded-full"></span>
-          </button>
-          <button onClick={() => navigate('/edit-profile')} aria-label="Settings" className="w-10 h-10 rounded-full bg-white flex items-center justify-center transition-all active:scale-95 cursor-pointer">
-            <Settings className="w-[18px] h-[18px] text-gray-700" strokeWidth={2} />
-          </button>
-        </div>
+        <h1 className="text-[16px] font-bold text-gray-950">Profile</h1>
+        <button onClick={() => navigate('/edit-profile')} aria-label="Settings" className="w-11 h-11 rounded-full bg-white border border-gray-200 flex items-center justify-center active:scale-95 cursor-pointer">
+          <Settings className="w-5 h-5 text-gray-800" strokeWidth={2} />
+        </button>
       </div>
 
-      <div className="flex-1 overflow-y-auto hide-scrollbar px-4 pb-6 flex flex-col gap-5 max-w-[520px] w-full mx-auto">
+      <div className="flex-1 overflow-y-auto hide-scrollbar px-4 pb-24 flex flex-col gap-4 max-w-[560px] w-full mx-auto">
 
         {/* Identity */}
-        <div className="flex flex-col items-center text-center pt-2">
-          <div className="relative">
-            <div className="w-24 h-24 rounded-full overflow-hidden ring-4 ring-white shadow-sm">
-              <img src={avatarUrl} alt="Profile" className="w-full h-full object-cover" />
-            </div>
-            <button onClick={() => navigate('/edit-profile')} className="absolute -bottom-1 -right-1 w-10 h-10 btn-app-primary rounded-full flex items-center justify-center hover:scale-105 transition-transform border-2 border-white cursor-pointer" aria-label="Edit profile photo">
-              <Settings className="w-3.5 h-3.5 text-white" />
-            </button>
-          </div>
-
-          <div className="flex items-center gap-1.5 mt-3">
-            <h2 className="text-[19px] font-bold text-gray-950 leading-tight">{fullName}</h2>
-            {stats.trust >= 80 && <Check className="w-4 h-4 text-[#FF6B22] shrink-0" strokeWidth={3} />}
-          </div>
-          <p className="text-[12px] text-gray-500 font-medium">{profileData?.email || user?.email}</p>
-
-          <div className="flex items-center gap-2 flex-wrap justify-center mt-2.5">
-            <div className="flex items-center gap-1.5 bg-red-100 px-2.5 py-1 rounded-full">
-              <Heart className="w-3 h-3 text-red-700" />
-              <span className="text-[11px] font-semibold text-red-800">{profileData?.blood_group || 'No Blood Group'}</span>
-            </div>
-            <div className="flex items-center gap-1.5 bg-emerald-100 px-2.5 py-1 rounded-full">
-              <ShieldCheck className="w-3 h-3 text-emerald-800" />
-              <span className="text-[11px] font-semibold text-emerald-900">Safe Rider</span>
-            </div>
-            {locationName && locationName !== 'Finding location...' && (
-              <div className="flex items-center gap-1 text-gray-500">
-                <MapPin className="w-3 h-3" />
-                <span className="text-[11px] font-medium">{locationName}</span>
-              </div>
+        <div className="flex items-center gap-4 pt-2">
+          <div className="relative shrink-0">
+            <img src={avatarUrl} alt="" referrerPolicy="no-referrer" className="w-20 h-20 rounded-full object-cover ring-4 ring-white shadow-sm bg-white" />
+            {stats.trust >= 80 && (
+              <span className="absolute -bottom-0.5 -right-0.5 w-6 h-6 rounded-full bg-[#FF6B22] border-2 border-white flex items-center justify-center" title="Verified rider">
+                <Check className="w-3.5 h-3.5 text-white" strokeWidth={3} />
+              </span>
             )}
           </div>
+          <div className="flex-1 min-w-0">
+            <h2 className="text-[20px] font-bold text-gray-950 leading-tight truncate">{fullName}</h2>
+            <p className="text-[13px] text-gray-500 truncate">{profileData?.email || user?.email}</p>
+            <div className="flex items-center gap-1.5 flex-wrap mt-2">
+              <span className="inline-flex items-center gap-1 h-6 px-2 rounded-full bg-red-50 text-red-700 text-[11px] font-semibold"><Heart className="w-3 h-3" /> {profileData?.blood_group || 'Blood group not set'}</span>
+              {locationName && locationName !== 'Finding location...' && (
+                <span className="inline-flex items-center gap-1 h-6 px-2 rounded-full bg-gray-100 text-gray-600 text-[11px] font-medium max-w-[160px]"><MapPin className="w-3 h-3 shrink-0" /><span className="truncate">{locationName}</span></span>
+              )}
+            </div>
+          </div>
+        </div>
+        <button onClick={() => navigate('/edit-profile')} className="h-11 rounded-xl border border-gray-200 bg-white text-[14px] font-semibold text-gray-900 active:scale-[0.99] cursor-pointer">Edit profile</button>
+
+        {/* Stats strip */}
+        <div className="grid grid-cols-4 rounded-2xl bg-white border border-gray-200 divide-x divide-gray-100">
+          {[
+            { v: activityStats.totalRides, l: 'Rides' },
+            { v: activityStats.kmTraveled.toFixed(0), l: 'km ridden' },
+            { v: activityStats.totalNavigations, l: 'Navigations' },
+            { v: `${stats.trust}%`, l: 'Trust' },
+          ].map(s => (
+            <div key={s.l} className="py-3 text-center">
+              <p className="text-[18px] font-bold text-gray-950 tabular-nums leading-none">{s.v}</p>
+              <p className="text-[11px] text-gray-500 mt-1">{s.l}</p>
+            </div>
+          ))}
         </div>
 
         {/* Tabs */}
-        <div className="flex items-center gap-5 border-b border-gray-100">
+        <div className="flex items-center gap-5 border-b border-gray-200 overflow-x-auto hide-scrollbar">
           {([
             { id: 'overview', label: 'Overview' },
-            { id: 'rides', label: `Rides (${myRides.length})` },
-            { id: 'groups', label: `Groups (${myGroups.length})` },
-            { id: 'achievements', label: `Achievements (${earnedAchievements.length})` },
+            { id: 'rides', label: `Rides ${myRides.length}` },
+            { id: 'groups', label: `Groups ${myGroups.length}` },
+            { id: 'achievements', label: `Badges ${earnedAchievements.length}` },
           ] as const).map(t => (
             <button
               key={t.id}
               onClick={() => setTab(t.id)}
-              className={`pb-2.5 text-[13px] font-bold cursor-pointer border-b-2 transition-colors whitespace-nowrap ${
-                tab === t.id ? 'text-[#FF6B22] border-[#FF6B22]' : 'text-gray-400 border-transparent'
-              }`}
+              className={`pb-2.5 text-[14px] font-semibold cursor-pointer border-b-2 transition-colors whitespace-nowrap ${tab === t.id ? 'text-gray-950 border-[#FF6B22]' : 'text-gray-400 border-transparent'}`}
             >
               {t.label}
             </button>
@@ -337,118 +332,78 @@ const ProfileHMI = () => {
 
         {tab === 'overview' && (
         <>
-        {/* Stats row — bento grid of equal supporting tiles (same surface as
-            card-app, laid out with the shared responsive bento grid). */}
-        <div className="bento-grid">
-          <div className="bento-tile p-3.5 flex items-center gap-2.5">
-            <div className="w-9 h-9 icon-badge bg-[#FFE7D1] shrink-0"><RouteIcon className="w-4 h-4 text-[#FF6B22]" /></div>
-            <div><span className="text-[18px] font-black text-gray-950 tabular-nums block leading-tight">{activityStats.totalRides}</span><span className="text-[10px] font-semibold text-gray-500">Total Rides</span></div>
+        {/* Riding: goal + monthly distance in one card */}
+        <section className="rounded-2xl bg-white border border-gray-200 p-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2"><Target className="w-4 h-4 text-[#FF6B22]" /><span className="text-[14px] font-semibold text-gray-950">Next goal · {goalTarget} km</span></div>
+            <span className="text-[12px] text-gray-500 tabular-nums">{activityStats.kmTraveled.toFixed(0)} / {goalTarget}</span>
           </div>
-          <div className="bento-tile p-3.5 flex items-center gap-2.5">
-            <div className="w-9 h-9 icon-badge bg-[#E4E9FB] shrink-0"><Mountain className="w-4 h-4 text-[#3B5BDB]" /></div>
-            <div><span className="text-[18px] font-black text-gray-950 tabular-nums block leading-tight">{activityStats.kmTraveled.toFixed(0)}</span><span className="text-[10px] font-semibold text-gray-500">Distance (KM)</span></div>
+          <div className="h-2 bg-gray-100 rounded-full overflow-hidden mt-2.5">
+            <div className="h-full bg-[#FF6B22] rounded-full" style={{ width: `${goalPct}%` }} />
           </div>
-          <div className="bento-tile p-3.5 flex items-center gap-2.5">
-            <div className="w-9 h-9 icon-badge bg-[#DFF3E3] shrink-0"><Bell className="w-4 h-4 text-[#1A9A5C]" /></div>
-            <div><span className="text-[18px] font-black text-gray-950 tabular-nums block leading-tight">{activityStats.totalNavigations}</span><span className="text-[10px] font-semibold text-gray-500">Navigations</span></div>
-          </div>
-          <div className="bento-tile p-3.5 flex items-center gap-2.5">
-            <div className="w-9 h-9 icon-badge bg-[#FBE4E4] shrink-0"><ShieldCheck className="w-4 h-4 text-[#E85D67]" /></div>
-            <div><span className="text-[18px] font-black text-gray-950 tabular-nums block leading-tight">{stats.trust}%</span><span className="text-[10px] font-semibold text-gray-500">Trust Score</span></div>
-          </div>
-        </div>
-
-        {/* Distance chart — real per-month totals from navigation_sessions */}
-        <div className="card-app-lg p-4">
-          <div className="flex items-center justify-between mb-3">
-            <span className="text-[13px] font-bold text-gray-950">Distance (last 9 months)</span>
-          </div>
-          <div className="flex items-end justify-between gap-1.5 h-[100px]">
+          <div className="flex items-end justify-between gap-1.5 h-[88px] mt-5">
             {monthlyKm.map(m => (
-              <div key={m.label} className="flex-1 flex flex-col items-center gap-1.5 group relative">
-                <div className="w-full rounded-md bg-[#FF6B22]/85" style={{ height: `${Math.max(4, (m.km / maxMonthlyKm) * 84)}px` }} title={`${m.km} km`} />
-                <span className="text-[9px] font-semibold text-gray-400">{m.label}</span>
+              <div key={m.label} className="flex-1 flex flex-col items-center gap-1.5">
+                <div className="w-full rounded-md bg-[#FF6B22]/80" style={{ height: `${Math.max(4, (m.km / maxMonthlyKm) * 70)}px` }} title={`${m.km} km`} />
+                <span className="text-[10px] text-gray-400">{m.label}</span>
               </div>
             ))}
           </div>
-        </div>
+          <p className="text-[11px] text-gray-400 mt-2">Distance ridden, last 9 months</p>
+        </section>
 
-        {/* Achievements preview */}
-        <div>
-          <div className="flex items-center justify-between mb-2">
-            <h3 className="text-[14px] font-bold text-gray-950">Achievements</h3>
-            <button onClick={() => setTab('achievements')} className="text-[11px] font-bold text-[#FF6B22] cursor-pointer">See All</button>
+        {/* Achievements */}
+        <section>
+          <div className="flex items-center justify-between mb-2 px-1">
+            <h3 className="text-[13px] font-semibold text-gray-500 uppercase tracking-wide">Badges</h3>
+            <button onClick={() => setTab('achievements')} className="text-[13px] font-semibold text-[#FF6B22] cursor-pointer">See all</button>
           </div>
           <div className="grid grid-cols-5 gap-2">
             {achievements.map(a => (
               <div key={a.id} className={`flex flex-col items-center gap-1 ${a.earned ? '' : 'opacity-35 grayscale'}`}>
-                <div className="w-11 h-11 icon-badge" style={{ backgroundColor: a.tint }}>
-                  <a.icon className="w-5 h-5" style={{ color: a.color }} />
-                </div>
-                <span className="text-[9px] font-bold text-gray-700 text-center leading-tight">{a.label}</span>
+                <div className="w-11 h-11 icon-badge" style={{ backgroundColor: a.tint }}><a.icon className="w-5 h-5" style={{ color: a.color }} /></div>
+                <span className="text-[10px] font-medium text-gray-700 text-center leading-tight">{a.label}</span>
               </div>
             ))}
           </div>
-        </div>
+        </section>
 
-        {/* Next goal — real progress (kmTraveled), round-number milestone target */}
-        <div className="card-app-lg p-4 flex items-center gap-3.5">
-          <div className="w-11 h-11 icon-badge bg-[#FFE7D1] shrink-0">
-            <Target className="w-5 h-5 text-[#FF6B22]" />
-          </div>
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center justify-between mb-1.5">
-              <span className="text-[13px] font-bold text-gray-950">Next Goal: Reach {goalTarget} KM</span>
-              <span className="text-[11px] font-bold text-gray-500">{activityStats.kmTraveled.toFixed(0)}/{goalTarget} KM</span>
+        {/* Menu: grouped rows instead of separate heavy cards */}
+        {[
+          { title: 'Riding', rows: [
+            { icon: Bike, label: 'My bike', detail: bModel !== 'Not set' ? `${bModel}${bNumber !== 'Not set' ? ` · ${bNumber}` : ''}` : 'Add your bike', onClick: () => navigate('/edit-profile') },
+            { icon: History, label: 'Ride history', detail: `${activityStats.totalRides} rides`, onClick: () => navigate('/ride-history') },
+            { icon: UsersRound, label: 'Groups', detail: `${myGroups.length} joined${groupsLedCount ? ` · ${groupsLedCount} led` : ''}`, onClick: () => navigate('/groups') },
+          ]},
+          { title: 'Account', rows: [
+            { icon: Settings, label: 'Profile & settings', detail: 'Name, emergency contact, blood group', onClick: () => navigate('/edit-profile') },
+            { icon: Bell, label: 'Alerts', detail: 'Hazards and ride updates', onClick: () => navigate('/alerts') },
+            { icon: LifeBuoy, label: 'Help & support', detail: '', onClick: () => navigate('/support') },
+            { icon: ShieldCheck, label: 'Privacy & terms', detail: '', onClick: () => navigate('/privacy-policy') },
+          ]},
+        ].map(section => (
+          <section key={section.title}>
+            <h3 className="text-[13px] font-semibold text-gray-500 uppercase tracking-wide mb-2 px-1">{section.title}</h3>
+            <div className="rounded-2xl bg-white border border-gray-200 divide-y divide-gray-100 overflow-hidden">
+              {section.rows.map(row => (
+                <button key={row.label} onClick={row.onClick} className="w-full min-h-[56px] flex items-center gap-3 px-4 py-3 text-left hover:bg-gray-50 active:bg-gray-100 cursor-pointer">
+                  <row.icon className="w-5 h-5 text-gray-700 shrink-0" strokeWidth={2} />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[15px] font-medium text-gray-950">{row.label}</p>
+                    {row.detail && <p className="text-[12px] text-gray-500 truncate">{row.detail}</p>}
+                  </div>
+                  <ChevronRight className="w-4 h-4 text-gray-400 shrink-0" />
+                </button>
+              ))}
             </div>
-            <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
-              <div className="h-full btn-app-primary rounded-full" style={{ width: `${goalPct}%` }} />
-            </div>
-          </div>
-        </div>
+          </section>
+        ))}
 
-        {/* Menu grid */}
-        <div className="grid grid-cols-3 gap-2.5">
-          {[
-            { icon: Settings, label: 'Edit Details', path: '/edit-profile', tint: '#FFE7D1', color: '#FF6B22' },
-            { icon: Bike, label: 'My Bike', path: '/edit-profile', tint: '#E4E9FB', color: '#3B5BDB' },
-            { icon: History, label: 'Ride History', path: '/ride-history', tint: '#F6E4FB', color: '#A83BDB' },
-            { icon: LifeBuoy, label: 'Support', path: '/support', tint: '#E4FBEF', color: '#1A9A5C' },
-          ].map(item => (
-            <button
-              key={item.label}
-              onClick={() => navigate(item.path)}
-              className="card-app p-3.5 flex flex-col items-center gap-2 cursor-pointer active:scale-95 transition-all"
-            >
-              <div className="w-10 h-10 icon-badge" style={{ backgroundColor: item.tint }}>
-                <item.icon className="w-4.5 h-4.5" style={{ color: item.color }} />
-              </div>
-              <span className="text-[10.5px] font-bold text-gray-700 text-center leading-tight">{item.label}</span>
-            </button>
-          ))}
-        </div>
-
-        {/* Bike info card — kept as a real-data row from the original screen */}
-        <div className="card-app p-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 icon-badge bg-blue-100 shrink-0">
-              <Car className="w-4 h-4 text-blue-700" strokeWidth={2} />
-            </div>
-            <div className="min-w-0">
-              <p className="text-[13px] font-bold text-gray-950">Bike Information</p>
-              <p className="text-[11px] text-gray-500 mt-0.5 truncate">{bModel}</p>
-            </div>
-          </div>
-          <span className="bg-[#FFE7D1] text-[#FF6B22] text-[11px] font-bold px-2.5 py-1 rounded-full tracking-wider shrink-0">{bNumber}</span>
-        </div>
-
-        {/* Logout — bottom-anchored, full-width for one-handed (left-thumb) reach */}
         <button
           onClick={handleLogout}
-          className="w-full py-3.5 bg-red-50 hover:bg-red-100 text-red-700 font-bold rounded-2xl flex items-center justify-center gap-2 transition-colors active:scale-[0.98] cursor-pointer"
+          className="w-full h-12 rounded-2xl bg-white border border-gray-200 text-red-600 text-[15px] font-semibold flex items-center justify-center gap-2 active:scale-[0.99] cursor-pointer"
         >
-          <LogOut className="w-4 h-4" strokeWidth={2} />
-          Log Out
+          <LogOut className="w-4 h-4" strokeWidth={2} /> Log out
         </button>
         </>
         )}

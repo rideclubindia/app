@@ -51,7 +51,7 @@ const LiveRide = () => {
   // The Ride screen is one of only two screens allowed to be landscape —
   // locks on mount, and this hook restores portrait automatically on
   // unmount (back button, end ride, tab switch, or any other exit).
-  useOrientationLock('landscape');
+  useOrientationLock('any');
 
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<maplibregl.Map | null>(null);
@@ -2181,7 +2181,7 @@ const LiveRide = () => {
                 }
                 setIs3D(next3D); 
               }}
-              className={`w-12 h-12 rounded-full flex items-center justify-center active:scale-95 transition-all duration-300 shadow-md ${is3D ? 'bg-[#FF5A00] text-white shadow-[0_4px_16px_rgba(255,90,0,0.4)]' : 'bg-white/95 backdrop-blur border border-gray-100 text-[#111111] hover:bg-gray-50'}`}
+              className={`w-12 h-12 rounded-full flex items-center justify-center active:scale-95 transition-all duration-300 shadow-md ${is3D ? 'bg-white text-[#FF5A00] ring-2 ring-[#FF5A00]' : 'bg-white/95 backdrop-blur border border-gray-100 text-[#111111] hover:bg-gray-50'}`}
             >
               {is3D ? <Compass className="w-5 h-5" /> : <Navigation2 className="w-5 h-5" />}
             </button>
@@ -2229,7 +2229,7 @@ const LiveRide = () => {
                   });
                 }
               }}
-              className={`w-12 h-12 rounded-full flex items-center justify-center active:scale-95 transition-all duration-300 shadow-md ${isFollowingUser && !focusedRiderId ? 'bg-[#FF5A00] text-white shadow-[0_4px_16px_rgba(255,90,0,0.4)]' : 'bg-white/95 backdrop-blur border border-gray-100 text-[#111111] hover:bg-gray-50'}`}
+              className={`w-12 h-12 rounded-full flex items-center justify-center active:scale-95 transition-all duration-300 shadow-md ${isFollowingUser && !focusedRiderId ? 'bg-white text-[#FF5A00] ring-2 ring-[#FF5A00]' : 'bg-white/95 backdrop-blur border border-gray-100 text-[#111111] hover:bg-gray-50'}`}
               ref={locateBtnRef}
               title="My Location"
               aria-label="My Location"

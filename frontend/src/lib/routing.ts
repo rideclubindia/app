@@ -29,9 +29,23 @@ export const fetchTomTomRoute = async (coords: number[][], mode: string) => {
   return tomtomToGeoJSON(data);
 };
 
-export const tomtomToGeoJSON = (data: any) => {
-  if (!data.routes || data.routes.length === 0) return null;
-  const route = data.routes[0];
+// Main route plus up to `alternatives` alternatives, each as the same GeoJSON Feature shape as fetchTomTomRoute
+export const fetchTomTomRoutes = async (coords: number[][], mode: string, alternatives = 2) => {
+  const travelMode = mode === 'foot-walking' ? 'pedestrian' : mode === 'motorcycle' ? 'motorcycle' : 'car';
+  const unique = coords.filter((c, i) => i === 0 || c[0] !== coords[i - 1][0] || c[1] !== coords[i - 1][1]);
+  if (unique.length < 2) throw new Error('At least two unique locations are required for routing');
+  const loc = unique.map((c) => `${c[1]},${c[0]}`).join(':');
+  // TomTom only returns alternatives for two-point routes
+  const alt = unique.length === 2 ? `&maxAlternatives=${alternatives}` : '';
+  const res = await fetch(`https://api.tomtom.com/routing/1/calculateRoute/${loc}/json?key=${TOMTOM_API_KEY}&traffic=true&travelMode=${travelMode}&instructionsType=text${alt}`);
+  if (!res.ok) throw new Error(`TomTom API error: ${res.statusText}`);
+  const data = await res.json();
+  return (data.routes || []).map((_: any, i: number) => tomtomToGeoJSON(data, i)).filter(Boolean) as NonNullable<ReturnType<typeof tomtomToGeoJSON>>[];
+};
+
+export const tomtomToGeoJSON = (data: any, routeIndex = 0) => {
+  if (!data.routes || data.routes.length <= routeIndex) return null;
+  const route = data.routes[routeIndex];
   
   let coordinates: number[][] = [];
   if (route.legs) {
@@ -76,7 +90,8 @@ export const tomtomToGeoJSON = (data: any) => {
     properties: {
       summary: {
         distance: route.summary.lengthInMeters,
-        duration: route.summary.travelTimeInSeconds
+        duration: route.summary.travelTimeInSeconds,
+        trafficDelay: route.summary.trafficDelayInSeconds || 0
       },
       segments: [{
         steps: steps

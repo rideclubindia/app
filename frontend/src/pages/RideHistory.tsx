@@ -7,6 +7,7 @@ import { supabase } from '../lib/supabase';
 import { Helmet } from 'react-helmet-async';
 import { CockpitLayout } from '../components/spatial/CockpitLayout';
 import { SpatialMembrane } from '../components/spatial/SpatialMembrane';
+import { getAppUser } from '../lib/user';
 
 const RideHistory = () => {
   const navigate = useNavigate();
@@ -51,10 +52,11 @@ const RideHistory = () => {
     };
 
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-      if (currentUser) {
-        fetchHistory(currentUser.uid);
+      const appUser = getAppUser(currentUser);
+      if (appUser) {
+        fetchHistory(appUser.uid);
       } else {
-        navigate('/login');
+        navigate('/login', { replace: true });
       }
     });
     return () => unsubscribe();
