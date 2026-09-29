@@ -1,4 +1,4 @@
-// Phase 1 of Crash Detection & Emergency Response Architecture.md —
+// Phase 1 of Crash Detection & Emergency Response Architecture.md â€”
 // pure types shared by signal processing, the detection engine, and the replay harness.
 
 export interface Vec3 {
@@ -37,6 +37,8 @@ export interface ProcessedFrame {
   linearAccelMagnitudeG: number;
   gyroMagnitudeDegPerSec: number;
   motionState: 'moving' | 'stationary';
+  /** low-pass gravity estimate (m/s^2), used for orientation change */
+  gravity?: Vec3;
 }
 
 export interface CrashDetectionEngineConfig {
@@ -56,17 +58,65 @@ export interface CrashDetectionEngineConfig {
     motionStop: number;
     rotation: number;
     gps: number;
+    speedDrop: number;
+    orientation: number;
   };
+  /** GPS speed (km/h) that counts as "riding"; impacts are ignored unless reached within ridingContextWindowMs */
+  minRidingSpeedKph: number;
+  ridingContextWindowMs: number;
+  /** pre-impact minus post-impact speed (km/h) that scores a full speed-drop signal */
+  speedDropKph: number;
+  /** gravity-direction change (degrees) across the impact that scores a full orientation signal */
+  orientationChangeDeg: number;
+  /** total-accel magnitude (g) below which the phone is treated as free-falling */
+  freefallThresholdG: number;
+  /** minimum free-fall duration, and how soon before an impact it must end, to be treated as a dropped phone */
+  freefallMinMs: number;
+  freefallBeforeImpactMs: number;
+  /** confidence multiplier applied when a dropped-phone pattern precedes the impact */
+  freefallPenalty: number;
+  /** extra confidence required when no GPS speed is available at all */
+  noGpsConfidencePenalty: number;
 }
 
 export const DEFAULT_ENGINE_CONFIG: CrashDetectionEngineConfig = {
   impactThresholdG: 3.5,
-  validationWindowMs: 2000,
+  validationWindowMs: 4000,
   motionStopThresholdG: 0.25,
   rotationChangeThresholdDegPerSec: 120,
   confidenceThreshold: 0.65,
-  weights: { impact: 0.3, motionStop: 0.3, rotation: 0.2, gps: 0.2 },
+  weights: { impact: 0.3, motionStop: 0.3, rotation: 0.2, gps: 0.2, speedDrop: 0.15, orientation: 0.1 },
+  minRidingSpeedKph: 12,
+  ridingContextWindowMs: 15000,
+  speedDropKph: 20,
+  orientationChangeDeg: 45,
+  freefallThresholdG: 0.35,
+  freefallMinMs: 120,
+  freefallBeforeImpactMs: 400,
+  freefallPenalty: 0.5,
+  noGpsConfidencePenalty: 0.05,
 };
+
+/** Rider-facing accident flow settings, kept next to the engine thresholds so both are tuned in one place. */
+export const ACCIDENT_FLOW_CONFIG = {
+  countdownSeconds: 15,
+  cooldownAfterCancelMs: 60_000,
+};
+
+export type AccidentLevel = 'NORMAL' | 'SUSPICIOUS' | 'POSSIBLE_ACCIDENT' | 'CONFIRMED_ACCIDENT';
+
+export interface CrashSignals {
+  impact: number;
+  motionStop: number;
+  rotation: number;
+  gps: number | null;
+  speedDrop: number | null;
+  orientation: number;
+  freefall: boolean;
+  preImpactSpeedKph: number | null;
+  postImpactSpeedKph: number | null;
+  orientationChangeDeg: number;
+}
 
 export interface CrashCandidateEvent {
   state: 'CRASH_SUSPECTED';
@@ -75,9 +125,10 @@ export interface CrashCandidateEvent {
   peakAccelMagnitudeG: number;
   rotationChangeDegPerSec: number;
   stationaryDurationMs: number;
+  signals?: CrashSignals;
 }
 
-/** The replayable sensor-data format from Architecture.md §14 — used by tests and future field-recording tooling. */
+/** The replayable sensor-data format from Architecture.md Â§14 â€” used by tests and future field-recording tooling. */
 export interface ReplayScenario {
   scenario: string;
   samples: SensorSample[];

@@ -2,10 +2,12 @@ import { SignalProcessor } from './signalProcessing';
 import type {
   CrashCandidateEvent,
   CrashDetectionEngineConfig,
+  CrashSignals,
   DetectionState,
   GpsContextSample,
   ProcessedFrame,
   SensorSample,
+  Vec3,
 } from './types';
 import { DEFAULT_ENGINE_CONFIG } from './types';
 
@@ -16,13 +18,17 @@ export interface EngineStepResult {
   event?: CrashCandidateEvent;
 }
 
-/**
- * The crash detection state machine from Architecture.md §4, scoped to the
- * engine's own responsibility: MONITORING -> IMPACT_DETECTED -> VALIDATING ->
- * CRASH_SUSPECTED (or back to MONITORING). COUNTDOWN/EMERGENCY_TRIGGERED/
- * USER_CANCELLED belong to the Emergency Manager (Phase 3), not this engine —
- * this keeps the safety-critical detection logic testable in isolation.
- */
+export interface EngineDebugSnapshot {
+  state: DetectionState;
+  armed: boolean;
+  lastFrame: ProcessedFrame | null;
+  latestSpeedKph: number | null;
+  lastSignals: CrashSignals | null;
+  lastConfidence: number | null;
+  lastRejectReason: string | null;
+}
+
+// Multi-signal crash state machine (MONITORING -> VALIDATING -> CRASH_SUSPECTED); countdown and SOS belong to the caller.
 export class CrashDetectionEngine {
   private readonly config: CrashDetectionEngineConfig;
   private readonly processor = new SignalProcessor();
@@ -35,6 +41,17 @@ export class CrashDetectionEngine {
   private stationarySinceImpactMs = 0;
   private lastFrameT: number | null = null;
   private latestGps: GpsContextSample | null = null;
+  private speedHistory: GpsContextSample[] = [];
+  private gravityBeforeImpact: Vec3 | null = null;
+  private lastGravity: Vec3 | null = null;
+  private freefallStartT: number | null = null;
+  private lastFreefallEndT: number | null = null;
+  private impactFollowsFreefall = false;
+  private preImpactSpeedKph: number | null = null;
+  private lastFrame: ProcessedFrame | null = null;
+  private lastSignals: CrashSignals | null = null;
+  private lastConfidence: number | null = null;
+  private lastRejectReason: string | null = null;
 
   constructor(config: Partial<CrashDetectionEngineConfig> = {}) {
     this.config = { ...DEFAULT_ENGINE_CONFIG, ...config, weights: { ...DEFAULT_ENGINE_CONFIG.weights, ...config.weights } };
@@ -42,33 +59,74 @@ export class CrashDetectionEngine {
 
   reportGps(sample: GpsContextSample): void {
     this.latestGps = sample;
+    if (sample.speedKph == null) return;
+    this.speedHistory.push(sample);
+    const cutoff = sample.t - Math.max(this.config.ridingContextWindowMs, 5000);
+    while (this.speedHistory.length && this.speedHistory[0].t < cutoff) this.speedHistory.shift();
   }
 
   getState(): DetectionState {
     return this.state;
   }
 
+  getDebug(): EngineDebugSnapshot {
+    return {
+      state: this.state,
+      armed: this.isArmed(this.lastFrame?.t ?? 0),
+      lastFrame: this.lastFrame,
+      latestSpeedKph: this.latestGps?.speedKph ?? null,
+      lastSignals: this.lastSignals,
+      lastConfidence: this.lastConfidence,
+      lastRejectReason: this.lastRejectReason,
+    };
+  }
+
+  // Armed only while riding; with no GPS speed at all we stay armed but demand more confidence.
+  private isArmed(t: number): boolean {
+    if (!this.speedHistory.length) return true;
+    const since = t - this.config.ridingContextWindowMs;
+    return this.speedHistory.some((s) => s.t >= since && (s.speedKph ?? 0) >= this.config.minRidingSpeedKph);
+  }
+
+  private trackFreefall(frame: ProcessedFrame): void {
+    if (frame.accelMagnitudeG < this.config.freefallThresholdG) {
+      if (this.freefallStartT == null) this.freefallStartT = frame.t;
+    } else if (this.freefallStartT != null) {
+      if (frame.t - this.freefallStartT >= this.config.freefallMinMs) this.lastFreefallEndT = frame.t;
+      this.freefallStartT = null;
+    }
+  }
+
   processSample(sample: SensorSample): EngineStepResult {
     const frame = this.processor.processSample(sample);
+    this.lastFrame = frame;
+    this.trackFreefall(frame);
 
     switch (this.state) {
       case 'MONITORING':
-        // Track a slow rotation baseline so a later rotation *change* is measured
-        // against normal riding lean/vibration, not an absolute threshold.
-        this.gyroBaselineDegPerSec =
-          this.gyroBaselineDegPerSec * 0.98 + frame.gyroMagnitudeDegPerSec * 0.02;
+        // Slow rotation baseline so a later rotation *change* is measured against normal lean/vibration.
+        this.gyroBaselineDegPerSec = this.gyroBaselineDegPerSec * 0.98 + frame.gyroMagnitudeDegPerSec * 0.02;
 
         if (frame.linearAccelMagnitudeG >= this.config.impactThresholdG) {
-          this.state = 'IMPACT_DETECTED';
+          if (!this.isArmed(frame.t)) {
+            this.lastRejectReason = 'impact while not riding';
+            this.lastGravity = frame.gravity ?? null;
+            return { state: this.state, frame };
+          }
           this.impactAt = frame.t;
           this.peakAccelSinceImpactG = frame.linearAccelMagnitudeG;
           this.peakGyroSinceImpactDegPerSec = frame.gyroMagnitudeDegPerSec;
           this.stationarySinceImpactMs = 0;
           this.lastFrameT = frame.t;
-          // fall through to VALIDATING immediately — IMPACT_DETECTED is a
-          // single-frame trigger per §4, the window itself is VALIDATING.
+          this.gravityBeforeImpact = this.lastGravity;
+          this.impactFollowsFreefall =
+            this.freefallStartT != null && frame.t - this.freefallStartT >= this.config.freefallMinMs ||
+            this.lastFreefallEndT != null && frame.t - this.lastFreefallEndT <= this.config.freefallBeforeImpactMs;
+          const before = this.speedHistory.filter((s) => s.t >= frame.t - 5000 && s.t <= frame.t);
+          this.preImpactSpeedKph = before.length ? Math.max(...before.map((s) => s.speedKph ?? 0)) : null;
           this.state = 'VALIDATING';
         }
+        this.lastGravity = frame.gravity ?? null;
         return { state: this.state, frame };
 
       case 'VALIDATING': {
@@ -84,29 +142,29 @@ export class CrashDetectionEngine {
           this.stationarySinceImpactMs = 0;
         }
 
-        const windowElapsed = frame.t - impactAt >= this.config.validationWindowMs;
-        if (!windowElapsed) {
+        if (frame.t - impactAt < this.config.validationWindowMs) {
           return { state: this.state, frame };
         }
 
-        const confidence = this.scoreConfidence();
-        if (confidence >= this.config.confidenceThreshold) {
+        const { confidence, signals, threshold } = this.scoreConfidence(frame);
+        this.lastSignals = signals;
+        this.lastConfidence = confidence;
+        if (confidence >= threshold) {
           this.state = 'CRASH_SUSPECTED';
+          this.lastRejectReason = null;
           const event: CrashCandidateEvent = {
             state: 'CRASH_SUSPECTED',
             t: frame.t,
             confidence,
             peakAccelMagnitudeG: this.peakAccelSinceImpactG,
-            rotationChangeDegPerSec: Math.max(
-              0,
-              this.peakGyroSinceImpactDegPerSec - this.gyroBaselineDegPerSec
-            ),
+            rotationChangeDegPerSec: Math.max(0, this.peakGyroSinceImpactDegPerSec - this.gyroBaselineDegPerSec),
             stationaryDurationMs: this.stationarySinceImpactMs,
+            signals,
           };
           return { state: this.state, frame, event };
         }
 
-        // Not corroborated — reject and resume monitoring, per §12.
+        this.lastRejectReason = signals.freefall ? 'dropped-phone pattern' : 'not corroborated';
         this.state = 'MONITORING';
         this.impactAt = null;
         return { state: this.state, frame };
@@ -116,51 +174,66 @@ export class CrashDetectionEngine {
       case 'USER_CANCELLED':
       case 'IDLE':
       default:
-        // Terminal-for-this-engine states: the Emergency Manager owns what
-        // happens next (countdown/cancel/trigger). Replay tests stop reading
-        // engine output once CRASH_SUSPECTED is reached.
         return { state: this.state, frame };
     }
   }
 
-  /** External cancel/reset hook — e.g. ride ended, or an Emergency Manager resuming monitoring after USER_CANCELLED. */
+  /** External cancel/reset hook — e.g. ride ended, or the rider pressed "I'm OK". */
   resetToMonitoring(): void {
     this.state = 'MONITORING';
     this.impactAt = null;
   }
 
-  private scoreConfidence(): number {
-    const { weights, motionStopThresholdG, rotationChangeThresholdDegPerSec, validationWindowMs } =
-      this.config;
+  private scoreConfidence(frame: ProcessedFrame): { confidence: number; signals: CrashSignals; threshold: number } {
+    const c = this.config;
+    const { weights } = c;
 
-    const impactScore = clamp01(this.peakAccelSinceImpactG / (this.config.impactThresholdG * 1.5));
+    const impact = clamp01(this.peakAccelSinceImpactG / (c.impactThresholdG * 1.5));
+    const motionStop = clamp01(this.stationarySinceImpactMs / c.validationWindowMs);
+    const rotation = clamp01(Math.max(0, this.peakGyroSinceImpactDegPerSec - this.gyroBaselineDegPerSec) / c.rotationChangeThresholdDegPerSec);
 
-    // Fraction of the validation window spent stationary after impact.
-    const motionStopScore = clamp01(this.stationarySinceImpactMs / validationWindowMs);
-
-    const rotationDelta = Math.max(0, this.peakGyroSinceImpactDegPerSec - this.gyroBaselineDegPerSec);
-    const rotationScore = clamp01(rotationDelta / rotationChangeThresholdDegPerSec);
-
-    const gpsSample = this.latestGps;
-    const hasGps = gpsSample != null && gpsSample.speedKph != null;
-    const gpsContextScore = hasGps
-      ? clamp01(1 - (gpsSample!.speedKph as number) / 15) // near-zero post-impact speed reads as corroborating
+    const postSpeed = this.latestGps?.speedKph ?? null;
+    const gps = postSpeed != null ? clamp01(1 - postSpeed / 15) : null;
+    const speedDrop = postSpeed != null && this.preImpactSpeedKph != null
+      ? clamp01((this.preImpactSpeedKph - postSpeed) / c.speedDropKph)
       : null;
 
+    const orientationChangeDeg = this.gravityBeforeImpact && frame.gravity ? angleDeg(this.gravityBeforeImpact, frame.gravity) : 0;
+    const orientation = clamp01(orientationChangeDeg / c.orientationChangeDeg);
+
     const parts: { weight: number; score: number }[] = [
-      { weight: weights.impact, score: impactScore },
-      { weight: weights.motionStop, score: motionStopScore },
-      { weight: weights.rotation, score: rotationScore },
+      { weight: weights.impact, score: impact },
+      { weight: weights.motionStop, score: motionStop },
+      { weight: weights.rotation, score: rotation },
+      { weight: weights.orientation, score: orientation },
     ];
-    if (gpsContextScore != null) {
-      parts.push({ weight: weights.gps, score: gpsContextScore });
-    }
+    if (gps != null) parts.push({ weight: weights.gps, score: gps });
+    if (speedDrop != null) parts.push({ weight: weights.speedDrop, score: speedDrop });
 
     const totalWeight = parts.reduce((sum, p) => sum + p.weight, 0);
-    if (totalWeight === 0) return 0;
-    const weighted = parts.reduce((sum, p) => sum + p.weight * p.score, 0) / totalWeight;
-    return clamp01(weighted);
+    let confidence = totalWeight ? clamp01(parts.reduce((sum, p) => sum + p.weight * p.score, 0) / totalWeight) : 0;
+    if (this.impactFollowsFreefall) confidence *= c.freefallPenalty;
+
+    const threshold = c.confidenceThreshold + (gps == null ? c.noGpsConfidencePenalty : 0);
+    return {
+      confidence,
+      threshold,
+      signals: {
+        impact, motionStop, rotation, gps, speedDrop, orientation,
+        freefall: this.impactFollowsFreefall,
+        preImpactSpeedKph: this.preImpactSpeedKph,
+        postImpactSpeedKph: postSpeed,
+        orientationChangeDeg,
+      },
+    };
   }
+}
+
+function angleDeg(a: Vec3, b: Vec3): number {
+  const ma = Math.hypot(a.x, a.y, a.z), mb = Math.hypot(b.x, b.y, b.z);
+  if (!ma || !mb) return 0;
+  const cos = Math.max(-1, Math.min(1, (a.x * b.x + a.y * b.y + a.z * b.z) / (ma * mb)));
+  return (Math.acos(cos) * 180) / Math.PI;
 }
 
 function clamp01(n: number): number {

@@ -40,7 +40,7 @@
   text-align: left;
   color: var(--rc-ink-muted);
   cursor: pointer;
-  transition: color 0.2s ease, padding-left 0.25s ease;
+  transition: color 0.2s ease;
 }
 .rc-tab-list button:first-child { border-top: 1px solid var(--rc-line-2); }
 .rc-tab-list button span { font-family: var(--rc-font-mono); font-size: 12px; color: var(--rc-ink-dim); }

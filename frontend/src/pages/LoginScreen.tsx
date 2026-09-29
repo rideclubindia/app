@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { ADMIN_EMAIL } from '../App';
 import { supabase } from '../lib/supabase';
 import { apiClient } from '../lib/apiClient';
 import { useToast } from '../components/ToastContext';
@@ -105,8 +106,11 @@ const AuthForm = ({ step, email, otpInput, isLoading, setEmail, setOtpInput, set
   </div>
 );
 
-const LoginScreen = () => {
+// adminOnly restricts sign-in to ADMIN_EMAIL (admin and support portals); the backend still enforces admin rights.
+const LoginScreen = ({ adminOnly = false, redirectTo = '/home' }: { adminOnly?: boolean; redirectTo?: string }) => {
   const navigate = useNavigate();
+  const location = useLocation();
+  const target = (location.state as { from?: string } | null)?.from || redirectTo;
   const { showToast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
   
@@ -129,6 +133,10 @@ const LoginScreen = () => {
     e.preventDefault();
     if (!email || !email.includes('@')) {
       showToast("Please enter a valid email.", "error");
+      return;
+    }
+    if (adminOnly && email.trim().toLowerCase() !== ADMIN_EMAIL) {
+      showToast('This portal is restricted to Ride Club administrators.', 'error');
       return;
     }
 
@@ -185,7 +193,7 @@ const LoginScreen = () => {
       }
 
       showToast("Successfully logged in!", 'success');
-      navigate('/home', { replace: true });
+      navigate(target, { replace: true });
 
     } catch (error: any) {
       // Authentication failure must never grant access.

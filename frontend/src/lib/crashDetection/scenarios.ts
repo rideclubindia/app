@@ -18,7 +18,7 @@ interface Segment {
 }
 
 function baselineRiding(t: number, seedOffset: number): { accel: Vec3; gyro: Vec3 } {
-  // Upright mount, gravity mostly on z; small vibration/lean jitter — ordinary riding.
+  // Upright mount, gravity mostly on z; small vibration/lean jitter â€” ordinary riding.
   return {
     accel: {
       x: noise(t + seedOffset) * 0.6,
@@ -59,7 +59,7 @@ function stationarySegment(fromMs: number, toMs: number): Segment {
   };
 }
 
-/** A short sharp spike on top of gravity — impact-shaped, decaying over ~150ms. */
+/** A short sharp spike on top of gravity â€” impact-shaped, decaying over ~150ms. */
 function impactSegment(fromMs: number, toMs: number, peakG: number, axis: 'x' | 'y' | 'z' = 'z'): Segment {
   const peakAt = fromMs + (toMs - fromMs) * 0.2;
   return {
@@ -85,7 +85,7 @@ function gpsSpeedRamp(fromMs: number, toMs: number, fromKph: number, toKph: numb
   return out;
 }
 
-// ---- Non-crash scenarios (must be rejected — stay in / return to MONITORING) ----
+// ---- Non-crash scenarios (must be rejected â€” stay in / return to MONITORING) ----
 
 export const normalRiding: ReplayScenario = {
   scenario: 'normal_riding',
@@ -145,7 +145,7 @@ export const sharpTurn: ReplayScenario = {
 
 export const phoneDrop: ReplayScenario = {
   scenario: 'phone_drop',
-  // free-fall-like dip then impact, but phone keeps moving afterward (in a pocket/bag) — not stationary
+  // free-fall-like dip then impact, but phone keeps moving afterward (in a pocket/bag) â€” not stationary
   samples: buildFromSegments([
     ridingSegment(0, 1000),
     { fromMs: 1000, toMs: 1200, sample: () => ({ accel: { x: 0, y: 0, z: 0.3 * G }, gyro: { x: 60, y: 40, z: 30 } }) },
@@ -188,7 +188,7 @@ export const normalParking: ReplayScenario = {
 // ---- Crash-positive scenarios (must reach CRASH_SUSPECTED) ----
 
 export const simulatedImpact: ReplayScenario = {
-  // isolated spike only, no follow-through — per Architecture.md §14 this is a
+  // isolated spike only, no follow-through â€” per Architecture.md Â§14 this is a
   // distinct fixture from the full crash sequence and is expected to be REJECTED
   // (single-signal spikes are exactly what VALIDATING exists to filter out).
   scenario: 'simulated_impact',
@@ -214,12 +214,53 @@ export const simulatedCrashSequence: ReplayScenario = {
         gyro: { x: 150 + noise(t) * 20, y: 100 + noise(t * 1.2) * 20, z: 60 + noise(t * 0.8) * 20 },
       }),
     },
-    stationarySegment(1800, 4500),
+    stationarySegment(1800, 7000),
   ]),
   gps: gpsSpeedRamp(0, 1300, 55, 2),
 };
 
+const crashAfterRiding = (from: number): Segment[] => [
+  impactSegment(from, from + 300, 6, 'x'),
+  {
+    fromMs: from + 300,
+    toMs: from + 800,
+    sample: (t) => ({
+      accel: { x: noise(t) * 0.3, y: noise(t * 1.1) * 0.3, z: 0.4 * G },
+      gyro: { x: 150 + noise(t) * 20, y: 100 + noise(t * 1.2) * 20, z: 60 + noise(t * 0.8) * 20 },
+    }),
+  },
+  stationarySegment(from + 800, from + 6000),
+];
+
+export const crashWithoutGps: ReplayScenario = {
+  scenario: 'crash_without_gps',
+  // same crash as the full sequence, but no GPS fix at all (tunnel / no signal)
+  samples: buildFromSegments([ridingSegment(0, 1000), ...crashAfterRiding(1000)]),
+};
+
+export const crashWhileWalking: ReplayScenario = {
+  scenario: 'impact_while_walking',
+  // identical crash-shaped sensor trace, but GPS says walking pace the whole time
+  samples: buildFromSegments([ridingSegment(0, 1000), ...crashAfterRiding(1000)]),
+  gps: gpsSpeedRamp(0, 7000, 4, 0),
+};
+
+export const phoneFlungOffMount: ReplayScenario = {
+  scenario: 'phone_dropped_hard_while_riding',
+  // phone free-falls ~250ms, hits the road hard and lies still: dropped-phone pattern must be penalised
+  samples: buildFromSegments([
+    ridingSegment(0, 1000),
+    { fromMs: 1000, toMs: 1250, sample: () => ({ accel: { x: 0, y: 0, z: 0.1 * G }, gyro: { x: 200, y: 150, z: 90 } }) },
+    impactSegment(1250, 1450, 6, 'y'),
+    stationarySegment(1450, 7000),
+  ]),
+  gps: gpsSpeedRamp(0, 7000, 40, 38),
+};
+
 export const ALL_SCENARIOS: { scenario: ReplayScenario; expectCrashSuspected: boolean }[] = [
+  { scenario: crashWithoutGps, expectCrashSuspected: true },
+  { scenario: crashWhileWalking, expectCrashSuspected: false },
+  { scenario: phoneFlungOffMount, expectCrashSuspected: false },
   { scenario: normalRiding, expectCrashSuspected: false },
   { scenario: hardBraking, expectCrashSuspected: false },
   { scenario: pothole, expectCrashSuspected: false },

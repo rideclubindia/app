@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { X, AlertCircle, Phone, Undo2, Navigation, ShieldCheck, ShieldOff } from 'lucide-react';
+import { X, AlertCircle, Phone, Undo2, Navigation, ShieldCheck, ShieldOff, RotateCw } from 'lucide-react';
 import { useToast } from './ToastContext';
+import { useSosStore, sendAgain, type OnlineState, type SmsState, type SmsRecipientState, type ContactSmsState } from '../lib/sos/sosOrchestrator';
 
 interface SOSData {
   coordinates: string;
@@ -19,7 +20,94 @@ interface Props {
   onClose: () => void;
   isCrashDetectionActive?: boolean;
   onToggleCrashDetection?: () => void;
+  sosEventId?: string | null;
+  memberUid?: string;
+  crashDetectionStatus?: string;
 }
+
+const ONLINE_LABEL: Record<OnlineState, [string, Tone]> = {
+  idle: ['Preparing emergency alert', 'wait'],
+  sending: ['Sending…', 'wait'],
+  delivered_to_group: ['Group alerted', 'ok'],
+  queued: ['Queued · retries when online', 'warn'],
+  failed: ['Delivery failed', 'bad'],
+};
+const SMS_LABEL: Record<SmsState, [string, Tone]> = {
+  not_needed: ['Not needed (online)', 'muted'],
+  preparing: ['Preparing SMS…', 'wait'],
+  attempted: ['Handed to phone network', 'wait'],
+  composer_opened: ['SMS app opened · tap Send', 'warn'],
+  unavailable: ['SMS unavailable on this device', 'bad'],
+  permission_denied: ['SMS permission denied', 'bad'],
+  no_contacts: ['No emergency contacts', 'bad'],
+  failed: ['SMS failed', 'bad'],
+};
+const CONTACT_SMS_LABEL: Record<ContactSmsState, [string, Tone]> = {
+  not_sent: ['Waiting for internet', 'muted'],
+  confirmed: ['SMS confirmed by gateway', 'ok'],
+  not_confirmed: ['Delivery not confirmed', 'warn'],
+  no_gateway: ['SMS gateway not configured', 'warn'],
+};
+type Tone = 'ok' | 'warn' | 'bad' | 'wait' | 'muted';
+const TONE: Record<Tone, string> = {
+  ok: 'text-green-700 bg-green-50', warn: 'text-amber-700 bg-amber-50', bad: 'text-red-700 bg-red-50',
+  wait: 'text-gray-700 bg-gray-100', muted: 'text-gray-500 bg-gray-50',
+};
+
+const recipientSummary = (r: Record<string, SmsRecipientState>) => {
+  const v = Object.values(r);
+  if (!v.length) return null;
+  const n = (s: SmsRecipientState) => v.filter((x) => x === s).length;
+  const parts = [n('delivered') && `${n('delivered')} delivered`, n('sent') && `${n('sent')} sent, delivery unknown`, n('pending') && `${n('pending')} sending`, (n('failed') + n('delivery_failed')) && `${n('failed') + n('delivery_failed')} failed`].filter(Boolean);
+  return parts.join(' · ');
+};
+
+const SosStatusPanel = ({ eventId, memberUid }: { eventId: string; memberUid: string }) => {
+  const ev = useSosStore((s) => s.events.find((e) => e.id === eventId));
+  const env = useSosStore((s) => s.env);
+  const [resending, setResending] = useState(false);
+  if (!ev) return null;
+  const smsRow: [string, Tone] = ev.sms === 'attempted' && recipientSummary(ev.smsRecipients)
+    ? [recipientSummary(ev.smsRecipients)!, Object.values(ev.smsRecipients).some((s) => s === 'delivered') ? 'ok' : 'wait']
+    : SMS_LABEL[ev.sms];
+  const rows: [string, [string, Tone]][] = [
+    ['Internet', env ? (env.internet ? ['Available', 'ok'] : ['Unavailable', 'bad']) : ['Checking…', 'wait']],
+    ['Location', ev.location ? [ev.location.stale ? 'Last known location' : `Available${ev.location.accuracy ? ` · ±${Math.round(ev.location.accuracy)} m` : ''}`, ev.location.stale ? 'warn' : 'ok'] : ['Location unavailable', 'bad']],
+    ['Emergency contacts', ev.contacts.length ? [`${ev.contacts.length}`, 'ok'] : ['None saved', 'bad']],
+    ['Ride group', ONLINE_LABEL[ev.online]],
+    ['Contacts via server', ev.online === 'delivered_to_group' ? CONTACT_SMS_LABEL[ev.contactSms] : ['Waiting for internet', 'muted']],
+    ['SMS fallback', smsRow],
+  ];
+  return (
+    <div className="rounded-xl border border-red-100 bg-white overflow-hidden">
+      <div className="px-3 py-2 bg-red-50 border-b border-red-100 flex items-center justify-between">
+        <span className="text-[12px] font-bold text-red-700 tracking-wide">SOS ACTIVE</span>
+        <span className="text-[11px] text-red-700/80 tabular-nums">{new Date(ev.createdAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}</span>
+      </div>
+      <div className="divide-y divide-gray-100">
+        {rows.map(([k, [v, tone]]) => (
+          <div key={k} className="flex items-center justify-between gap-3 px-3 py-2">
+            <span className="text-[12px] text-gray-600">{k}</span>
+            <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full text-right ${TONE[tone]}`}>{v}</span>
+          </div>
+        ))}
+      </div>
+      {ev.lastError && ev.online !== 'delivered_to_group' && (
+        <p className="px-3 py-2 text-[11px] text-gray-600 border-t border-gray-100">
+          {ev.online === 'queued' ? 'Could not reach RideClub. Your alert is saved on this phone and will be sent automatically when the connection returns. ' : ''}
+          {!ev.contacts.length ? 'Add an emergency contact in your profile so SMS can reach someone.' : ''}
+        </p>
+      )}
+      <button
+        onClick={async () => { setResending(true); try { await sendAgain(ev.id, memberUid); } finally { setResending(false); } }}
+        disabled={resending}
+        className="w-full h-11 border-t border-gray-100 text-[13px] font-semibold text-red-700 hover:bg-red-50 flex items-center justify-center gap-1.5 disabled:opacity-50"
+      >
+        <RotateCw className={`w-4 h-4 ${resending ? 'animate-spin' : ''}`} /> {resending ? 'Sending again…' : 'Send again'}
+      </button>
+    </div>
+  );
+};
 
 export const SOSModal: React.FC<Props> = ({ 
   isReceiving, 
@@ -29,7 +117,10 @@ export const SOSModal: React.FC<Props> = ({
   onNavigate,
   onClose, 
   isCrashDetectionActive = true,
-  onToggleCrashDetection
+  onToggleCrashDetection,
+  sosEventId,
+  memberUid = '',
+  crashDetectionStatus
 }) => {
   const [sending, setSending] = useState(false);
   const [isSent, setIsSent] = useState(false);
@@ -132,13 +223,17 @@ export const SOSModal: React.FC<Props> = ({
 
           {!isReceiving ? (
             <>
-              <button
-                onClick={handleTrigger}
-                disabled={sending || isSent}
-                className={`w-full ${isSent ? 'bg-green-500 hover:bg-green-600' : 'bg-red-500 hover:bg-red-600'} text-white font-semibold text-[14px] py-3 rounded-xl transition-colors disabled:opacity-50 active:scale-[0.98] shadow-lg ${isSent ? 'shadow-green-500/25' : 'shadow-red-500/25'}`}
-              >
-                {sending ? 'Sending...' : isSent ? 'SOS Alert Sent!' : 'Trigger Emergency Alert'}
-              </button>
+              {sosEventId ? (
+                <SosStatusPanel eventId={sosEventId} memberUid={memberUid} />
+              ) : (
+                <button
+                  onClick={handleTrigger}
+                  disabled={sending}
+                  className="w-full bg-red-500 hover:bg-red-600 text-white font-semibold text-[14px] py-3 rounded-xl transition-colors disabled:opacity-50 active:scale-[0.98] shadow-lg shadow-red-500/25"
+                >
+                  {sending ? 'Preparing emergency alert…' : 'Send Emergency Alert'}
+                </button>
+              )}
 
               {sendError && !isSent && (
                 <div className="bg-red-50 border border-red-100 rounded-xl p-3 flex flex-col gap-2">
@@ -153,8 +248,8 @@ export const SOSModal: React.FC<Props> = ({
                 </div>
               )}
 
-              {isSent && (
-                <button 
+              {(isSent || sosEventId) && (
+                <button
                   onClick={handleRevoke}
                   disabled={isRevoking}
                   className="w-full bg-amber-500 hover:bg-amber-600 text-white font-semibold py-2.5 rounded-xl text-[13px] transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
@@ -171,10 +266,10 @@ export const SOSModal: React.FC<Props> = ({
               >
                 <span className="flex items-center gap-2 text-[12px] font-semibold text-[#111111]">
                   {isCrashDetectionActive ? <ShieldCheck className="w-4 h-4 text-green-500" /> : <ShieldOff className="w-4 h-4 text-gray-400" />}
-                  Crash Detection
+                  Accident Detection
                 </span>
                 <span className={`text-[10px] font-bold px-2 py-1 rounded-full ${isCrashDetectionActive ? 'bg-green-100 text-green-600' : 'bg-gray-200 text-gray-500'}`}>
-                  {isCrashDetectionActive ? 'ACTIVE' : 'OFF'}
+                  {crashDetectionStatus || (isCrashDetectionActive ? 'ACTIVE' : 'OFF')}
                 </span>
               </button>
             </>
