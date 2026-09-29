@@ -4,7 +4,8 @@ import { useLocationStore } from '../../store/useLocationStore';
 import {
   ChevronLeft, MapPin, Map, Users, Calendar, Clock, Zap, Globe, Lock, ChevronRight, ArrowRight, Search, Crosshair,
   ArrowUp as ArrowUpIcon, ArrowDown as ArrowDownIcon, X, Camera, Send, Sparkles, Bike as Motorcycle, Motorbike, Car, Bike as CycleIcon, Loader2, Check,
-  Sun, Mountain, Compass, TreePine, Moon, Target, Route as RouteIcon, Flag
+  Sun, Mountain, Compass, TreePine, Moon, Target, Route as RouteIcon, Flag,
+  Utensils, Fuel, HeartPulse, Wrench, Coffee, BedDouble
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { auth } from '../../lib/firebase';
@@ -64,6 +65,8 @@ const CreateRide = () => {
   const [stops, setStops] = useState<{text: string, coords: {lat: number, lng: number} | null, type?: string}[]>([]);
   const [suggestions, setSuggestions] = useState<any[]>([]);
   const [activeInput, setActiveInput] = useState<string | null>(null);
+  const [suggestAnchor, setSuggestAnchor] = useState<{ top: number; bottom: number; left: number; width: number } | null>(null);
+  const [mapSearchText, setMapSearchText] = useState('');
   const [routeStats, setRouteStats] = useState<{ distanceKm: number; durationMin: number } | null>(null);
   const [mapView, setMapView] = useState<'map' | 'satellite'>('map');
 
@@ -93,14 +96,14 @@ const CreateRide = () => {
 
   const getStopInfo = (type?: string) => {
     switch (type) {
-      case 'Food': return { emoji: '🍔', color: '#F59E0B' };
-      case 'Fuel': return { emoji: '⛽', color: '#EF4444' };
-      case 'Hospital': return { emoji: '🏥', color: '#DC2626' };
-      case 'Mechanic': return { emoji: '🔧', color: '#64748B' };
-      case 'Tea': return { emoji: '☕', color: '#8B5CF6' };
-      case 'Stay': return { emoji: '🛏️', color: '#3B82F6' };
-      case 'Sightseeing': return { emoji: '📸', color: '#10B981' };
-      default: return { emoji: '📍', color: '#007AFF' };
+      case 'Food': return { emoji: '🍔', color: '#F59E0B', icon: Utensils };
+      case 'Fuel': return { emoji: '⛽', color: '#EF4444', icon: Fuel };
+      case 'Hospital': return { emoji: '🏥', color: '#DC2626', icon: HeartPulse };
+      case 'Mechanic': return { emoji: '🔧', color: '#64748B', icon: Wrench };
+      case 'Tea': return { emoji: '☕', color: '#8B5CF6', icon: Coffee };
+      case 'Stay': return { emoji: '🛏️', color: '#3B82F6', icon: BedDouble };
+      case 'Sightseeing': return { emoji: '📸', color: '#10B981', icon: Camera };
+      default: return { emoji: '📍', color: '#007AFF', icon: MapPin };
     }
   };
 
@@ -246,6 +249,7 @@ const CreateRide = () => {
     if (target === 'origin') setOriginText(text);
     else if (target === 'dest') setDestText(text);
     else if (target === WAYPOINT_DRAFT_KEY) setWaypointDraft(prev => ({ ...prev, text }));
+    else if (target === 'map-search') setMapSearchText(text);
     else if (target.startsWith('stop-')) {
       const index = parseInt(target.split('-')[1]);
       setStops(prev => {
@@ -295,6 +299,12 @@ const CreateRide = () => {
       setDestText(text);
     } else if (target === WAYPOINT_DRAFT_KEY) {
       setWaypointDraft(prev => ({ ...prev, coords, text }));
+    } else if (target === 'map-search') {
+      setMapSearchText('');
+      if (map.current) map.current.flyTo({ center: [coords.lng, coords.lat], zoom: 15 });
+      setWaypointDraft({ type: 'Other', text, coords });
+      setOpenDropdownIdx(null);
+      setShowWaypointModal(true);
     } else if (target.startsWith('stop-')) {
       const index = parseInt(target.split('-')[1]);
       setStops(prev => {
@@ -318,7 +328,7 @@ const CreateRide = () => {
     if (mapContainer.current) {
       map.current = new maplibregl.Map({
         container: mapContainer.current,
-        style: 'https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json',
+        style: 'https://basemaps.cartocdn.com/gl/positron-gl-style/style.json',
         center: [78.4867, 17.3850],
         zoom: 12
       });
@@ -343,6 +353,20 @@ const CreateRide = () => {
 
         map.current.on('click', async (e) => {
           const target = selectingLocationForRef.current;
+          if (!target) {
+            const lat = e.lngLat.lat;
+            const lng = e.lngLat.lng;
+            let text = 'Selected on map';
+            try {
+              const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`);
+              const data = await res.json();
+              text = data.display_name?.split(',').slice(0, 2).join(',') || text;
+            } catch { /* keep fallback text */ }
+            setWaypointDraft({ type: 'Other', text, coords: { lat, lng } });
+            setOpenDropdownIdx(null);
+            setShowWaypointModal(true);
+            return;
+          }
           if (target) {
             const lat = e.lngLat.lat;
             const lng = e.lngLat.lng;
@@ -487,7 +511,7 @@ const CreateRide = () => {
           },
           layers: [{ id: 'esri', type: 'raster' as const, source: 'esri' }]
         }
-      : 'https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json';
+      : 'https://basemaps.cartocdn.com/gl/positron-gl-style/style.json';
 
     map.current.setStyle(styleSpec as any);
     map.current.once('styledata', () => {
@@ -655,7 +679,7 @@ const CreateRide = () => {
 
   // ---- Shared header/stepper ----
   const header = (
-    <div className="shrink-0 px-4 pt-4 pb-3 max-w-[560px] w-full mx-auto">
+    <div className="shrink-0 px-4 pt-4 pb-3.5 max-w-[560px] w-full mx-auto">
       <div className="flex items-center justify-between">
         <button
           onClick={() => step === 1 ? navigate(-1) : goToStep(step - 1)}
@@ -663,11 +687,14 @@ const CreateRide = () => {
         >
           <ChevronLeft className="w-5 h-5" />
         </button>
-        <h1 className="text-[16px] font-bold text-gray-950">{isEditMode ? 'Edit Ride' : 'Create a Ride'}</h1>
+        <div className="text-center">
+          <h1 className="text-[16px] font-bold text-gray-950 leading-tight">{isEditMode ? 'Edit Ride' : 'Create a Ride'}</h1>
+          <p className="text-[10.5px] font-semibold text-gray-400 leading-tight">Step {step} of {STEPS.length} &middot; {STEPS[step - 1]}</p>
+        </div>
         <button onClick={saveDraft} className="text-[12px] font-bold text-[#FF6B22] cursor-pointer px-2 py-1">Save Draft</button>
       </div>
 
-      <div className="flex items-center gap-2 mt-3.5">
+      <div className="flex items-center gap-2 mt-4">
         {STEPS.map((label, idx) => {
           const n = idx + 1;
           const isDone = step > n;
@@ -677,16 +704,17 @@ const CreateRide = () => {
               <button
                 onClick={() => n < step && goToStep(n)}
                 disabled={n > step}
-                className={`flex items-center gap-1.5 text-[11px] font-bold whitespace-nowrap ${n <= step ? 'cursor-pointer' : 'cursor-default'}`}
+                aria-label={`${label} step ${n}${isCurrent ? ', current' : isDone ? ', completed' : ''}`}
+                className={`flex items-center gap-1.5 text-[11px] font-bold whitespace-nowrap py-2.5 -my-2.5 ${n <= step ? 'cursor-pointer' : 'cursor-default'}`}
               >
-                <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] shrink-0 ${
-                  isDone ? 'bg-[#FF6B22] text-white' : isCurrent ? 'bg-[#FF6B22] text-white' : 'bg-gray-100 text-gray-400'
+                <span className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] shrink-0 transition-all ${
+                  isDone ? 'bg-[#FF6B22] text-white' : isCurrent ? 'bg-[#FF6B22] text-white ring-4 ring-[#FF6B22]/15' : 'bg-gray-100 text-gray-400'
                 }`}>
                   {isDone ? <Check className="w-3 h-3" /> : n}
                 </span>
-                <span className={isCurrent ? 'text-gray-950' : isDone ? 'text-gray-600' : 'text-gray-400'}>{label}</span>
+                <span className={`hidden xs:inline ${isCurrent ? 'text-gray-950' : isDone ? 'text-gray-600' : 'text-gray-400'}`}>{label}</span>
               </button>
-              {n < STEPS.length && <div className={`flex-1 h-[2px] rounded-full ${step > n ? 'bg-[#FF6B22]' : 'bg-gray-100'}`} />}
+              {n < STEPS.length && <div className={`flex-1 h-[2px] rounded-full transition-colors ${step > n ? 'bg-[#FF6B22]' : 'bg-gray-100'}`} />}
             </React.Fragment>
           );
         })}
@@ -694,48 +722,59 @@ const CreateRide = () => {
     </div>
   );
 
+  const sectionLabel = (icon: React.ElementType, text: string) => {
+    const Icon = icon;
+    return (
+      <div className="flex items-center gap-1.5 mb-2">
+        <Icon className="w-3.5 h-3.5 text-[#FF6B22]" />
+        <span className="text-[13px] font-bold text-gray-950">{text}</span>
+      </div>
+    );
+  };
+
   return (
     <div className="w-full h-full bg-app-canvas flex flex-col font-sans overflow-hidden">
       {header}
 
       {/* ====== STEP 1: BASICS ====== */}
       {step === 1 && (
-        <div className="flex-1 min-h-0 overflow-y-auto hide-scrollbar px-4 pb-[100px] max-w-[560px] w-full mx-auto flex flex-col gap-4">
+        <div className="flex-1 min-h-0 overflow-y-auto hide-scrollbar px-4 pb-[100px] max-w-[560px] w-full mx-auto flex flex-col gap-5">
           <div>
             <h2 className="text-[19px] font-black text-gray-950">Ride Basics</h2>
             <p className="text-[12px] text-gray-500 font-medium mt-0.5">Start with the essentials. You can add more details later.</p>
           </div>
 
-          <div className="card-app p-3.5">
-            <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider block mb-1">Ride Title *</span>
-            <input
-              type="text"
-              value={formData.name}
-              onChange={(e) => setFormData({ ...formData, name: e.target.value.slice(0, 60) })}
-              placeholder="e.g. Sunday Morning Cruise"
-              className="w-full bg-transparent text-[16px] font-bold text-gray-950 placeholder-gray-400 placeholder:font-medium focus:outline-none"
-            />
-          </div>
-
-          <div className="card-app p-3.5">
-            <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider block mb-1">Short Description</span>
-            <textarea
-              value={formData.tagline}
-              onChange={(e) => setFormData({ ...formData, tagline: e.target.value.slice(0, 200) })}
-              placeholder="A refreshing morning ride with amazing views, coffee stop and great company."
-              rows={3}
-              className="w-full bg-transparent text-[13px] text-gray-800 placeholder-gray-400 font-medium focus:outline-none resize-none"
-            />
+          <div className="card-app p-3.5 flex flex-col divide-y divide-gray-100">
+            <div className="pb-3">
+              <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider block mb-1">Ride Title *</span>
+              <input
+                type="text"
+                value={formData.name}
+                onChange={(e) => setFormData({ ...formData, name: e.target.value.slice(0, 60) })}
+                placeholder="e.g. Sunday Morning Cruise"
+                className="w-full bg-transparent text-[16px] font-bold text-gray-950 placeholder-gray-400 placeholder:font-medium focus:outline-none"
+              />
+            </div>
+            <div className="pt-3">
+              <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider block mb-1">Short Description</span>
+              <textarea
+                value={formData.tagline}
+                onChange={(e) => setFormData({ ...formData, tagline: e.target.value.slice(0, 200) })}
+                placeholder="A refreshing morning ride with amazing views, coffee stop and great company."
+                rows={3}
+                className="w-full bg-transparent text-[13px] text-gray-800 placeholder-gray-400 font-medium focus:outline-none resize-none"
+              />
+            </div>
           </div>
 
           <div>
-            <span className="text-[13px] font-bold text-gray-950 block mb-2">Ride Type</span>
+            {sectionLabel(Sparkles, 'Ride Type')}
             <div className="grid grid-cols-3 gap-2">
               {RIDE_TYPES.map(rt => (
                 <button
                   key={rt.value}
                   onClick={() => setRideType(rt.value)}
-                  className={`flex d-flex flex-row items-center gap-2 px-3 py-2.5 rounded-2xl text-[12px] font-bold cursor-pointer transition-all ${
+                  className={`flex d-flex flex-row items-center gap-2 px-3 py-2.5 rounded-xl text-[12px] font-bold cursor-pointer transition-all ${
                     rideType === rt.value ? 'bg-[#FF6B22]/10 text-[#FF6B22] ring-2 ring-[#FF6B22]/40' : 'card-app text-gray-700'
                   }`}
                 >
@@ -746,7 +785,7 @@ const CreateRide = () => {
           </div>
 
           <div>
-            <span className="text-[13px] font-bold text-gray-950 block mb-2">Vehicle Type</span>
+            {sectionLabel(Motorcycle, 'Vehicle Type')}
             <div className="flex flex-wrap gap-2">
               {vehicleTypes.map(vt => {
                 const VtIcon = vehicleTypeIcon(vt.label);
@@ -766,7 +805,7 @@ const CreateRide = () => {
           </div>
 
           <div>
-            <span className="text-[13px] font-bold text-gray-950 block mb-2">Visibility</span>
+            {sectionLabel(Globe, 'Visibility')}
             <div className="card-app flex flex-col overflow-hidden divide-y divide-gray-100">
               <button
                 onClick={() => setFormData({ ...formData, visibility: 'public' })}
@@ -810,37 +849,83 @@ const CreateRide = () => {
         </div>
       )}
 
-      {/* ====== STEP 2: ROUTE ====== */}
+      {/* ====== STEP 2: ROUTE (map-first layout) ====== */}
       {step === 2 && (
-        <div className="flex-1 min-h-0 flex flex-col gap-3 px-4 pb-[100px] max-w-[900px] w-full mx-auto">
-          <div className="w-full h-[45%] shrink-0 flex flex-col gap-3 min-h-0">
-            <div>
-              <h2 className="text-[17px] font-black text-gray-950">Plan Your Route</h2>
-              <p className="text-[11px] text-gray-500 font-medium mt-0.5">Add start point, destination and waypoints.</p>
+        <div className="flex-1 min-h-0 relative">
+          {/* Full-bleed map is the primary surface */}
+          <div ref={mapContainer} className="absolute inset-0 w-full h-full" />
+
+          <div className="absolute top-3 left-3 right-3 z-20 flex items-center gap-2">
+            <div className="relative flex-1">
+              <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+              <input
+                type="text"
+                value={mapSearchText}
+                onChange={e => { const r = e.target.getBoundingClientRect(); setSuggestAnchor({ top: r.top, bottom: r.bottom, left: r.left, width: r.width }); handleInputChange(e.target.value, 'map-search'); }}
+                onFocus={e => { const r = e.target.getBoundingClientRect(); setSuggestAnchor({ top: r.top, bottom: r.bottom, left: r.left, width: r.width }); }}
+                onBlur={() => setTimeout(() => setActiveInput(null), 200)}
+                placeholder="Search places to add a stop..."
+                className="w-full h-10 card-app pl-8 pr-3 text-[13px] text-gray-950 placeholder-gray-400 font-medium outline-none focus:ring-2 focus:ring-[#FF6B22] transition-all"
+              />
             </div>
+            <div className="flex items-center card-app p-1 gap-1 shrink-0">
+              <button
+                onClick={() => setMapView('map')}
+                className={`w-11 h-10 rounded-xl flex items-center justify-center cursor-pointer transition-all ${mapView === 'map' ? 'bg-gray-950 text-white' : 'text-gray-600'}`}
+                title="Map view"
+                aria-label="Map view"
+              >
+                <Map className="w-3.5 h-3.5" />
+              </button>
+              <button
+                onClick={() => setMapView('satellite')}
+                className={`w-11 h-10 rounded-xl flex items-center justify-center cursor-pointer transition-all ${mapView === 'satellite' ? 'bg-gray-950 text-white' : 'text-gray-600'}`}
+                title="Satellite view"
+                aria-label="Satellite view"
+              >
+                <Compass className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          </div>
 
-            {routeStats && (
-              <div className="card-app p-3 grid grid-cols-3 gap-2">
-                <div className="flex flex-col items-center gap-1">
-                  <RouteIcon className="w-4 h-4 text-[#FF6B22]" />
-                  <span className="text-[12px] font-black text-gray-950 block">{routeStats.distanceKm.toFixed(0)} km</span>
-                  <span className="text-[8.5px] font-semibold text-gray-500">Total Distance</span>
+          {!mapLoaded && (
+            <div className="absolute inset-0 flex items-center justify-center bg-white/60 z-10">
+              <div className="w-8 h-8 border-4 border-[#FF6B22] border-t-transparent rounded-full animate-spin" />
+            </div>
+          )}
+          {selectingLocationFor && (
+            <div className="absolute top-16 left-1/2 -translate-x-1/2 z-20 bg-gray-950/90 backdrop-blur text-white text-[12px] font-semibold px-4 py-2 rounded-full flex items-center gap-2 shadow-lg whitespace-nowrap">
+              <MapPin className="w-3.5 h-3.5 text-[#FF6B22]" />
+              Tap the map to set {selectingLocationFor === 'origin' ? 'start' : selectingLocationFor === 'dest' ? 'destination' : 'stop'}
+              <button onClick={() => { setSelectingLocationFor(null); selectingLocationForRef.current = null; }} className="ml-1 text-white/60 hover:text-white cursor-pointer">
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          )}
+
+          {/* Floating route panel, docked above the app's bottom nav bar */}
+          <div className="absolute bottom-[92px] left-0 right-0 z-20 px-3 max-w-[560px] w-full mx-auto">
+            <div className="card-app-lg p-3 flex flex-col max-h-[54vh]">
+              <div className="flex items-center justify-between gap-2 shrink-0">
+                <div className="min-w-0">
+                  <h2 className="text-[14px] font-black text-gray-950 truncate">Plan Your Route</h2>
+                  <p className="text-[10.5px] text-gray-500 font-medium truncate">Set a start, destination and any stops.</p>
                 </div>
-                <div className="flex flex-col items-center gap-1">
-                  <Clock className="w-4 h-4 text-[#FF6B22]" />
-                  <span className="text-[12px] font-black text-gray-950 block">{routeStats.durationMin < 60 ? `${Math.round(routeStats.durationMin)}m` : `${Math.floor(routeStats.durationMin / 60)}h ${Math.round(routeStats.durationMin % 60)}m`}</span>
-                  <span className="text-[8.5px] font-semibold text-gray-500">Estimated Time</span>
-                </div>
-                <div className="flex flex-col items-center gap-1">
-                  <Flag className="w-4 h-4 text-[#FF6B22]" />
-                  <span className="text-[12px] font-black text-gray-950 block">{stops.length}</span>
-                  <span className="text-[8.5px] font-semibold text-gray-500">Waypoints</span>
-                </div>
+                {routeStats && (
+                  <div className="flex items-center gap-2.5 shrink-0 pl-2 border-l border-gray-100">
+                    <div className="flex flex-col items-center leading-none">
+                      <span className="text-[12px] font-black text-gray-950">{routeStats.distanceKm.toFixed(0)}km</span>
+                      <span className="text-[8px] font-semibold text-gray-400 mt-0.5">Distance</span>
+                    </div>
+                    <div className="flex flex-col items-center leading-none">
+                      <span className="text-[12px] font-black text-gray-950">{routeStats.durationMin < 60 ? `${Math.round(routeStats.durationMin)}m` : `${Math.floor(routeStats.durationMin / 60)}h ${Math.round(routeStats.durationMin % 60)}m`}</span>
+                      <span className="text-[8px] font-semibold text-gray-400 mt-0.5">Duration</span>
+                    </div>
+                  </div>
+                )}
               </div>
-            )}
 
-            <div className="card-app p-3 flex-1 min-h-0 flex flex-col overflow-hidden">
-              <div className="flex-1 min-h-0 overflow-y-auto hide-scrollbar">
+              <div className="flex-1 min-h-0 overflow-y-auto hide-scrollbar mt-3">
                 <div className="flex items-start gap-2.5">
                   <div className="flex flex-col items-center pt-[15px] shrink-0">
                     <div className="w-2.5 h-2.5 rounded-full bg-[#34C759] border-2 border-white ring-1 ring-gray-200" />
@@ -850,21 +935,12 @@ const CreateRide = () => {
                     <input
                       type="text"
                       value={originText}
-                      onChange={e => handleInputChange(e.target.value, 'origin')}
-                      onFocus={() => { if (originText.length >= 3) handleInputChange(originText, 'origin'); }}
+                      onChange={e => { const r = e.target.getBoundingClientRect(); setSuggestAnchor({ top: r.top, bottom: r.bottom, left: r.left, width: r.width }); handleInputChange(e.target.value, 'origin'); }}
+                      onFocus={e => { const r = e.target.getBoundingClientRect(); setSuggestAnchor({ top: r.top, bottom: r.bottom, left: r.left, width: r.width }); if (originText.length >= 3) handleInputChange(originText, 'origin'); }}
                       onBlur={() => setTimeout(() => setActiveInput(null), 200)}
                       placeholder="Start location..."
                       className={inputClass}
                     />
-                    {activeInput === 'origin' && suggestions.length > 0 && (
-                      <div className="absolute top-[100%] left-0 right-0 mt-1 card-app z-[100] max-h-48 overflow-y-auto hide-scrollbar">
-                        {suggestions.map((s, i) => (
-                          <div key={i} className="p-2.5 border-b border-gray-100 last:border-0 hover:bg-gray-50 cursor-pointer text-[12px] font-medium text-gray-950 truncate" onMouseDown={() => handleSelectSuggestion(s, 'origin')}>
-                            {s.display_name}
-                          </div>
-                        ))}
-                      </div>
-                    )}
                     <div className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center gap-0.5">
                       <button
                         onClick={() => {
@@ -873,15 +949,17 @@ const CreateRide = () => {
                             setOriginText(globalLocationName || 'My Location');
                           }
                         }}
-                        className="w-[30px] h-[30px] flex items-center justify-center text-[#FF6B22] hover:bg-[#FF6B22]/10 rounded-lg transition-colors active:scale-95 cursor-pointer"
+                        className="w-10 h-10 flex items-center justify-center text-[#FF6B22] hover:bg-[#FF6B22]/10 rounded-lg transition-colors active:scale-95 cursor-pointer"
                         title="Use Current Location"
+                        aria-label="Use current location"
                       >
                         <Crosshair className="w-4 h-4" />
                       </button>
                       <button
                         onClick={() => setSelectingLocationFor('origin')}
-                        className={`w-[30px] h-[30px] flex items-center justify-center rounded-lg active:scale-95 transition-all cursor-pointer ${selectingLocationFor === 'origin' ? 'text-white bg-[#FF6B22]' : 'text-blue-500 hover:bg-blue-50'}`}
+                        className={`w-10 h-10 flex items-center justify-center rounded-lg active:scale-95 transition-all cursor-pointer ${selectingLocationFor === 'origin' ? 'text-white bg-[#FF6B22]' : 'text-blue-500 hover:bg-blue-50'}`}
                         title="Pick on map"
+                        aria-label="Pick start location on map"
                       >
                         <Map className="w-4 h-4" />
                       </button>
@@ -889,51 +967,48 @@ const CreateRide = () => {
                   </div>
                 </div>
 
-                {stops.map((stop, index) => (
-                  <div key={index} className="flex items-center gap-2 card-app px-2.5 py-2 mb-2">
+                {stops.map((stop, index) => {
+                  const info = getStopInfo(stop.type);
+                  const StopIcon = info.icon;
+                  return (
+                  <div key={index} className="flex items-center gap-2 bg-gray-50 rounded-2xl px-2.5 py-2 mb-2" style={{ border: '1px solid #dddddd' }}>
                     <div className="flex flex-col shrink-0 text-gray-300 cursor-grab" title="Reorder (use the arrows)">
-                      <button onClick={() => { const n = [...stops]; const t = n[index - 1]; n[index - 1] = n[index]; n[index] = t; setStops(n); }} disabled={index === 0} className="disabled:opacity-20 cursor-pointer"><ArrowUpIcon className="w-3 h-3" /></button>
-                      <button onClick={() => { const n = [...stops]; const t = n[index + 1]; n[index + 1] = n[index]; n[index] = t; setStops(n); }} disabled={index === stops.length - 1} className="disabled:opacity-20 cursor-pointer"><ArrowDownIcon className="w-3 h-3" /></button>
+                      <button onClick={() => { const n = [...stops]; const t = n[index - 1]; n[index - 1] = n[index]; n[index] = t; setStops(n); }} disabled={index === 0} className="w-6 h-6 flex items-center justify-center disabled:opacity-20 cursor-pointer" aria-label="Move stop up"><ArrowUpIcon className="w-3 h-3" /></button>
+                      <button onClick={() => { const n = [...stops]; const t = n[index + 1]; n[index + 1] = n[index]; n[index] = t; setStops(n); }} disabled={index === stops.length - 1} className="w-6 h-6 flex items-center justify-center disabled:opacity-20 cursor-pointer" aria-label="Move stop down"><ArrowDownIcon className="w-3 h-3" /></button>
                     </div>
-                    <div className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 text-[14px]" style={{ backgroundColor: getStopInfo(stop.type).color + '20' }}>
-                      {getStopInfo(stop.type).emoji}
+                    <div className="w-8 h-8 rounded-full flex items-center justify-center shrink-0" style={{ backgroundColor: info.color + '20' }}>
+                      <StopIcon className="w-4 h-4" style={{ color: info.color }} strokeWidth={2.25} />
                     </div>
                     <button onClick={() => { setWaypointDraft({ type: stop.type || 'Other', text: stop.text, coords: stop.coords }); setShowWaypointModal(true); setOpenDropdownIdx(index); }} className="flex-1 min-w-0 text-left cursor-pointer">
                       <p className="text-[12px] font-bold text-gray-950 truncate">{stop.type && stop.type !== 'Other' ? stop.type : `Stop ${index + 1}`}</p>
                       <p className="text-[10.5px] text-gray-500 font-medium truncate">{stop.text || 'Tap to set location'}</p>
                     </button>
-                    <button onClick={() => setStops(stops.filter((_, i) => i !== index))} className="w-7 h-7 rounded-full bg-red-50 text-red-500 hover:bg-red-100 flex items-center justify-center active:scale-95 transition-colors cursor-pointer shrink-0" title="Remove stop">
-                      <X className="w-3.5 h-3.5" />
+                    <button onClick={() => setStops(stops.filter((_, i) => i !== index))} className="w-10 h-10 rounded-full flex items-center justify-center active:scale-95 transition-colors cursor-pointer shrink-0" title="Remove stop" aria-label="Remove stop">
+                      <span className="w-7 h-7 rounded-full bg-red-50 text-red-500 hover:bg-red-100 flex items-center justify-center">
+                        <X className="w-3.5 h-3.5" />
+                      </span>
                     </button>
                   </div>
-                ))}
+                  );
+                })}
 
                 <div className="flex items-start gap-2.5">
                   <div className="flex flex-col items-center pt-[15px] shrink-0">
                     <div className="w-2.5 h-2.5 rounded-full bg-[#FF3B30] border-2 border-white ring-1 ring-gray-200" />
                   </div>
                   <div className="relative flex-1">
-                    <Search className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                    <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
                     <input
                       type="text"
                       value={destText}
-                      onChange={e => handleInputChange(e.target.value, 'dest')}
-                      onFocus={() => { if (destText.length >= 3) handleInputChange(destText, 'dest'); }}
+                      onChange={e => { const r = e.target.getBoundingClientRect(); setSuggestAnchor({ top: r.top, bottom: r.bottom, left: r.left, width: r.width }); handleInputChange(e.target.value, 'dest'); }}
+                      onFocus={e => { const r = e.target.getBoundingClientRect(); setSuggestAnchor({ top: r.top, bottom: r.bottom, left: r.left, width: r.width }); if (destText.length >= 3) handleInputChange(destText, 'dest'); }}
                       onBlur={() => setTimeout(() => setActiveInput(null), 200)}
                       placeholder="Destination..."
-                      className={`${inputClass} pl-10 pr-[38px]`}
+                      className={`${inputClass} pl-8`}
                     />
-                    {activeInput === 'dest' && suggestions.length > 0 && (
-                      <div className="absolute top-[100%] left-0 right-0 mt-1 card-app z-[100] max-h-48 overflow-y-auto hide-scrollbar">
-                        {suggestions.map((s, i) => (
-                          <div key={i} className="p-2.5 border-b border-gray-100 last:border-0 hover:bg-gray-50 cursor-pointer text-[12px] font-medium text-gray-950 truncate" onMouseDown={() => handleSelectSuggestion(s, 'dest')}>
-                            {s.display_name}
-                          </div>
-                        ))}
-                      </div>
-                    )}
                     <div className="absolute right-1 top-1/2 -translate-y-1/2">
-                      <button onClick={() => setSelectingLocationFor('dest')} className={`w-[30px] h-[30px] flex items-center justify-center rounded-lg active:scale-95 transition-all cursor-pointer ${selectingLocationFor === 'dest' ? 'text-white bg-[#FF6B22]' : 'text-blue-500 hover:bg-blue-50'}`} title="Pick on map">
+                      <button onClick={() => setSelectingLocationFor('dest')} className={`w-10 h-10 flex items-center justify-center rounded-lg active:scale-95 transition-all cursor-pointer ${selectingLocationFor === 'dest' ? 'text-white bg-[#FF6B22]' : 'text-blue-500 hover:bg-blue-50'}`} title="Pick on map" aria-label="Pick destination on map">
                         <Map className="w-4 h-4" />
                       </button>
                     </div>
@@ -949,52 +1024,44 @@ const CreateRide = () => {
                   </button>
                 )}
               </div>
-            </div>
 
-            <div className="flex gap-2.5 shrink-0">
-              <button onClick={() => goToStep(1)} className="px-5 py-3.5 card-app text-gray-700 font-bold text-[13px] rounded-full cursor-pointer flex items-center gap-1.5">
-                <ChevronLeft className="w-4 h-4" /> Back
-              </button>
-              <button onClick={() => goToStep(3)} className="flex-1 py-3.5 btn-app-primary text-white font-bold text-[13px] rounded-full cursor-pointer flex items-center justify-center gap-1.5">
-                Next: Add Details <ArrowRight className="w-4 h-4" />
-              </button>
-            </div>
-          </div>
-
-          {/* Map */}
-          <div className="flex-1 relative rounded-[20px] overflow-hidden card-app min-h-[220px]">
-            <div ref={mapContainer} className="absolute inset-0 w-full h-full" />
-
-            <div className="absolute top-3 right-3 z-20 flex items-center card-app p-1 gap-1">
-              <button
-                onClick={() => setMapView('map')}
-                className={`px-3 py-1.5 rounded-xl text-[11px] font-bold flex items-center gap-1.5 cursor-pointer transition-all ${mapView === 'map' ? 'bg-gray-950 text-white' : 'text-gray-600'}`}
-              >
-                <Map className="w-3.5 h-3.5" /> Map
-              </button>
-              <button
-                onClick={() => setMapView('satellite')}
-                className={`px-3 py-1.5 rounded-xl text-[11px] font-bold flex items-center gap-1.5 cursor-pointer transition-all ${mapView === 'satellite' ? 'bg-gray-950 text-white' : 'text-gray-600'}`}
-              >
-                <Compass className="w-3.5 h-3.5" /> Satellite
-              </button>
-            </div>
-
-            {!mapLoaded && (
-              <div className="absolute inset-0 flex items-center justify-center bg-white/60 z-10">
-                <div className="w-8 h-8 border-4 border-[#FF6B22] border-t-transparent rounded-full animate-spin" />
-              </div>
-            )}
-            {selectingLocationFor && (
-              <div className="absolute top-4 left-1/2 -translate-x-1/2 z-20 bg-gray-950/90 backdrop-blur text-white text-[12px] font-semibold px-4 py-2 rounded-full flex items-center gap-2 shadow-lg">
-                <MapPin className="w-3.5 h-3.5 text-[#FF6B22]" />
-                Tap on the map to set {selectingLocationFor === 'origin' ? 'start' : selectingLocationFor === 'dest' ? 'destination' : 'stop'} location
-                <button onClick={() => { setSelectingLocationFor(null); selectingLocationForRef.current = null; }} className="ml-1 text-white/60 hover:text-white cursor-pointer">
-                  <X className="w-3.5 h-3.5" />
+              <div className="flex gap-2.5 shrink-0 mt-3 pt-3 border-t border-gray-100">
+                <button onClick={() => goToStep(1)} className="px-5 py-3 card-app text-gray-700 font-bold text-[13px] rounded-full cursor-pointer flex items-center gap-1.5">
+                  <ChevronLeft className="w-4 h-4" /> Back
+                </button>
+                <button onClick={() => goToStep(3)} className="flex-1 py-3 btn-app-primary text-white font-bold text-[13px] rounded-full cursor-pointer flex items-center justify-center gap-1.5">
+                  Next: Add Details <ArrowRight className="w-4 h-4" />
                 </button>
               </div>
-            )}
+            </div>
           </div>
+
+          {/* Suggestions render fixed to the viewport (anchored to the focused input's
+              on-screen position) so they're never clipped by the scrollable route panel. */}
+          {(activeInput === 'origin' || activeInput === 'dest' || activeInput === 'map-search') && suggestions.length > 0 && suggestAnchor && (() => {
+            const spaceBelow = window.innerHeight - suggestAnchor.bottom;
+            const openUp = spaceBelow < 180 && suggestAnchor.top > spaceBelow;
+            return (
+              <div
+                className="fixed card-app z-[200] max-h-48 overflow-y-auto hide-scrollbar shadow-lg"
+                style={{
+                  left: suggestAnchor.left,
+                  width: suggestAnchor.width,
+                  ...(openUp ? { bottom: window.innerHeight - suggestAnchor.top + 4 } : { top: suggestAnchor.bottom + 4 })
+                }}
+              >
+                {suggestions.map((s, i) => (
+                  <div
+                    key={i}
+                    className="p-2.5 border-b border-gray-100 last:border-0 hover:bg-gray-50 cursor-pointer text-[12px] font-medium text-gray-950 truncate"
+                    onMouseDown={() => handleSelectSuggestion(s, activeInput)}
+                  >
+                    {s.display_name}
+                  </div>
+                ))}
+              </div>
+            );
+          })()}
         </div>
       )}
 
@@ -1014,16 +1081,22 @@ const CreateRide = () => {
             <div className="grid grid-cols-4 gap-2 mb-4">
               {['Food', 'Fuel', 'Hospital', 'Mechanic', 'Tea', 'Stay', 'Sightseeing', 'Other'].map(t => {
                 const info = getStopInfo(t);
+                const StopIcon = info.icon;
                 const isSelected = waypointDraft.type === t;
                 return (
                   <button
                     key={t}
                     onClick={() => setWaypointDraft(prev => ({ ...prev, type: t }))}
-                    className={`flex flex-col items-center gap-1 py-2.5 rounded-2xl cursor-pointer transition-all ${isSelected ? 'ring-2 ring-[#FF6B22]' : 'card-app'}`}
-                    style={isSelected ? { backgroundColor: info.color + '15' } : undefined}
+                    className={`flex flex-col items-center gap-1.5 py-3 rounded-2xl cursor-pointer transition-all border ${isSelected ? 'shadow-sm' : 'bg-gray-50 hover:bg-gray-100'}`}
+                    style={isSelected ? { backgroundColor: info.color + '12', borderColor: info.color, boxShadow: `inset 0 0 0 1.5px ${info.color}` } : { borderColor: '#ddd' }}
                   >
-                    <span className="text-[16px]">{info.emoji}</span>
-                    <span className="text-[9px] font-bold text-gray-700">{t}</span>
+                    <span
+                      className="w-9 h-9 rounded-full flex items-center justify-center"
+                      style={{ backgroundColor: info.color + (isSelected ? '30' : '18') }}
+                    >
+                      <StopIcon className="w-[18px] h-[18px]" style={{ color: info.color }} strokeWidth={2.25} />
+                    </span>
+                    <span className={`text-[9.5px] font-bold ${isSelected ? 'text-gray-950' : 'text-gray-600'}`}>{t}</span>
                   </button>
                 );
               })}
@@ -1031,14 +1104,14 @@ const CreateRide = () => {
 
             <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider block mb-1.5">Location</span>
             <div className="relative mb-2">
-              <Search className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+              <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
               <input
                 type="text"
                 value={waypointDraft.text}
                 onChange={e => handleInputChange(e.target.value, WAYPOINT_DRAFT_KEY)}
                 onFocus={() => { if (waypointDraft.text.length >= 3) handleInputChange(waypointDraft.text, WAYPOINT_DRAFT_KEY); }}
                 placeholder="Search a place..."
-                className={`${inputClass} pl-10`}
+                className={`${inputClass} pl-8`}
               />
               {activeInput === WAYPOINT_DRAFT_KEY && suggestions.length > 0 && (
                 <div className="mt-1 card-app overflow-hidden max-h-40 overflow-y-auto hide-scrollbar">
@@ -1087,73 +1160,78 @@ const CreateRide = () => {
 
       {/* ====== STEP 3: DETAILS ====== */}
       {step === 3 && (
-        <div className="flex-1 min-h-0 overflow-y-auto hide-scrollbar px-4 pb-[100px] max-w-[560px] w-full mx-auto flex flex-col gap-4">
+        <div className="flex-1 min-h-0 overflow-y-auto hide-scrollbar px-4 pb-[100px] max-w-[560px] w-full mx-auto flex flex-col gap-5">
           <div>
             <h2 className="text-[19px] font-black text-gray-950">Ride Details</h2>
             <p className="text-[12px] text-gray-500 font-medium mt-0.5">Add schedule, meeting point and additional information.</p>
           </div>
 
-          <div className="card-app p-3.5 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className={`w-10 h-10 icon-badge ${isInstant ? 'bg-[#FFE7D1]' : 'bg-blue-50'} shrink-0`}>
-                {isInstant ? <Zap className="w-5 h-5 text-[#FF6B22]" fill="currentColor" /> : <Calendar className="w-5 h-5 text-blue-500" />}
+          <div className="flex flex-col gap-2.5">
+            {sectionLabel(Calendar, 'Schedule')}
+            <div className="card-app p-3.5 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className={`w-10 h-10 icon-badge ${isInstant ? 'bg-[#FFE7D1]' : 'bg-blue-50'} shrink-0`}>
+                  {isInstant ? <Zap className="w-5 h-5 text-[#FF6B22]" fill="currentColor" /> : <Calendar className="w-5 h-5 text-blue-500" />}
+                </div>
+                <div>
+                  <p className="text-[13px] font-bold text-gray-950">{isInstant ? 'Ride Now' : 'Schedule Later'}</p>
+                  <p className="text-[11px] text-gray-500 font-medium">{isInstant ? 'Start immediately' : 'Pick a date and time'}</p>
+                </div>
               </div>
-              <div>
-                <p className="text-[13px] font-bold text-gray-950">{isInstant ? 'Ride Now' : 'Schedule Later'}</p>
-                <p className="text-[11px] text-gray-500 font-medium">{isInstant ? 'Start immediately' : 'Pick a date and time'}</p>
-              </div>
+              <button
+                onClick={() => {
+                  if (restrictInstant && !isEditMode) {
+                    showToast('You already have an active ride. Leave or end it to create an instant ride.', 'error');
+                    return;
+                  }
+                  setIsInstant(!isInstant);
+                }}
+                className={`w-11 h-6 rounded-full p-1 cursor-pointer transition-colors relative shrink-0 ${isInstant ? 'bg-[#FF6B22]' : 'bg-gray-200'}`}
+              >
+                <div className={`absolute top-1 w-4 h-4 rounded-full bg-white shadow-sm transition-transform ${isInstant ? 'translate-x-5' : 'translate-x-0'}`} />
+              </button>
             </div>
-            <button
-              onClick={() => {
-                if (restrictInstant && !isEditMode) {
-                  showToast('You already have an active ride. Leave or end it to create an instant ride.', 'error');
-                  return;
-                }
-                setIsInstant(!isInstant);
-              }}
-              className={`w-11 h-6 rounded-full p-1 cursor-pointer transition-colors relative shrink-0 ${isInstant ? 'bg-[#FF6B22]' : 'bg-gray-200'}`}
-            >
-              <div className={`absolute top-1 w-4 h-4 rounded-full bg-white shadow-sm transition-transform ${isInstant ? 'translate-x-5' : 'translate-x-0'}`} />
-            </button>
+
+            {!isInstant && (
+              <div className="grid grid-cols-2 gap-3">
+                <div className="card-app p-3">
+                  <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider block mb-1 flex items-center gap-1"><Calendar className="w-3 h-3" /> Date *</span>
+                  <input type="date" value={formData.ride_date} onChange={(e) => setFormData({ ...formData, ride_date: e.target.value })} className="w-full bg-transparent text-[13px] font-bold text-gray-950 outline-none" />
+                </div>
+                <div className="card-app p-3">
+                  <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider block mb-1 flex items-center gap-1"><Clock className="w-3 h-3" /> Start Time *</span>
+                  <input type="time" value={formData.ride_time} onChange={(e) => setFormData({ ...formData, ride_time: e.target.value })} className="w-full bg-transparent text-[13px] font-bold text-gray-950 outline-none" />
+                </div>
+              </div>
+            )}
           </div>
 
-          {!isInstant && (
-            <div className="grid grid-cols-2 gap-3">
-              <div className="card-app p-3">
-                <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider block mb-1 flex items-center gap-1"><Calendar className="w-3 h-3" /> Date *</span>
-                <input type="date" value={formData.ride_date} onChange={(e) => setFormData({ ...formData, ride_date: e.target.value })} className="w-full bg-transparent text-[13px] font-bold text-gray-950 outline-none" />
+          <div className="flex flex-col gap-2.5">
+            {sectionLabel(Users, 'Capacity & Meeting Point')}
+            <div className="card-app p-3.5">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-[13px] font-bold text-gray-950 flex items-center gap-2"><Users className="w-4 h-4 text-indigo-500" /> Max Riders</span>
+                <span className="bg-gray-950 text-white px-2.5 py-0.5 rounded-full text-[12px] font-bold tabular-nums">{formData.max_riders}</span>
               </div>
-              <div className="card-app p-3">
-                <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider block mb-1 flex items-center gap-1"><Clock className="w-3 h-3" /> Start Time *</span>
-                <input type="time" value={formData.ride_time} onChange={(e) => setFormData({ ...formData, ride_time: e.target.value })} className="w-full bg-transparent text-[13px] font-bold text-gray-950 outline-none" />
+              <input type="range" min={2} max={50} value={formData.max_riders} onChange={(e) => setFormData({ ...formData, max_riders: parseInt(e.target.value) })} className="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-[#FF6B22]" />
+              <div className="flex justify-between text-[10px] text-gray-400 font-semibold mt-1"><span>2 riders</span><span>50 riders</span></div>
+            </div>
+
+            {/* Meeting point — reuses the real start location from Route step */}
+            <div className="card-app p-3.5 flex items-center gap-3">
+              <div className="w-14 h-14 rounded-2xl bg-[#E4F1F0] flex items-center justify-center shrink-0">
+                <MapPin className="w-6 h-6 text-[#1A9A5C]" />
               </div>
-            </div>
-          )}
-
-          <div className="card-app p-3.5">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-[13px] font-bold text-gray-950 flex items-center gap-2"><Users className="w-4 h-4 text-indigo-500" /> Max Riders</span>
-              <span className="bg-gray-950 text-white px-2.5 py-0.5 rounded-full text-[12px] font-bold tabular-nums">{formData.max_riders}</span>
-            </div>
-            <input type="range" min={2} max={50} value={formData.max_riders} onChange={(e) => setFormData({ ...formData, max_riders: parseInt(e.target.value) })} className="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-[#FF6B22]" />
-            <div className="flex justify-between text-[10px] text-gray-400 font-semibold mt-1"><span>2 riders</span><span>50 riders</span></div>
-          </div>
-
-          {/* Meeting point — reuses the real start location from Route step */}
-          <div className="card-app p-3.5 flex items-center gap-3">
-            <div className="w-14 h-14 rounded-2xl bg-[#E4F1F0] flex items-center justify-center shrink-0">
-              <MapPin className="w-6 h-6 text-[#1A9A5C]" />
-            </div>
-            <div className="min-w-0 flex-1">
-              <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider block">Meeting Point</span>
-              <p className="text-[13px] font-bold text-gray-950 truncate">{originText || 'Not set'}</p>
-              <button onClick={() => goToStep(2)} className="text-[11px] font-bold text-[#FF6B22] cursor-pointer mt-0.5">Change on Route step</button>
+              <div className="min-w-0 flex-1">
+                <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider block">Meeting Point</span>
+                <p className="text-[13px] font-bold text-gray-950 truncate">{originText || 'Not set'}</p>
+                <button onClick={() => goToStep(2)} className="text-[11px] font-bold text-[#FF6B22] cursor-pointer mt-0.5">Change on Route step</button>
+              </div>
             </div>
           </div>
 
-          {/* Cover / photo */}
-          <div>
-            <span className="text-[13px] font-bold text-gray-950 block mb-2">Cover Photo</span>
+          <div className="flex flex-col gap-2.5">
+            {sectionLabel(Camera, 'Cover Photo')}
             <div className="flex gap-2.5">
               <div className="relative w-20 h-20 rounded-2xl overflow-hidden shrink-0">
                 <img src={coverPreview} alt="" className="w-full h-full object-cover" />
@@ -1165,10 +1243,9 @@ const CreateRide = () => {
             </div>
           </div>
 
-          <div className="card-app p-3.5">
-            <h3 className="text-[12px] font-bold text-gray-500 uppercase tracking-wider flex items-center gap-1.5 mb-2">
-              <Sparkles className="w-3.5 h-3.5 text-[#FF6B22]" /> Additional Notes
-            </h3>
+          <div className="flex flex-col gap-2.5">
+            {sectionLabel(Sparkles, 'Additional Notes')}
+            <div className="card-app p-3.5">
             <textarea
               value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value.slice(0, 300) })}
@@ -1177,6 +1254,7 @@ const CreateRide = () => {
               className="w-full bg-transparent text-[13px] text-gray-800 font-medium placeholder-gray-400 focus:outline-none resize-none"
             />
             <div className="text-right"><span className="text-[10px] text-gray-400 font-medium">{formData.description.length}/300</span></div>
+            </div>
           </div>
 
           <div className="flex gap-2.5">

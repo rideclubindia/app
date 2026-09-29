@@ -1,5 +1,6 @@
 import { Mail, MapPin, Phone, Globe, Camera, Video, Users } from 'lucide-react';
 
+// TODO: address, phone, response-time SLA, and social handles below are placeholder content — replace before launch.
 export const contactMethods = [
   {
     id: 'email',

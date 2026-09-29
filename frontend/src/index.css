@@ -87,7 +87,7 @@
   --rc-text-on-primary: #FFFFFF;
 
   /* Surfaces */
-  --rc-surface: rgba(255, 255, 255, 0.72);
+  --rc-surface: rgba(255, 255, 255, 0.916);
   --rc-surface-solid: #FFFFFF;
   --rc-surface-soft: rgba(255, 255, 255, 0.52);
   --rc-surface-hover: rgba(255, 255, 255, 0.86);
@@ -109,11 +109,7 @@
   --rc-info-soft: #F0F0FF;
 
   /* Ambient backgrounds */
-  --rc-gradient-page:
-    radial-gradient(900px 600px at 8% 8%, rgba(221, 215, 255, 0.38), transparent 65%),
-    radial-gradient(800px 550px at 92% 15%, rgba(255, 220, 203, 0.30), transparent 65%),
-    radial-gradient(700px 500px at 50% 100%, rgba(235, 231, 255, 0.28), transparent 70%),
-    #FBFAFF;
+  --rc-gradient-page: #f1f1f1;
   --rc-gradient-warm: linear-gradient(135deg, #FFF9F5 0%, #F7F5FF 48%, #F2EFFF 100%);
   --rc-gradient-brand: linear-gradient(135deg, #FF9A4D 0%, #FF6B22 52%, #FF5A24 100%);
 
@@ -187,11 +183,11 @@
 @layer utilities {
   .text-speed {
     font-size: 42px;
-    font-weight: 700;
+    font-weight: 500;
   }
   .text-turn {
     font-size: 28px;
-    font-weight: 600;
+    font-weight: 500;
   }
   .text-secondary-info {
     font-size: 15px;
@@ -281,6 +277,7 @@
     backdrop-filter: blur(var(--rc-glass-blur));
     -webkit-backdrop-filter: blur(var(--rc-glass-blur));
     border-radius: var(--rc-radius-lg);
+    border: 1px solid #dddddd;
   }
   .card-app-lg {
     background-color: var(--rc-surface);

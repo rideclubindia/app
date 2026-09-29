@@ -39,6 +39,7 @@ export const coreValues = [
   }
 ];
 
+// TODO: placeholder names/roles, not the real team — replace before launch.
 export const teamMembers = [
   {
     id: '1',

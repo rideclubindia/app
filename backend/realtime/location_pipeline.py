@@ -66,6 +66,11 @@ class LocationPipeline:
         self._queue: asyncio.Queue = asyncio.Queue(maxsize=PERSIST_QUEUE_MAX)
         self._executor = ThreadPoolExecutor(max_workers=2, thread_name_prefix="loc-persist")
         self._running = False
+        # WebSocket Architecture.md §22 graceful degradation lever: widened by
+        # the gateway's load monitor under high/critical load, restored to the
+        # default once load normalizes. Never touched for SOS/critical events —
+        # those go through publish_critical_ride_event, not this pipeline.
+        self.coalesce_window_s = COALESCE_WINDOW_S
 
     def start(self) -> None:
         if self._running:
@@ -157,7 +162,7 @@ class LocationPipeline:
     async def _coalesce_loop(self) -> None:
         while self._running:
             try:
-                await asyncio.sleep(COALESCE_WINDOW_S)
+                await asyncio.sleep(self.coalesce_window_s)
                 if not self._pending:
                     continue
                 by_ride: Dict[str, list] = {}

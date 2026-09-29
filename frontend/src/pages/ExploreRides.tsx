@@ -5,6 +5,7 @@ import {
   Search, SlidersHorizontal, MapPin, Users, Calendar, Heart, Bell, Map as MapIcon, List as ListIcon, X
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import { saveOfflineCopy, readOfflineCopy } from '../lib/offlineData';
 import { useLocationStore } from '../store/useLocationStore';
 import { MapEngine } from '../map/MapEngine';
 
@@ -50,13 +51,19 @@ const ExploreRides = () => {
   useEffect(() => {
     const load = async () => {
       setLoading(true);
-      const { data: ridesData } = await supabase
+      const { data: ridesData, error: ridesErr } = await supabase
         .from('rides')
         .select('id, name, ride_date, image_url, start_location, destination, max_riders, vehicle_type, status')
         .eq('visibility', 'public')
         .gte('ride_date', new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString())
         .order('ride_date', { ascending: true })
         .limit(50);
+
+      if (ridesErr) {
+        setRides(readOfflineCopy<Ride[]>('explore_rides') || []);
+        setLoading(false);
+        return;
+      }
 
       if (!ridesData || ridesData.length === 0) {
         setRides([]);
@@ -69,7 +76,9 @@ const ExploreRides = () => {
       const counts: Record<string, number> = {};
       (members || []).forEach(m => { counts[m.ride_id] = (counts[m.ride_id] || 0) + 1; });
 
-      setRides(ridesData.map(r => ({ ...r, rider_count: counts[r.id] || 0 })));
+      const list = ridesData.map(r => ({ ...r, rider_count: counts[r.id] || 0 }));
+      saveOfflineCopy('explore_rides', list);
+      setRides(list);
       setLoading(false);
     };
     load();

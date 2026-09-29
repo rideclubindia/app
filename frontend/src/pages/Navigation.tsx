@@ -1,6 +1,7 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
-import { ArrowUp, X, AlertTriangle, Car, Ban, Waves, Shield, Hammer, MoreHorizontal, Compass, Layers, Crosshair, Map, CornerUpLeft, CornerUpRight, ArrowLeft, ArrowRight, MapPin, Users, Crown, Phone, LogOut, Search as SearchIcon, Smartphone, Gauge, Clock, Route as RouteIcon, Volume2, VolumeX, Plus, Minus } from 'lucide-react';
+import { ArrowUp, X, AlertTriangle, Car, Ban, Waves, Shield, Hammer, MoreHorizontal, Layers, Crosshair, Map, CornerUpLeft, CornerUpRight, ArrowLeft, ArrowRight, MapPin, Users, Crown, Phone, LogOut, Search as SearchIcon, Smartphone, Gauge, Clock, Route as RouteIcon, Plus, Coffee, Fuel, HeartPulse, Utensils, Hotel, Pill, Landmark, BatteryCharging, ParkingCircle, Wrench, Star } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
@@ -16,12 +17,142 @@ import { useLocationStore } from '../store/useLocationStore';
 import { useToast } from '../components/ToastContext';
 import { RiderCockpitLayout } from '../components/spatial/RiderCockpitLayout';
 import { EdgeRail } from '../components/spatial/EdgeRail';
-import { CommandDock } from '../components/spatial/CommandDock';
 import { Telemetry } from '../components/spatial/Telemetry';
 import { SpatialMembrane } from '../components/spatial/SpatialMembrane';
 import LoadingSpinner from '../components/LoadingSpinner';
 import { getRealtime } from '../realtime';
 import { useOrientationLock } from '../hooks/useOrientationLock';
+import { useCrashDetection } from '../lib/crashDetection/useCrashDetection';
+import type { EmergencyLocation } from '../lib/crashDetection/emergencyManager';
+import { EmergencyCountdownScreen } from '../components/spatial/EmergencyCountdownScreen';
+
+// "Search along route" categories — matched against the raw query text so a
+// rider can type "coffee shops", "petrol", "fuel stations", "hospitals", etc.
+// and get real OSM POI results for that category, not a literal place-name
+// geocode of the words they typed (that's what produced results thousands of
+// km away for something like "Coffee near me" — Nominatim was trying to find
+// a place literally NAMED that).
+interface RouteSearchCategory {
+  id: string;
+  label: string;
+  keywords: string[];
+  overpassTag: string; // e.g. '["amenity"="cafe"]'
+  icon: LucideIcon;
+}
+
+const ROUTE_SEARCH_CATEGORIES: RouteSearchCategory[] = [
+  { id: 'fuel', label: 'Fuel', keywords: ['fuel', 'petrol', 'gas station', 'gas', 'diesel'], overpassTag: '["amenity"="fuel"]', icon: Fuel },
+  { id: 'coffee', label: 'Coffee', keywords: ['coffee', 'cafe', 'café'], overpassTag: '["amenity"="cafe"]', icon: Coffee },
+  { id: 'food', label: 'Food', keywords: ['food', 'restaurant', 'dining', 'eat', 'dhaba'], overpassTag: '["amenity"="restaurant"]', icon: Utensils },
+  { id: 'parking', label: 'Parking', keywords: ['parking', 'park'], overpassTag: '["amenity"="parking"]', icon: ParkingCircle },
+  { id: 'charging', label: 'Charging', keywords: ['charging', 'ev charg', 'ev station', 'charge point'], overpassTag: '["amenity"="charging_station"]', icon: BatteryCharging },
+  { id: 'hospital', label: 'Hospital', keywords: ['hospital', 'clinic', 'medical', 'emergency room', 'er'], overpassTag: '["amenity"="hospital"]', icon: HeartPulse },
+  { id: 'pharmacy', label: 'Pharmacy', keywords: ['pharmacy', 'chemist', 'medicine', 'drug store'], overpassTag: '["amenity"="pharmacy"]', icon: Pill },
+  { id: 'atm', label: 'ATM', keywords: ['atm', 'cash', 'bank'], overpassTag: '["amenity"="atm"]', icon: Landmark },
+  { id: 'hotel', label: 'Hotel', keywords: ['hotel', 'lodge', 'stay', 'motel', 'inn'], overpassTag: '["tourism"="hotel"]', icon: Hotel },
+  { id: 'mechanic', label: 'Mechanic', keywords: ['mechanic', 'repair', 'garage', 'service center', 'tyre', 'tire'], overpassTag: '["shop"="car_repair"]', icon: Wrench },
+];
+
+const matchRouteSearchCategory = (query: string): RouteSearchCategory | null => {
+  const q = query.trim().toLowerCase();
+  if (!q) return null;
+  return ROUTE_SEARCH_CATEGORIES.find((cat) => cat.keywords.some((kw) => q.includes(kw))) || null;
+};
+
+// Overpass element -> a normalized result shape shared with the Nominatim
+// named-place fallback, so the rest of the UI doesn't care which one ran.
+interface RouteSearchResult {
+  id: string;
+  name: string;
+  lat: number;
+  lng: number;
+  address?: string;
+  category?: RouteSearchCategory;
+  distFromRouteKm: number | null;
+  distFromUserKm: number | null;
+  estimatedDetourKm: number | null;
+}
+
+const searchPoisAlongRoute = async (
+  category: RouteSearchCategory,
+  routeLine: GeoJSON.Feature<GeoJSON.LineString> | null,
+  origin: { lat: number; lng: number } | null,
+  corridorKm = 2.5
+): Promise<RouteSearchResult[]> => {
+  // Corridor to search within: a buffer around the route if we have one,
+  // otherwise a circle around the rider's current position.
+  let bboxSouth: number, bboxWest: number, bboxNorth: number, bboxEast: number;
+  if (routeLine) {
+    const buffered = turf.buffer(routeLine, corridorKm, { units: 'kilometers' });
+    const [west, south, east, north] = turf.bbox(buffered as any);
+    bboxWest = west; bboxSouth = south; bboxEast = east; bboxNorth = north;
+  } else if (origin) {
+    const buffered = turf.buffer(turf.point([origin.lng, origin.lat]), 5, { units: 'kilometers' });
+    const [west, south, east, north] = turf.bbox(buffered as any);
+    bboxWest = west; bboxSouth = south; bboxEast = east; bboxNorth = north;
+  } else {
+    return [];
+  }
+
+  const bbox = `${bboxSouth},${bboxWest},${bboxNorth},${bboxEast}`;
+  const overpassQuery = `[out:json][timeout:20];(node${category.overpassTag}(${bbox});way${category.overpassTag}(${bbox}););out center 40;`;
+
+  const res = await fetch('https://overpass-api.de/api/interpreter', {
+    method: 'POST',
+    body: `data=${encodeURIComponent(overpassQuery)}`,
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+  });
+  if (!res.ok) throw new Error(`Overpass request failed: ${res.status}`);
+  const data = await res.json();
+  const elements: any[] = data?.elements || [];
+
+  const results: RouteSearchResult[] = elements
+    .map((el) => {
+      const lat = el.type === 'node' ? el.lat : el.center?.lat;
+      const lng = el.type === 'node' ? el.lon : el.center?.lon;
+      if (lat == null || lng == null) return null;
+      const name: string = el.tags?.name || `Unnamed ${category.label}`;
+      const addressParts = [el.tags?.['addr:street'], el.tags?.['addr:city']].filter(Boolean);
+
+      let distFromRouteKm: number | null = null;
+      if (routeLine) {
+        distFromRouteKm = turf.pointToLineDistance(turf.point([lng, lat]), routeLine, { units: 'kilometers' });
+      }
+      let distFromUserKm: number | null = null;
+      if (origin) {
+        distFromUserKm = turf.distance(turf.point([origin.lng, origin.lat]), turf.point([lng, lat]), { units: 'kilometers' });
+      }
+
+      return {
+        id: `osm-${el.type}-${el.id}`,
+        name,
+        lat,
+        lng,
+        address: addressParts.join(', ') || undefined,
+        category,
+        distFromRouteKm,
+        distFromUserKm,
+        // There-and-back estimate to leave the route and rejoin it — not a
+        // routed detour calculation, labeled as an estimate in the UI.
+        estimatedDetourKm: distFromRouteKm != null ? distFromRouteKm * 2 : null,
+      } as RouteSearchResult;
+    })
+    .filter((r): r is RouteSearchResult => r !== null)
+    // Enforce real "along/near the route" — the bbox is a rectangle around
+    // the buffered corridor, wider than the corridor itself at the corners.
+    .filter((r) => r.distFromRouteKm == null || r.distFromRouteKm <= corridorKm);
+
+  // Prioritize closeness to the route first, current-location distance as a
+  // light tiebreaker — matches "prioritized based on how close they are to
+  // the route, while also considering distance from current location."
+  results.sort((a, b) => {
+    const scoreA = (a.distFromRouteKm ?? a.distFromUserKm ?? 0) + (a.distFromUserKm ?? 0) * 0.1;
+    const scoreB = (b.distFromRouteKm ?? b.distFromUserKm ?? 0) + (b.distFromUserKm ?? 0) * 0.1;
+    return scoreA - scoreB;
+  });
+
+  return results.slice(0, 10);
+};
 
 const Navigation = () => {
   const navigate = useNavigate();
@@ -47,6 +178,8 @@ const Navigation = () => {
   const [selectedIncident, setSelectedIncident] = useState<any | null>(null);
   const pinMarkersRef = useRef<{ [id: string]: maplibregl.Marker }>({});
   const rootsRef = useRef<{ [id: string]: any }>({});
+  const stopMarkersRef = useRef<{ [id: string]: maplibregl.Marker }>({});
+  const stopRootsRef = useRef<{ [id: string]: any }>({});
 
   const [mapBearing, setMapBearing] = useState(0);
   const [showTraffic, setShowTraffic] = useState(false);
@@ -121,6 +254,16 @@ const Navigation = () => {
   });
   const [userDistAlongRoute, setUserDistAlongRoute] = useState<number | null>(null);
   const [nextHazard, setNextHazard] = useState<any | null>(null);
+
+  // Phase 3/5 of Crash Detection & Emergency Response Architecture.md, wired
+  // to the SOS Escalation backend. Only armed for a backend-tracked ride
+  // (groupRideId) since crash/SOS events require a real rides-table row
+  // (require_ride_access) — solo, untracked navigation isn't wired to this yet.
+  const getEmergencyLocation = useCallback((): EmergencyLocation | null => {
+    if (!userLocation) return null;
+    return { lat: userLocation.lat, lng: userLocation.lng, speedKph: currentSpeed ?? undefined };
+  }, [userLocation, currentSpeed]);
+  const { emergencyState, confirmSafe } = useCrashDetection(groupRideId ?? undefined, getEmergencyLocation);
   const [upcomingSteps, setUpcomingSteps] = useState<{ text: string; type: number; dist: string }[]>([]);
   const [isRouteLoading, setIsRouteLoading] = useState(false);
   const [routeBuildFailed, setRouteBuildFailed] = useState(false);
@@ -128,33 +271,60 @@ const Navigation = () => {
   const [voiceOn, setVoiceOn] = useState(true);
   const [showRouteSearch, setShowRouteSearch] = useState(false);
   const [routeSearchQuery, setRouteSearchQuery] = useState('');
-  const [routeSearchResults, setRouteSearchResults] = useState<any[]>([]);
+  const [routeSearchResults, setRouteSearchResults] = useState<RouteSearchResult[]>([]);
   const [routeSearchHasRun, setRouteSearchHasRun] = useState(false);
+  // A result the rider tapped (pin or list row) — shown as a detail card
+  // with an explicit "Add as Stop" action, not added instantly on tap.
+  const [previewResult, setPreviewResult] = useState<RouteSearchResult | null>(null);
+  const searchResultMarkersRef = useRef<{ [id: string]: maplibregl.Marker }>({});
+  const searchResultRootsRef = useRef<{ [id: string]: any }>({});
 
-  const fetchNewRoute = async (origin: {lat: number, lng: number}) => {
-    if (!destLat || !destLng || isRerouting || !map.current) return;
+  const [routeStops, setRouteStops] = useState<{ id: string; lat: number; lng: number; name: string }[]>([]);
+  const routeStopsRef = useRef<typeof routeStops>([]);
+  useEffect(() => { routeStopsRef.current = routeStops; }, [routeStops]);
+
+  const orderStopsAlongRoute = (
+    origin: { lat: number; lng: number },
+    stops: { id: string; lat: number; lng: number; name: string }[],
+    dest: { lat: number; lng: number }
+  ) => {
+    if (stops.length <= 1) return stops;
+    const line = turf.lineString([[origin.lng, origin.lat], [dest.lng, dest.lat]]);
+    return [...stops].sort((a, b) => {
+      const locA = turf.nearestPointOnLine(line, turf.point([a.lng, a.lat])).properties.location ?? 0;
+      const locB = turf.nearestPointOnLine(line, turf.point([b.lng, b.lat])).properties.location ?? 0;
+      return locA - locB;
+    });
+  };
+
+  const buildRouteThroughStops = async (
+    origin: { lat: number; lng: number },
+    stops: { id: string; lat: number; lng: number; name: string }[]
+  ) => {
+    if (!destLat || !destLng || !map.current) return;
     try {
       setIsRerouting(true);
-      setCurrentInstruction({ text: 'Rerouting...', dist: '', type: 6, distMeters: 0 });
+      setCurrentInstruction({ text: stops.length ? 'Adding stop...' : 'Rerouting...', dist: '', type: 6, distMeters: 0 });
       const profile = travelMode?.id || 'driving-car';
       const { fetchTomTomRoute } = await import('../lib/routing');
+      const ordered = orderStopsAlongRoute(origin, stops, { lat: destLat, lng: destLng });
       const coordinates = [
         [origin.lng, origin.lat],
-        [destLng, destLat]
+        ...ordered.map((s) => [s.lng, s.lat]),
+        [destLng, destLat],
       ];
-      
+
       const newRouteFeature = await fetchTomTomRoute(coordinates, profile);
-      
+
       if (newRouteFeature) {
         const summary = newRouteFeature.properties.summary;
-        
-        const adjustedDurationSecs = summary.duration;
-        const adjustedEtaMins = Math.round(adjustedDurationSecs / 60);
+        const adjustedEtaMins = Math.round(summary.duration / 60);
 
         setCurrentRoute(newRouteFeature);
         setCurrentEta(`${adjustedEtaMins} min`);
         setCurrentDistance(`${(summary.distance / 1000).toFixed(1)} km`);
-        
+        setTotalDistanceKm(summary.distance / 1000);
+
         const source = map.current.getSource('route') as maplibregl.GeoJSONSource;
         if (source) {
           source.setData(newRouteFeature);
@@ -164,11 +334,53 @@ const Navigation = () => {
           remainingSource.setData(newRouteFeature);
         }
       }
+      // Reflect the routed order back into state so the stops list matches the map.
+      setRouteStops(ordered);
     } catch (error) {
-      console.error("Failed to recalculate route", error);
+      console.error('Failed to recalculate route', error);
+      showToast('Could not update the route with that stop', 'error');
     } finally {
       setIsRerouting(false);
     }
+  };
+
+  const fetchNewRoute = async (origin: {lat: number, lng: number}) => {
+    if (!destLat || !destLng || isRerouting || !map.current) return;
+    await buildRouteThroughStops(origin, routeStopsRef.current);
+  };
+
+  const addRouteStop = async (stop: { id: string; lat: number; lng: number; name: string }) => {
+    if (isRerouting) return;
+    // Ignore a re-pick of a stop that's already on the route.
+    if (routeStopsRef.current.some((s) => s.id === stop.id)) return;
+    const nextStops = [...routeStopsRef.current, stop];
+    const origin = userLocation
+      || useLocationStore.getState().coordinates
+      || useLocationStore.getState().rawCoordinates
+      || (currentRoute?.geometry?.coordinates?.[0]
+        ? { lng: currentRoute.geometry.coordinates[0][0], lat: currentRoute.geometry.coordinates[0][1] }
+        : null);
+    if (!origin) {
+      showToast('Still finding your location — try again in a moment', 'error');
+      return;
+    }
+    await buildRouteThroughStops(origin, nextStops);
+  };
+
+  const removeRouteStop = async (id: string) => {
+    if (isRerouting) return;
+    const nextStops = routeStopsRef.current.filter((s) => s.id !== id);
+    const origin = userLocation
+      || useLocationStore.getState().coordinates
+      || useLocationStore.getState().rawCoordinates
+      || (currentRoute?.geometry?.coordinates?.[0]
+        ? { lng: currentRoute.geometry.coordinates[0][0], lat: currentRoute.geometry.coordinates[0][1] }
+        : null);
+    if (!origin) {
+      setRouteStops(nextStops);
+      return;
+    }
+    await buildRouteThroughStops(origin, nextStops);
   };
 
   const recenterCamera = () => {
@@ -184,7 +396,7 @@ const Navigation = () => {
     if (!origin) return;
     map.current.flyTo({
       center: [origin.lng, origin.lat],
-      bearing: 0,
+      bearing: smoothedHeadingRef.current,
       pitch: 0,
       zoom: 17,
       offset: [0, 120],
@@ -195,35 +407,61 @@ const Navigation = () => {
   const searchAlongRoute = async (query: string) => {
     if (!query.trim()) return;
     setRouteSearchHasRun(false);
+    setPreviewResult(null);
     const origin = userLocation
       || useLocationStore.getState().coordinates
       || (currentRoute?.geometry?.coordinates?.[0]
         ? { lng: currentRoute.geometry.coordinates[0][0], lat: currentRoute.geometry.coordinates[0][1] }
         : destLat && destLng ? { lat: destLat, lng: destLng } : null);
+    const routeLine = currentRoute?.geometry?.coordinates?.length > 1
+      ? (turf.lineString(currentRoute.geometry.coordinates) as GeoJSON.Feature<GeoJSON.LineString>)
+      : null;
+
     try {
+      const category = matchRouteSearchCategory(query);
+
+      if (category) {
+        // Category search ("coffee", "petrol stations", "hospitals"...) —
+        // real OSM POIs along the route corridor, not a literal name geocode.
+        const results = await searchPoisAlongRoute(category, routeLine, origin);
+        setRouteSearchResults(results);
+        return;
+      }
+
+      // Not a recognized category — treat it as a specific named place and
+      // fall back to Nominatim, bounded to a corridor around the rider so a
+      // zero-result search doesn't silently widen to the entire planet.
       const params = new URLSearchParams({ format: 'json', q: query, limit: '8' });
       if (origin) {
-        // ~0.4° square (~40-45km) around the rider — wide enough to cover
-        // the whole trip corridor for most local searches, narrow enough to
-        // keep "near me" results actually near.
         params.set('viewbox', `${origin.lng - 0.4},${origin.lat + 0.4},${origin.lng + 0.4},${origin.lat - 0.4}`);
         params.set('bounded', '1');
       }
       const res = await fetch(`https://nominatim.openstreetmap.org/search?${params.toString()}`);
-      let results: any[] = await res.json();
-      if (results.length === 0 && origin) {
-        const fallbackParams = new URLSearchParams({ format: 'json', q: query, limit: '8' });
-        const fallbackRes = await fetch(`https://nominatim.openstreetmap.org/search?${fallbackParams.toString()}`);
-        results = await fallbackRes.json();
-      }
+      const raw: any[] = await res.json();
 
-      if (origin) {
-        results = results
-          .map((r) => ({ ...r, __dist: Math.hypot(parseFloat(r.lat) - origin.lat, parseFloat(r.lon) - origin.lng) }))
-          .sort((a, b) => a.__dist - b.__dist);
-      }
-      setRouteSearchResults(results.slice(0, 5));
-    } catch {
+      const results: RouteSearchResult[] = raw.map((r) => {
+        const lat = parseFloat(r.lat);
+        const lng = parseFloat(r.lon);
+        return {
+          id: `osm-place-${r.place_id ?? `${lat},${lng}`}`,
+          name: r.name || r.display_name.split(',')[0],
+          lat,
+          lng,
+          address: r.display_name,
+          category: undefined,
+          distFromRouteKm: routeLine ? turf.pointToLineDistance(turf.point([lng, lat]), routeLine, { units: 'kilometers' }) : null,
+          distFromUserKm: origin ? turf.distance(turf.point([origin.lng, origin.lat]), turf.point([lng, lat]), { units: 'kilometers' }) : null,
+          estimatedDetourKm: null,
+        };
+      }).sort((a, b) => {
+        const scoreA = (a.distFromRouteKm ?? a.distFromUserKm ?? 0) + (a.distFromUserKm ?? 0) * 0.1;
+        const scoreB = (b.distFromRouteKm ?? b.distFromUserKm ?? 0) + (b.distFromUserKm ?? 0) * 0.1;
+        return scoreA - scoreB;
+      });
+
+      setRouteSearchResults(results.slice(0, 8));
+    } catch (e) {
+      console.error('Search along route failed', e);
       setRouteSearchResults([]);
     } finally {
       setRouteSearchHasRun(true);
@@ -702,21 +940,14 @@ const Navigation = () => {
 
     map.current = new maplibregl.Map({
       container: mapContainer.current,
-      style: 'https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json',
+      style: 'https://basemaps.cartocdn.com/gl/positron-gl-style/style.json',
       center: startCoord as [number, number],
       zoom: 17,
       pitch: 0, // Always flat, north-up — see the comment block above
       bearing: 0
     });
 
-    // MapLibre enables two-finger rotate/pitch touch gestures by default —
-    // an ordinary two-finger drag or pinch on a phone can rotate or tilt
-    // the map completely outside our own state, no matter what pitch/
-    // bearing the code sets elsewhere. On a driving/navigation screen an
-    // accidental rotation like that is exactly the "map is tilted/rotated
-    // for no reason" symptom, so it's locked out entirely — the only way
-    // to change bearing/pitch is through the compass button, which stays
-    // under our control.
+
     map.current.dragRotate.disable();
     map.current.touchZoomRotate.disableRotation();
     map.current.touchPitch.disable();
@@ -725,22 +956,6 @@ const Navigation = () => {
     map.current.on('load', () => {
       if (!map.current) return;
 
-
-
-      // Removed default GeolocateControl as requested
-
-      // The navigation arrow representing the rider. Added regardless of
-      // whether a route exists yet — with the direct Home → Navigation flow
-      // the route arrives a moment later (see syncRouteLayers).
-      //
-      // Heading model: rotationAlignment 'map' means the rotation we set is
-      // a *geographic* bearing (clockwise from true north), not a screen
-      // angle — so it rotates together with the map itself. As long as this
-      // rotation and the map's own bearing are driven from the same heading
-      // value (see the geolocation watcher and recenterCamera below), the
-      // two cancel out and the arrow always points straight up on screen,
-      // matching the road it's actually facing. A fixed offset would break
-      // that the moment the map rotates.
       const el = document.createElement('div');
       el.className = 'w-16 h-16 flex items-center justify-center';
       el.innerHTML = `
@@ -757,20 +972,13 @@ const Navigation = () => {
 
       map.current.on('dragstart', () => setIsFollowingUser(false));
       map.current.on('touchstart', () => setIsFollowingUser(false));
-      // Live map rotation, for the compass icon — this is what actually lets
-      // you *see* whether the map is north-up or rotated, instead of having
-      // to infer it from the tilt/mode toggle state alone.
+
       map.current.on('rotate', () => setMapBearing(map.current?.getBearing() ?? 0));
 
       setMapLoaded(true);
       fetchIncidents();
     });
 
-    // MapLibre only measures its container once at creation — it never
-    // notices a later CSS-driven resize (e.g. rotating the device from the
-    // portrait "rotate your phone" gate into landscape). Without this the
-    // canvas can be left rendering at its stale size, or effectively blank
-    // if the container was 0×0 at creation time.
     const ro = new ResizeObserver(() => map.current?.resize());
     if (mapContainer.current) ro.observe(mapContainer.current);
 
@@ -781,26 +989,22 @@ const Navigation = () => {
     };
   }, []);
 
-  // Draws (or refreshes) the route on the map. Kept out of the map's own
-  // `load` handler because the route can arrive after the map is ready —
-  // normal navigation fetches it on this screen rather than being handed a
-  // pre-built one. Sources are created before the layers that reference
-  // them; getting that order wrong silently drops the layer.
   const destMarkerRef = useRef<maplibregl.Marker | null>(null);
   useEffect(() => {
     const m = map.current;
     if (!m || !mapLoaded || !currentRoute?.geometry?.coordinates?.length) return;
 
     // Until the first GPS fix lands, park the rider arrow on the head of the
-    // route (and point it down the road) so marker, route and camera agree.
+    // route and rotate the map (heading-up) so the road ahead points up,
+    // matching the live-tracking behavior once GPS kicks in.
     if (!userLocation && userMarkerRef.current) {
       const coords = currentRoute.geometry.coordinates;
       const head = coords[0];
       const ahead = coords[Math.min(5, coords.length - 1)];
+      const initialHeading = (Math.atan2(ahead[0] - head[0], ahead[1] - head[1]) * 180) / Math.PI;
+      smoothedHeadingRef.current = initialHeading < 0 ? initialHeading + 360 : initialHeading;
       userMarkerRef.current.setLngLat(head as [number, number]);
-      userMarkerRef.current.setRotation(
-        (Math.atan2(ahead[0] - head[0], ahead[1] - head[1]) * 180) / Math.PI
-      );
+      userMarkerRef.current.setRotation(smoothedHeadingRef.current);
     }
 
     // Seed the step list straight from the route so the panel is populated
@@ -870,7 +1074,7 @@ const Navigation = () => {
         (b: maplibregl.LngLatBounds, c) => b.extend(c),
         new maplibregl.LngLatBounds(coords[0], coords[0])
       );
-      m.fitBounds(bounds, { padding: 80, pitch: 0, bearing: 0, duration: 900 });
+      m.fitBounds(bounds, { padding: 80, pitch: 0, bearing: smoothedHeadingRef.current, duration: 900 });
     } catch (e) { /* non-fatal framing failure */ }
   }, [currentRoute, mapLoaded, destLat, destLng]);
 
@@ -1006,21 +1210,20 @@ const Navigation = () => {
           if (smoothedHeadingRef.current >= 360) smoothedHeadingRef.current -= 360;
         }
 
-        // Update user marker dynamically
+        // Update user marker dynamically — heading-up mode rotates the map
+        // to the rider's heading. The marker uses rotationAlignment: 'map',
+        // so its rotation is relative to true north, not the screen — it
+        // must match the map's own bearing to stay pointing straight up.
         if (userMarkerRef.current) {
           userMarkerRef.current.setLngLat([longitude, latitude]);
           userMarkerRef.current.setRotation(smoothedHeadingRef.current);
         }
 
-        // Follow camera: bearing/pitch stay pinned to 0 — north is always
-        // "up" on screen. Only the center (the rider's live position)
-        // moves. zoom 17 (not 20) keeps the road ahead and the next turn in
-        // frame, and the offset biases the vehicle toward the lower half of
-        // the screen so there's always more road visible ahead than behind.
+
         if (map.current && mapLoaded && isFollowingUserRef.current) {
           map.current.easeTo({
             center: [longitude, latitude],
-            bearing: 0,
+            bearing: smoothedHeadingRef.current,
             pitch: 0,
             zoom: 17,
             offset: [0, 120],
@@ -1124,12 +1327,7 @@ const Navigation = () => {
       },
       (err) => {
         if (err.code === 1) {
-          // Denied permission doesn't change mid-session — react to it once.
-          // Repeatedly calling setIsFollowingUser(false) here (this fires on
-          // every watch (re)subscription, including the one caused by the
-          // very state change it's about to make) is what produced the
-          // flicker: tap Re-center → isFollowingUser true → effect
-          // resubscribes → denied fires again → false again.
+
           if (!geolocationDeniedNotifiedRef.current) {
             geolocationDeniedNotifiedRef.current = true;
             showToast('Location permission denied. Navigation is running in preview mode.', 'info');
@@ -1265,6 +1463,104 @@ const Navigation = () => {
     });
   }, [incidentsOnRoute, mapLoaded, userLocation]);
 
+  // Sync selected route stops to the map as numbered, removable pins.
+  useEffect(() => {
+    if (!map.current || !mapLoaded) return;
+
+    const currentStopIds = new Set(routeStops.map((s) => s.id));
+    Object.keys(stopMarkersRef.current).forEach((id) => {
+      if (!currentStopIds.has(id)) {
+        stopMarkersRef.current[id].remove();
+        delete stopMarkersRef.current[id];
+        delete stopRootsRef.current[id];
+      }
+    });
+
+    routeStops.forEach((stop, idx) => {
+      if (!stopMarkersRef.current[stop.id]) {
+        const el = document.createElement('div');
+        const root = createRoot(el);
+        stopRootsRef.current[stop.id] = root;
+
+        const stopProp = (e: any) => e.stopPropagation();
+        el.addEventListener('mousedown', stopProp);
+        el.addEventListener('touchstart', stopProp);
+        el.addEventListener('pointerdown', stopProp);
+        el.addEventListener('click', (e) => {
+          e.stopPropagation();
+          removeRouteStop(stop.id);
+        });
+
+        const marker = new maplibregl.Marker({ element: el })
+          .setLngLat([stop.lng, stop.lat])
+          .addTo(map.current!);
+
+        stopMarkersRef.current[stop.id] = marker;
+      } else {
+        stopMarkersRef.current[stop.id].setLngLat([stop.lng, stop.lat]);
+      }
+
+      if (stopRootsRef.current[stop.id]) {
+        stopRootsRef.current[stop.id].render(
+          <div className="flex flex-col items-center transform -translate-y-1/2" title={`${stop.name} — tap to remove`}>
+            <div className="w-7 h-7 rounded-full flex items-center justify-center shadow-lg border-2 border-white bg-[var(--color-hmi-accent)] text-white text-[12px] font-black">
+              {idx + 1}
+            </div>
+          </div>
+        );
+      }
+    });
+  }, [routeStops, mapLoaded]);
+
+  // Sync "search along route" results to the map as tappable pins — tapping
+  // one opens its detail preview (name/distance/detour), same as a list row.
+  useEffect(() => {
+    if (!map.current || !mapLoaded) return;
+
+    const currentResultIds = new Set(routeSearchResults.map((r) => r.id));
+    Object.keys(searchResultMarkersRef.current).forEach((id) => {
+      if (!currentResultIds.has(id)) {
+        searchResultMarkersRef.current[id].remove();
+        delete searchResultMarkersRef.current[id];
+        delete searchResultRootsRef.current[id];
+      }
+    });
+
+    routeSearchResults.forEach((result) => {
+      const CatIcon = result.category?.icon || MapPin;
+      if (!searchResultMarkersRef.current[result.id]) {
+        const el = document.createElement('div');
+        const root = createRoot(el);
+        searchResultRootsRef.current[result.id] = root;
+
+        const stopProp = (e: any) => e.stopPropagation();
+        el.addEventListener('mousedown', stopProp);
+        el.addEventListener('touchstart', stopProp);
+        el.addEventListener('pointerdown', stopProp);
+        el.addEventListener('click', (e) => {
+          e.stopPropagation();
+          setPreviewResult(result);
+        });
+
+        const marker = new maplibregl.Marker({ element: el })
+          .setLngLat([result.lng, result.lat])
+          .addTo(map.current!);
+
+        searchResultMarkersRef.current[result.id] = marker;
+      }
+
+      if (searchResultRootsRef.current[result.id]) {
+        searchResultRootsRef.current[result.id].render(
+          <div className="flex flex-col items-center transform -translate-y-1/2" title={`${result.name} — tap for details`}>
+            <div className="w-8 h-8 rounded-full flex items-center justify-center shadow-lg border-2 border-white bg-white text-[var(--color-hmi-accent)]">
+              <CatIcon className="w-4 h-4" />
+            </div>
+          </div>
+        );
+      }
+    });
+  }, [routeSearchResults, mapLoaded]);
+
   useEffect(() => {
     if (!map.current || !mapLoaded) return;
     const updateTraffic = () => {
@@ -1330,15 +1626,8 @@ const Navigation = () => {
             </div>
           )}
 
-          {/* THE split panel — flush against the left edge, full height,
-              solid (not a floating margined card). This is the actual
-              "2 split layout": a real left pane and a real right pane, the
-              way a split screen reads at a glance. The map canvas itself is
-              untouched underneath — full width, full height, edge to edge —
-              this only sits on top of it on the left; it isn't a column
-              that shrinks the map. */}
           {mapLoaded && (
-            <div className="absolute top-0 left-0 bottom-0 z-30 w-[320px] max-w-[42%] flex flex-col bg-white shadow-[8px_0_24px_rgba(0,0,0,0.12)]">
+            <div className="absolute top-0 left-0 bottom-0 z-30 w-[320px] max-w-[42%] flex flex-col bg-white shadow-[8px_0_24px_rgba(0,0,0,0.12)] overflow-hidden">
               {/* Next maneuver + speed/ETA/distance — the panel's header. */}
               <div className="shrink-0 border-b border-gray-100">
                 <div className="flex items-center gap-3 px-4 pt-4 pb-3">
@@ -1354,20 +1643,24 @@ const Navigation = () => {
                     <p className="text-[12px] text-gray-500 font-semibold truncate">{currentInstruction.text}</p>
                   </div>
                 </div>
-                <div className="flex items-center justify-between px-4 pb-3.5">
-                  <div className="flex items-baseline gap-1">
-                    <span className="text-[15px] font-extrabold text-gray-900 leading-none">{currentSpeed !== null ? currentSpeed : '--'}</span>
-                    <span className="text-[10px] text-gray-400 font-semibold">km/h</span>
+                <div className="grid grid-cols-3 px-4 pb-3.5">
+                  <div className="flex flex-col items-start gap-0.5">
+                    <span className="text-[10px] text-gray-400 font-semibold uppercase tracking-wide">Speed</span>
+                    <div className="flex items-baseline gap-1">
+                      <span className="text-[15px] font-extrabold text-gray-900 leading-none">{currentSpeed !== null ? currentSpeed : '--'}</span>
+                      <span className="text-[10px] text-gray-400 font-semibold">km/h</span>
+                    </div>
                   </div>
-                  <div className="w-1 h-1 rounded-full bg-gray-200" />
-                  <div className="flex items-baseline gap-1">
+                  <div className="flex flex-col items-center gap-0.5 border-x border-gray-100">
+                    <span className="text-[10px] text-gray-400 font-semibold uppercase tracking-wide">ETA</span>
                     <span className="text-[15px] font-extrabold text-gray-900 leading-none">{currentEta || '--'}</span>
-                    <span className="text-[10px] text-gray-400 font-semibold">ETA</span>
                   </div>
-                  <div className="w-1 h-1 rounded-full bg-gray-200" />
-                  <div className="flex items-baseline gap-1">
-                    <span className="text-[15px] font-extrabold text-gray-900 leading-none">{parseFloat(currentDistance) || '--'}</span>
-                    <span className="text-[10px] text-gray-400 font-semibold">km left</span>
+                  <div className="flex flex-col items-end gap-0.5">
+                    <span className="text-[10px] text-gray-400 font-semibold uppercase tracking-wide">Left</span>
+                    <div className="flex items-baseline gap-1">
+                      <span className="text-[15px] font-extrabold text-gray-900 leading-none">{parseFloat(currentDistance) || '--'}</span>
+                      <span className="text-[10px] text-gray-400 font-semibold">km</span>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -1377,7 +1670,7 @@ const Navigation = () => {
                   e.preventDefault();
                   await searchAlongRoute(routeSearchQuery);
                 }}
-                className="flex items-center gap-2.5 h-[46px] mx-3 my-2.5 px-3 rounded-xl bg-gray-100 shrink-0"
+                className="flex items-center gap-2.5 h-[46px] mx-4 my-2.5 px-3 rounded-xl bg-gray-100 shrink-0"
               >
                 <SearchIcon className="w-4 h-4 text-gray-400 shrink-0" />
                 <input
@@ -1390,7 +1683,7 @@ const Navigation = () => {
                 {showRouteSearch && (
                   <button
                     type="button"
-                    onClick={() => { setShowRouteSearch(false); setRouteSearchQuery(''); setRouteSearchResults([]); setRouteSearchHasRun(false); }}
+                    onClick={() => { setShowRouteSearch(false); setRouteSearchQuery(''); setRouteSearchResults([]); setRouteSearchHasRun(false); setPreviewResult(null); }}
                     className="text-gray-400 hover:text-gray-600 shrink-0 cursor-pointer"
                   >
                     <X className="w-4 h-4" />
@@ -1398,63 +1691,87 @@ const Navigation = () => {
                 )}
               </form>
 
+              {/* Selected mid-route stops — visible and removable regardless of
+                  whether the search panel is open, in routed order. */}
+              {routeStops.length > 0 && (
+                <div className="flex gap-1.5 px-4 pb-2.5 overflow-x-auto hide-scrollbar shrink-0">
+                  {routeStops.map((stop, idx) => (
+                    <span
+                      key={stop.id}
+                      className="shrink-0 flex items-center gap-1.5 pl-2.5 pr-1.5 py-1.5 rounded-full bg-[var(--color-hmi-accent)]/10 text-[11.5px] font-bold text-[var(--color-hmi-accent)] whitespace-nowrap"
+                    >
+                      <span className="w-4 h-4 rounded-full bg-[var(--color-hmi-accent)] text-white text-[9px] font-black flex items-center justify-center shrink-0">
+                        {idx + 1}
+                      </span>
+                      <span className="max-w-[120px] truncate">{stop.name}</span>
+                      <button
+                        type="button"
+                        onClick={() => removeRouteStop(stop.id)}
+                        disabled={isRerouting}
+                        className="w-4 h-4 rounded-full flex items-center justify-center hover:bg-[var(--color-hmi-accent)]/20 cursor-pointer shrink-0"
+                        aria-label={`Remove ${stop.name} from route`}
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              )}
+
               {showRouteSearch ? (
                 <div className="flex-1 min-h-0 flex flex-col border-t border-gray-100">
                   {/* Quick category chips — not a second search field, just
                       shortcuts that fill and run the same search above. */}
-                  <div className="flex gap-1.5 px-3 py-2.5 overflow-x-auto hide-scrollbar shrink-0">
-                    {['Fuel', 'Food', 'Parking', 'Coffee', 'Charging'].map((chip) => (
+                  <div className="flex gap-1.5 px-4 py-2.5 overflow-x-auto hide-scrollbar shrink-0">
+                    {ROUTE_SEARCH_CATEGORIES.map((cat) => (
                       <button
-                        key={chip}
+                        key={cat.id}
                         onClick={async () => {
-                          setRouteSearchQuery(chip);
-                          await searchAlongRoute(chip);
+                          setRouteSearchQuery(cat.label);
+                          await searchAlongRoute(cat.label);
                         }}
-                        className="shrink-0 px-3 py-1.5 rounded-full bg-gray-100 text-[11.5px] font-bold text-gray-700 hover:bg-gray-200 cursor-pointer whitespace-nowrap"
+                        className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gray-100 text-[11.5px] font-bold text-gray-700 hover:bg-gray-200 cursor-pointer whitespace-nowrap"
                       >
-                        {chip}
+                        <cat.icon className="w-3.5 h-3.5" />
+                        {cat.label}
                       </button>
                     ))}
                   </div>
 
                   {routeSearchResults.length > 0 && (
                     <div className="flex-1 min-h-0 overflow-y-auto border-t border-gray-100 hide-scrollbar">
-                      {routeSearchResults.map((r, i) => (
-                        <button
-                          key={i}
-                          onClick={() => {
-                            setShowRouteSearch(false);
-                            setRouteSearchResults([]);
-                            setRouteSearchQuery('');
-                            setRouteSearchHasRun(false);
-                            // Re-target navigation at the new destination; the
-                            // screen rebuilds its route from scratch.
-                            navigate('/navigation', {
-                              replace: true,
-                              state: {
-                                destLat: parseFloat(r.lat),
-                                destLng: parseFloat(r.lon),
-                                destName: r.name || r.display_name.split(',')[0],
-                              },
-                            });
-                          }}
-                          className="w-full text-left px-4 py-2.5 border-b border-gray-50 last:border-0 hover:bg-gray-50 flex items-start gap-2.5 cursor-pointer"
-                        >
-                          <MapPin className="w-4 h-4 text-gray-400 shrink-0 mt-0.5" />
-                          <div className="min-w-0 flex-1">
-                            <div className="flex items-baseline justify-between gap-2">
-                              <p className="text-[12.5px] font-bold text-gray-900 truncate">{r.name || r.display_name.split(',')[0]}</p>
-                              {/* __dist is degrees, not km — a rough straight-line
-                                  hint so a result the distance fallback pulled in
-                                  from far away still reads as far, not "nearby". */}
-                              {typeof r.__dist === 'number' && (
-                                <span className="text-[10.5px] font-bold text-gray-400 shrink-0">{(r.__dist * 111).toFixed(1)} km</span>
-                              )}
+                      {routeSearchResults.map((r) => {
+                        const CatIcon = r.category?.icon || MapPin;
+                        return (
+                          <button
+                            key={r.id}
+                            onClick={() => {
+                              setShowRouteSearch(false);
+                              // View details first — adding is an explicit
+                              // action from the preview card, not an instant
+                              // side effect of tapping a result.
+                              setPreviewResult(r);
+                              if (map.current) {
+                                map.current.easeTo({ center: [r.lng, r.lat], zoom: 15, duration: 600 });
+                              }
+                            }}
+                            className="w-full text-left px-4 py-2.5 border-b border-gray-50 last:border-0 hover:bg-gray-50 flex items-start gap-2.5 cursor-pointer"
+                          >
+                            <CatIcon className="w-4 h-4 text-[var(--color-hmi-accent)] shrink-0 mt-0.5" />
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-baseline justify-between gap-2">
+                                <p className="text-[12.5px] font-bold text-gray-900 truncate">{r.name}</p>
+                                {r.distFromRouteKm != null && (
+                                  <span className="text-[10.5px] font-bold text-gray-400 shrink-0">{r.distFromRouteKm.toFixed(1)} km off route</span>
+                                )}
+                              </div>
+                              <p className="text-[11px] text-gray-500 truncate">
+                                {r.address || (r.distFromUserKm != null ? `${r.distFromUserKm.toFixed(1)} km from you` : '')}
+                              </p>
                             </div>
-                            <p className="text-[11px] text-gray-500 truncate">{r.display_name}</p>
-                          </div>
-                        </button>
-                      ))}
+                          </button>
+                        );
+                      })}
                     </div>
                   )}
 
@@ -1480,12 +1797,12 @@ const Navigation = () => {
                   {upcomingSteps.length > 1 && (
                     <div className="flex-1 min-h-0 overflow-y-auto border-t border-gray-100 divide-y divide-gray-100 hide-scrollbar">
                       {upcomingSteps.slice(1).map((step, idx) => (
-                        <div key={idx} className="flex items-center gap-2.5 px-4 py-2.5">
+                        <div key={idx} className="flex items-center gap-3 px-4 py-2.5">
                           <div className="w-7 h-7 rounded-full flex items-center justify-center shrink-0 bg-gray-100 text-gray-500">
                             {React.cloneElement(getTurnIcon(step.type) as React.ReactElement<{className?: string}>, { className: 'w-3.5 h-3.5' })}
                           </div>
                           <span className="flex-1 min-w-0 truncate text-[12px] font-semibold text-gray-700">{step.text}</span>
-                          <span className="text-[11px] font-semibold text-gray-400 shrink-0">{step.dist}</span>
+                          <span className="text-[11px] font-semibold text-gray-400 shrink-0 tabular-nums">{step.dist}</span>
                         </div>
                       ))}
                     </div>
@@ -1502,30 +1819,17 @@ const Navigation = () => {
               bottom on a short landscape screen let this grow upward past
               the top edge and clip its first button off-screen. */}
           {mapLoaded && (
-            <div className="absolute top-4 right-4 bottom-6 z-20 flex flex-col items-end justify-between">
+            <div
+              className="absolute top-4 left-1/2 -translate-x-1/2 z-40 w-7 h-7 rounded-full bg-white/95 backdrop-blur-xl shadow-lg flex items-center justify-center text-[10px] font-bold text-[var(--color-hmi-accent)] pointer-events-none"
+              style={{ transform: `translateX(-50%) rotate(${-mapBearing}deg)`, transition: 'transform 0.3s ease-out' }}
+            >
+              N
+            </div>
+          )}
+
+          {mapLoaded && (
+            <div className="absolute top-4 right-4 bottom-6 z-40 flex flex-col items-end justify-between gap-3">
               <div className="bg-white/95 backdrop-blur-xl rounded-2xl shadow-lg flex flex-col overflow-y-auto hide-scrollbar max-h-full">
-                <button
-                  onClick={() => {
-                    // This used to toggle INTO a tilted heading-up 3D mode,
-                    // which kept confusing "why is the map rotated" reports
-                    // — it looked like a bug even when working as coded,
-                    // because tapping this compass icon is exactly what a
-                    // rider would naturally do, without meaning to tilt the
-                    // whole view. It's now strictly a "reset to north"
-                    // action: it only ever resets bearing/pitch to 0, it
-                    // never rotates or tilts the map.
-                    if (!map.current) return;
-                    map.current.easeTo({ pitch: 0, bearing: 0, duration: 500 });
-                  }}
-                  title={`Reset to north (currently rotated ${Math.round(mapBearing)}°)`}
-                  className="w-9 h-9 flex items-center justify-center shrink-0 transition-colors cursor-pointer text-gray-600"
-                >
-                  {/* Rotates opposite the map's bearing so it always points
-                      to true north — a live, at-a-glance answer to "is the
-                      map actually north-up right now", not just a static icon. */}
-                  <Compass className="w-4 h-4" style={{ transform: `rotate(${-mapBearing}deg)`, transition: 'transform 0.3s ease-out' }} />
-                </button>
-                <div className="h-px bg-gray-100 mx-2 shrink-0" />
                 <button
                   onClick={() => setShowTraffic(!showTraffic)}
                   title="Traffic layer"
@@ -1535,26 +1839,11 @@ const Navigation = () => {
                 </button>
                 <div className="h-px bg-gray-100 mx-2 shrink-0" />
                 <button
-                  onClick={() => setVoiceOn(v => !v)}
-                  title={voiceOn ? 'Mute voice guidance' : 'Unmute voice guidance'}
-                  className={`w-9 h-9 flex items-center justify-center shrink-0 transition-colors cursor-pointer ${voiceOn ? 'text-gray-600' : 'text-[var(--color-hmi-accent)]'}`}
+                  onClick={groupRideId ? handleEndGroupNavigation : () => navigate(-1)}
+                  title="End ride"
+                  className="w-9 h-9 flex items-center justify-center shrink-0 text-red-500 hover:bg-red-50 cursor-pointer"
                 >
-                  {voiceOn ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
-                </button>
-                <div className="h-px bg-gray-100 mx-2 shrink-0" />
-                <button
-                  onClick={() => map.current?.zoomIn({ duration: 300 })}
-                  title="Zoom in"
-                  className="w-9 h-9 flex items-center justify-center shrink-0 text-gray-600 hover:bg-gray-50 cursor-pointer"
-                >
-                  <Plus className="w-4 h-4" />
-                </button>
-                <button
-                  onClick={() => map.current?.zoomOut({ duration: 300 })}
-                  title="Zoom out"
-                  className="w-9 h-9 flex items-center justify-center shrink-0 text-gray-600 hover:bg-gray-50 cursor-pointer"
-                >
-                  <Minus className="w-4 h-4" />
+                  <X className="w-4 h-4" />
                 </button>
               </div>
 
@@ -1570,10 +1859,7 @@ const Navigation = () => {
             </div>
           )}
 
-          {/* Route still being built — never show a bare empty map. This is
-              bounded (see the route-build effect: 6s origin wait, 12s fetch
-              timeout) so it can't spin forever — a failure always resolves
-              into the tappable retry state below instead. */}
+
           {isRouteLoading && !routeBuildFailed && (
             <div className="absolute inset-x-0 bottom-5 z-20 flex justify-center pointer-events-none">
               <div className="bg-white/95 backdrop-blur-xl rounded-full shadow-lg px-4 py-2.5 flex items-center gap-2.5">
@@ -1598,35 +1884,81 @@ const Navigation = () => {
             </div>
           )}
 
-          {/* Command dock — floats ON the map like the search/controls
-              overlays, rather than occupying its own row below it. Giving it
-              a separate row (via bottomDock) left a dead strip under the map
-              the full width of the screen; this keeps the map genuinely
-              edge to edge all the way to the bottom. Centered on the full
-              screen width (not just the map area) — the split panel is
-              capped at 42% width, so screen-center always clears it. */}
-          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-40">
-            <CommandDock
-              compact
-              primaryAction={{
-                id: 'end',
-                label: 'END RIDE',
-                icon: X,
-                onClick: groupRideId ? handleEndGroupNavigation : () => navigate(-1),
-                variant: 'danger'
-              }}
-              secondaryActions={[
-                { id: 'sos', label: 'SOS', icon: AlertTriangle, onClick: () => navigate('/support'), variant: 'danger' },
-                { id: 'group', label: 'Group', icon: Users, onClick: () => setShowParticipantList(!showParticipantList), isActive: showParticipantList }
-              ]}
-            />
-          </div>
+          {/* Search-result detail preview — opened by tapping a pin or list
+              row. Adding a stop is an explicit action from here, never a
+              side effect of just viewing details. */}
+          {previewResult && (
+            <div className="absolute inset-x-0 bottom-4 z-50 flex justify-center px-4">
+              <div className="w-full max-w-sm bg-white rounded-2xl shadow-2xl p-4">
+                <div className="flex items-start gap-3">
+                  <div className="w-10 h-10 rounded-full flex items-center justify-center shrink-0 bg-[var(--color-hmi-accent)]/10 text-[var(--color-hmi-accent)]">
+                    {(() => { const CatIcon = previewResult.category?.icon || MapPin; return <CatIcon className="w-5 h-5" />; })()}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[14px] font-bold text-gray-900 truncate">{previewResult.name}</p>
+                    {previewResult.address && (
+                      <p className="text-[11.5px] text-gray-500 truncate">{previewResult.address}</p>
+                    )}
+                  </div>
+                  <button
+                    onClick={() => setPreviewResult(null)}
+                    className="w-7 h-7 rounded-full flex items-center justify-center text-gray-400 hover:bg-gray-100 cursor-pointer shrink-0"
+                    aria-label="Close"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+
+                <div className="flex items-center gap-4 mt-3 pt-3 border-t border-gray-100">
+                  {previewResult.distFromRouteKm != null && (
+                    <div className="flex flex-col">
+                      <span className="text-[13px] font-bold text-gray-900">{previewResult.distFromRouteKm.toFixed(1)} km</span>
+                      <span className="text-[10px] text-gray-400 font-semibold">off route</span>
+                    </div>
+                  )}
+                  {previewResult.distFromUserKm != null && (
+                    <div className="flex flex-col">
+                      <span className="text-[13px] font-bold text-gray-900">{previewResult.distFromUserKm.toFixed(1)} km</span>
+                      <span className="text-[10px] text-gray-400 font-semibold">from you</span>
+                    </div>
+                  )}
+                  {previewResult.estimatedDetourKm != null && (
+                    <div className="flex flex-col">
+                      <span className="text-[13px] font-bold text-gray-900">~{previewResult.estimatedDetourKm.toFixed(1)} km</span>
+                      <span className="text-[10px] text-gray-400 font-semibold">est. detour</span>
+                    </div>
+                  )}
+                </div>
+
+                <button
+                  onClick={async () => {
+                    const r = previewResult;
+                    setPreviewResult(null);
+                    await addRouteStop({ id: r.id, lat: r.lat, lng: r.lng, name: r.name });
+                  }}
+                  disabled={isRerouting}
+                  className="w-full mt-3 h-11 rounded-full bg-[var(--color-hmi-accent)] text-white font-bold text-[13px] flex items-center justify-center gap-2 cursor-pointer active:scale-[0.98] transition-transform disabled:opacity-60"
+                >
+                  <Plus className="w-4 h-4" /> Add as Stop
+                </button>
+              </div>
+            </div>
+          )}
         </>
       }
     />
-    
+
     {selectedIncident && (
       <IncidentDrawer incident={selectedIncident} onClose={() => setSelectedIncident(null)} />
+    )}
+
+    {emergencyState.phase === 'countdown' && (
+      <EmergencyCountdownScreen
+        triggerType={emergencyState.triggerType}
+        expiresAt={emergencyState.expiresAt}
+        isOffline={emergencyState.isOffline}
+        onConfirmSafe={() => confirmSafe()}
+      />
     )}
     </React.Fragment>
   );

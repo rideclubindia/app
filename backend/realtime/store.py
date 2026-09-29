@@ -38,6 +38,12 @@ SESSION_TTL_S = 24 * 3600
 MEMBERSHIP_TTL_S = 60
 LOC_TTL_S = 2 * 3600
 STREAM_MAXLEN = 1000
+# SOS priority lane (WebSocket Architecture.md §11/§15): far larger than the
+# general critical-event stream's trim window — SOS volume is a tiny fraction
+# of ordinary ride events, so this can afford a much longer retention without
+# meaningful memory cost, and must never be evicted by a burst of unrelated
+# ride-state churn sharing the same ride.
+SOS_STREAM_MAXLEN = 20000
 
 
 class RealtimeStore:
@@ -206,6 +212,18 @@ class RealtimeStore:
                 {"seq": seq, "env": json.dumps(envelope)},
                 id="*",
                 maxlen=STREAM_MAXLEN,
+                approximate=True,
+            )
+        await self._op(_op)
+
+    async def append_sos_event(self, ride_id: str, envelope: dict) -> None:
+        """Separate stream from append_critical_event — see SOS_STREAM_MAXLEN."""
+        async def _op(r):
+            await r.xadd(
+                f"stre:sos:{ride_id}",
+                {"env": json.dumps(envelope)},
+                id="*",
+                maxlen=SOS_STREAM_MAXLEN,
                 approximate=True,
             )
         await self._op(_op)

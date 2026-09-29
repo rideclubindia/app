@@ -9,6 +9,21 @@ export const getDeterministicUuid = (str?: string | null) => {
   return `00000000-0000-0000-0000-${hex}`;
 };
 
+export interface AppUser { uid: string; email: string | null; displayName: string | null; photoURL: string | null; }
+
+// Same resolution order as RequireAuth in App.tsx: Firebase user → rie_token
+export const getAppUser = (firebaseUser: AppUser | null): AppUser | null => {
+  if (firebaseUser) return firebaseUser;
+  const rieToken = typeof localStorage !== 'undefined' ? localStorage.getItem('rie_token') : null;
+  if (rieToken) {
+    try {
+      const p = JSON.parse(atob(rieToken.split('.')[1]));
+      return { uid: p.uid || p.sub, email: p.sub, displayName: String(p.sub).split('@')[0], photoURL: null };
+    } catch { /* invalid token */ }
+  }
+  return null;
+};
+
 export const formatRelativeTime = (createdAt: string) => {
   const diffMinutes = Math.floor((Date.now() - new Date(createdAt).getTime()) / 60000);
   if (diffMinutes < 1) return 'just now';

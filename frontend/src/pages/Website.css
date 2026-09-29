@@ -4,9 +4,9 @@
   --bg: #ffffff;
   --dark: #0a0a0a;
   --darker: #050505;
-  --orange: #ef4523;
-  --orange-light: #ff6b4a;
-  --orange-dark: #c23315;
+  --orange: #ff6b22;
+  --orange-light: #ff8a3d;
+  --orange-dark: #d9540f;
   --text-main: #111111;
   --text-muted: #666666;
   --text-light: #999999;
@@ -40,7 +40,7 @@
   right: -200px;
   width: 800px;
   height: 800px;
-  background: radial-gradient(circle, rgba(239, 69, 35, 0.08) 0%, transparent 70%);
+  background: radial-gradient(circle, rgba(255, 107, 34, 0.08) 0%, transparent 70%);
   filter: blur(100px);
   z-index: 0;
   pointer-events: none;
@@ -52,7 +52,7 @@
   left: -300px;
   width: 900px;
   height: 900px;
-  background: radial-gradient(circle, rgba(239, 69, 35, 0.05) 0%, transparent 70%);
+  background: radial-gradient(circle, rgba(255, 199, 44, 0.05) 0%, transparent 70%);
   filter: blur(120px);
   z-index: 0;
   pointer-events: none;
@@ -167,7 +167,7 @@ img {
   color: #555;
   text-decoration: none;
   font-size: 12px;
-  font-weight: 600;
+  font-weight: 500;
   text-transform: uppercase;
   letter-spacing: 1px;
   transition: all 0.3s ease;
@@ -187,7 +187,7 @@ img {
   background: linear-gradient(135deg, var(--orange-light), var(--orange));
   color: #fff;
   font-size: 13px;
-  font-weight: 700;
+  font-weight: 500;
   padding: 14px 32px;
   border-radius: 100px;
   text-transform: uppercase;
@@ -211,7 +211,7 @@ img {
   border: 1px solid rgba(255,255,255,0.2);
   background: transparent;
   font-size: 13px;
-  font-weight: 700;
+  font-weight: 500;
   padding: 14px 32px;
   border-radius: 100px;
   text-transform: uppercase;
@@ -233,7 +233,7 @@ img {
   border: 1px solid rgba(0,0,0,0.15);
   background: transparent;
   font-size: 13px;
-  font-weight: 700;
+  font-weight: 500;
   padding: 14px 32px;
   border-radius: 100px;
   text-transform: uppercase;
@@ -254,7 +254,7 @@ img {
   background: linear-gradient(135deg, var(--orange-light), var(--orange));
   color: #fff;
   font-size: 11px;
-  font-weight: 700;
+  font-weight: 500;
   padding: 8px 20px;
   border-radius: 100px;
   text-transform: uppercase;
@@ -274,7 +274,7 @@ img {
   background: transparent;
   color: #fff;
   font-size: 11px;
-  font-weight: 700;
+  font-weight: 500;
   padding: 7px 20px;
   border-radius: 100px;
   text-transform: uppercase;
@@ -980,7 +980,7 @@ img {
   font-size: 12px;
   color: var(--orange);
   margin-bottom: 6px;
-  font-weight: 600;
+  font-weight: 500;
 }
 .news-side-item .news-stitle {
   font-size: 16px;
@@ -1343,7 +1343,7 @@ img {
   text-transform: uppercase;
   letter-spacing: 1.5px;
   color: var(--orange-light);
-  font-weight: 700;
+  font-weight: 500;
   margin-top: 8px;
 }
 

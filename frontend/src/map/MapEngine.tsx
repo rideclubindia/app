@@ -70,7 +70,7 @@ export const MapEngine: React.FC<MapEngineProps> = ({
 
     map.current = new maplibregl.Map({
       container: mapContainer.current,
-      style: 'https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json',
+      style: 'https://basemaps.cartocdn.com/gl/positron-gl-style/style.json',
       center: [initialLng, initialLat],
       zoom: mode === 'navigation' ? 17 : 14,
       pitch: mode === 'navigation' ? 60 : 0,

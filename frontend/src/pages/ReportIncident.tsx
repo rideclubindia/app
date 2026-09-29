@@ -122,7 +122,7 @@ const ReportIncident = () => {
 
       map.current = new maplibregl.Map({
         container: mapContainer.current!,
-        style: 'https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json',
+        style: 'https://basemaps.cartocdn.com/gl/positron-gl-style/style.json',
         center: [initLng, initLat],
         zoom: 15,
         attributionControl: false,
@@ -143,7 +143,7 @@ const ReportIncident = () => {
       if (lat == null) { setLat(fallbackLat); setLng(fallbackLng); }
       map.current = new maplibregl.Map({
         container: mapContainer.current!,
-        style: 'https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json',
+        style: 'https://basemaps.cartocdn.com/gl/positron-gl-style/style.json',
         center: [fallbackLng, fallbackLat],
         zoom: 12,
         attributionControl: false,

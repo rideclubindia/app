@@ -28,7 +28,7 @@ export const MapControls: React.FC<{ map?: maplibregl.Map | null }> = ({ map }) 
   const handleLayers = () => {
     if (map) {
       const newStyle = isDarkMode 
-        ? 'https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json'
+        ? 'https://basemaps.cartocdn.com/gl/positron-gl-style/style.json'
         : 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json';
       map.setStyle(newStyle);
       setIsDarkMode(!isDarkMode);

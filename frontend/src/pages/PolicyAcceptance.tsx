@@ -65,17 +65,6 @@ const PolicyAcceptance: React.FC<PolicyAcceptanceProps> = ({ onAccept }) => {
       }
     }
 
-    // App.tsx's own auth bootstrap has a third path this screen didn't know
-    // about: on localhost with neither a Firebase session nor a rie_token,
-    // it auto-signs in a dev user ('dev-local-user-id') so the app is usable
-    // without logging in every time. Without this, userUid stayed undefined
-    // for that session and the button below silently did nothing — no
-    // toast, no navigation, just stuck on this screen.
-    if (!userUid) {
-      const isLocalDev = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-      if (isLocalDev) userUid = 'dev-local-user-id';
-    }
-
     if (!isFormValid) return;
     if (!userUid) {
       showToast('Could not verify your account. Please log in again.', 'error');

@@ -5,7 +5,8 @@ class Settings(BaseSettings):
     PROJECT_NAME: str = "RideClub Intelligence Engine"
     VERSION: str = "1.0.0"
     API_V1_STR: str = "/api/v1"
-    
+    DEBUG: bool = Field(False, env="DEBUG")
+
     # Security
     JWT_SECRET: str = Field("supersecretjwtkey_change_in_prod", env="JWT_SECRET")
     SUPABASE_JWT_SECRET: str = Field("", env="SUPABASE_JWT_SECRET")
@@ -57,6 +58,13 @@ class Settings(BaseSettings):
     # Real-time platform (backend/realtime/)
     RTC_MAX_DEVICES_PER_USER: int = Field(5, env="RTC_MAX_DEVICES_PER_USER")
     RTC_IDLE_TIMEOUT_S: int = Field(1800, env="RTC_IDLE_TIMEOUT_S")  # 30 min silence -> drop
+    # WebSocket Architecture.md §21 — explicit connection caps, distinct from
+    # the handshake-frequency rate limiter (that throttles connect *rate*,
+    # not concurrent *count*). Refuse gracefully rather than degrade under
+    # unbounded per-instance/per-IP connection growth.
+    RTC_MAX_CONNECTIONS_PER_INSTANCE: int = Field(30000, env="RTC_MAX_CONNECTIONS_PER_INSTANCE")
+    RTC_MAX_CONNECTIONS_PER_IP: int = Field(200, env="RTC_MAX_CONNECTIONS_PER_IP")
+    RTC_MAX_MESSAGE_VIOLATIONS: int = Field(20, env="RTC_MAX_MESSAGE_VIOLATIONS")  # rate-limit hits before disconnect
 
     class Config:
         env_file = ".env"

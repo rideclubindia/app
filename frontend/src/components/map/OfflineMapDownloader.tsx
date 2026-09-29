@@ -19,13 +19,13 @@ export const OfflineMapDownloader: React.FC<OfflineMapDownloaderProps> = ({ curr
       setProgress(0);
       setTotal(0);
       
-      // Radius of 5km = ~10x10km bounding box
+      // 25 km radius = 50 × 50 km area; z14 is the style max, the map overzooms beyond it
       await downloadMapRegion(
-        currentLat, 
-        currentLng, 
-        5, 
-        10, 
-        15, 
+        currentLat,
+        currentLng,
+        25,
+        10,
+        14,
         (dl, tot) => {
           setProgress(dl);
           setTotal(tot);
@@ -40,33 +40,33 @@ export const OfflineMapDownloader: React.FC<OfflineMapDownloaderProps> = ({ curr
   };
 
   return (
-    <div className="bg-[#19273f]/90 backdrop-blur-md rounded-2xl p-5 border border-white/10 shadow-2xl">
-      <div className="flex items-center gap-4 mb-3">
-        <div className="w-10 h-10 rounded-xl bg-[#ef4523]/20 flex items-center justify-center shrink-0">
+    <div>
+      <div className="flex items-center gap-3">
+        <div className="w-10 h-10 rounded-full bg-orange-50 flex items-center justify-center shrink-0">
           <Download className="w-5 h-5 text-[#ef4523]" />
         </div>
         <div>
-          <h3 className="text-white font-semibold tracking-wide">Offline Region</h3>
-          <p className="text-white/60 text-sm">Download 10km x 10km area</p>
+          <h3 className="text-gray-900 font-semibold text-[15px]">Offline map</h3>
+          <p className="text-gray-500 text-[13px]">Download 50 km × 50 km around you</p>
         </div>
       </div>
 
       {status === 'idle' && (
         <button
           onClick={handleDownload}
-          className="w-full mt-4 bg-white/10 hover:bg-white/15 text-white py-3 rounded-xl font-medium transition-all duration-200 active:scale-95"
+          className="w-full mt-3 min-h-[48px] bg-gray-900 text-white rounded-xl font-semibold transition-all duration-200 active:scale-95"
         >
-          Start Download
+          Download
         </button>
       )}
 
       {status === 'downloading' && (
         <div className="mt-4">
-          <div className="flex justify-between text-xs text-white/80 mb-2">
+          <div className="flex justify-between text-xs text-gray-500 mb-2">
             <span>Downloading...</span>
             <span>{Math.round((progress / Math.max(total, 1)) * 100)}% ({progress}/{total})</span>
           </div>
-          <div className="w-full h-2 bg-black/40 rounded-full overflow-hidden">
+          <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
             <div 
               className="h-full bg-[#ef4523] transition-all duration-300"
               style={{ width: `${Math.max(5, (progress / Math.max(total, 1)) * 100)}%` }}
@@ -76,7 +76,7 @@ export const OfflineMapDownloader: React.FC<OfflineMapDownloaderProps> = ({ curr
       )}
 
       {status === 'success' && (
-        <div className="mt-4 bg-green-500/20 text-green-400 p-3 rounded-xl flex items-center gap-3 text-sm font-medium">
+        <div className="mt-4 bg-emerald-50 text-emerald-700 p-3 rounded-xl flex items-center gap-3 text-sm font-medium">
           <CheckCircle className="w-5 h-5" />
           Map saved for offline use!
         </div>
@@ -84,13 +84,13 @@ export const OfflineMapDownloader: React.FC<OfflineMapDownloaderProps> = ({ curr
 
       {status === 'error' && (
         <div className="mt-4">
-          <div className="bg-red-500/20 text-red-400 p-3 rounded-xl flex items-center gap-3 text-sm font-medium mb-3">
+          <div className="bg-red-50 text-red-700 p-3 rounded-xl flex items-center gap-3 text-sm font-medium mb-3">
             <AlertCircle className="w-5 h-5 shrink-0" />
             <span className="truncate">{errorMsg}</span>
           </div>
           <button
             onClick={handleDownload}
-            className="w-full bg-white/10 hover:bg-white/15 text-white py-2 rounded-xl font-medium transition-all duration-200"
+            className="w-full min-h-[44px] bg-gray-900 text-white rounded-xl font-semibold transition-all duration-200"
           >
             Retry
           </button>

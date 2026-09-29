@@ -57,7 +57,7 @@ const AdminRides = () => {
     if (mapContainer.current && !map.current) {
       map.current = new maplibregl.Map({
         container: mapContainer.current,
-        style: 'https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json',
+        style: 'https://basemaps.cartocdn.com/gl/positron-gl-style/style.json',
         center: [78.4867, 17.3850],
         zoom: 12,
         attributionControl: false

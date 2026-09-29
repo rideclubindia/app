@@ -1,5 +1,6 @@
 import { Map, Zap, Compass } from 'lucide-react';
 
+// TODO: placeholder metrics, not real usage data — replace before launch.
 export const communityStats = [
   { id: '1', label: 'Active Riders Worldwide', value: '1.2M+' },
   { id: '2', label: 'Miles Tracked Annually', value: '450M+' },
@@ -28,6 +29,9 @@ export const popularGroups = [
   }
 ];
 
+// TODO: placeholder events — "Sturgis Motorcycle Rally" is a real, independently-run
+// event; listing it here implies an affiliation Ride Club doesn't have. Replace
+// with real Ride Club-organized/verified events before launch.
 export const upcomingEvents = [
   {
     id: '1',

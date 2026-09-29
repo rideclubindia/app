@@ -125,14 +125,6 @@ const LoginScreen = () => {
     return () => mq.removeEventListener('change', handler);
   }, []);
 
-  // Automatically redirect away from LoginScreen when running on localhost
-  useEffect(() => {
-    const isLocalDev = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-    if (isLocalDev) {
-      navigate('/home', { replace: true });
-    }
-  }, [navigate]);
-
   const handleSendOtp = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email || !email.includes('@')) {

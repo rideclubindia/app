@@ -18,7 +18,16 @@ celery_app.conf.update(
     task_routes={
         "workers.tasks.process_location_update": {"queue": "tracking"},
         "workers.tasks.calculate_analytics": {"queue": "analytics"},
-    }
+    },
+    beat_schedule={
+        # SOS Escalation Architecture.md §4 — server-authoritative countdown
+        # expiry. Requires a `celery -A workers.celery_app beat` process
+        # running alongside the worker (not yet added to docker-compose.yml).
+        "sos-expiry-sweep": {
+            "task": "workers.tasks.sos_expiry_sweep",
+            "schedule": 5.0,
+        },
+    },
 )
 
 celery_app.autodiscover_tasks(["workers.tasks"])

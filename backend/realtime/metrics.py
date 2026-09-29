@@ -179,8 +179,17 @@ M_ROOM_LEAVES = registry.counter("rtc_room_leaves_total", "Room unsubscriptions"
 M_RIDE_ROOMS = registry.gauge("rtc_ride_rooms_active", "Active ride rooms on this node")
 M_CRITICAL_EVENTS = registry.counter("rtc_critical_events_total", "Critical ride events published")
 M_EVENT_LATENCY = registry.histogram("rtc_event_roundtrip_ms", "Critical event emit->ack roundtrip")
+M_SOS_EVENTS = registry.counter("rtc_sos_events_total", "SOS events published on the priority lane")
 
 # --- Infrastructure ----------------------------------------------------------
 M_REDIS_ERRORS = registry.counter("rtc_redis_errors_total", "Redis operation errors")
 M_DB_ERRORS = registry.counter("rtc_db_errors_total", "Database write errors")
 M_REDIS_LATENCY = registry.histogram("rtc_redis_op_ms", "Redis operation latency")
+
+# --- Autoscaling / degradation signals ---------------------------------------
+# WebSocket Architecture.md §25/§28: CPU/memory alone (the existing k8s HPA,
+# backend/k8s/hpa.yaml) under-react for an I/O-bound, connection-count-bound
+# workload — event loop lag is the earlier, more direct signal that a node is
+# approaching its connection ceiling before CPU saturates.
+M_EVENT_LOOP_LAG = registry.gauge("rtc_event_loop_lag_ms", "Event loop scheduling lag (asyncio drift)")
+M_LOAD_LEVEL = registry.gauge("rtc_load_level", "Current graceful-degradation load level (0=normal,1=high,2=critical)")

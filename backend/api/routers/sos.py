@@ -7,7 +7,7 @@ from core.database import get_db
 from core.limiter import limiter
 from models.models import User
 from api.deps import get_current_user, require_ride_access
-from core.config import settings
+from services.notification_service import send_emergency_sms
 
 logger = logging.getLogger(__name__)
 
@@ -27,35 +27,20 @@ class SOSDispatchRequest(BaseModel):
 @limiter.limit("5/hour")
 async def dispatch_sos(request: Request, payload: SOSDispatchRequest, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     require_ride_access(db, payload.ride_id, user)
-    maps_link = f"https://www.google.com/maps?q={payload.lat},{payload.lng}"
-    body = f"SOS from {user.name}: I need help. My live location is {maps_link}."
-    if payload.message:
-        body += f" Message: {payload.message}"
-
-    twilio_configured = bool(
-        settings.TWILIO_ACCOUNT_SID and settings.TWILIO_AUTH_TOKEN and settings.TWILIO_FROM_NUMBER
-    )
-
-    if not twilio_configured:
-        logger.warning(
-            f"SOS dispatch requested but Twilio not configured — no SMS sent. "
-            f"Contact: {payload.emergency_contact_name} {payload.emergency_contact_phone}, ride_id={payload.ride_id}"
-        )
-        return {"sms_sent": False, "reason": "twilio_not_configured"}
 
     if not payload.emergency_contact_phone:
         raise HTTPException(status_code=400, detail="emergency_contact_phone is required to dispatch SOS SMS")
 
-    try:
-        from twilio.rest import Client
-
-        client = Client(settings.TWILIO_ACCOUNT_SID, settings.TWILIO_AUTH_TOKEN)
-        client.messages.create(
-            body=body,
-            from_=settings.TWILIO_FROM_NUMBER,
-            to=payload.emergency_contact_phone,
-        )
-        return {"sms_sent": True}
-    except Exception as e:
-        logger.exception(f"Failed to send SOS SMS via Twilio: {e}")
+    result = send_emergency_sms(
+        rider_name=user.name,
+        contact_phone=payload.emergency_contact_phone,
+        contact_name=payload.emergency_contact_name,
+        lat=payload.lat,
+        lng=payload.lng,
+        status_line="SOS — I need help",
+        message=payload.message,
+        ride_id=payload.ride_id,
+    )
+    if not result["sms_sent"] and result.get("reason") == "twilio_error":
         raise HTTPException(status_code=502, detail="Failed to send SOS SMS")
+    return result

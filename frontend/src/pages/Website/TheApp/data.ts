@@ -34,7 +34,7 @@ export const appFeatures = [
   {
     id: 'sync',
     title: 'Cross-Device Sync',
-    description: 'Start planning a multi-day route on your desktop browser with a mouse, and instantly see it synced to your phone mounted on your handlebars. Completely seamless data flow.',
+    description: 'Plan a multi-day route on your desktop with a mouse, then pick it up on your phone mounted on the handlebars.',
     icon: Database
   }
 ];

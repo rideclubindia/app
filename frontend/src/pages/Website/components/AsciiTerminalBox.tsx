@@ -15,7 +15,7 @@ const TABS: TabItem[] = [
     label: 'App HUD Telemetry',
     command: 'APP_SESSION // RIDE PLUS ACTIVE',
     code: [
-      '⚡ RIDE CLUB SMART COCKPIT v2.4.0',
+      '⚡ RIDE CLUB SMART COCKPIT',
       '├── Mode: Solo Ride HUD | Turn-by-Turn GPS Active',
       '├── Current Velocity: 78.4 km/h  [Speed Limit: 80 km/h]',
       '├── IMU Lean Gauge: 26.8° Left Turn (Max Lean: 44.2°)',

@@ -6,7 +6,7 @@ import {
   Shield, Hammer, MoreHorizontal, Navigation2, Compass, X, Users, LogOut, MessageCircle,
   Crosshair, Layers, StopCircle, Coffee, Fuel, Utensils, BedDouble, Droplets, Camera, MapPin, RefreshCw, ArrowUp, ArrowLeft, ArrowRight, CornerUpLeft, CornerUpRight,
   Edit2, History
-} from 'lucide-react';
+, ChevronUp, Route as RouteIcon } from 'lucide-react';
 
 import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
@@ -25,7 +25,7 @@ import { useLocationStore } from '../../store/useLocationStore';
 
 import { useIncidentCategories, incidentIconMap } from '../../hooks/useIncidentCategories';
 import LoadingSpinner from '../../components/LoadingSpinner';
-import { getDeterministicUuid } from '../../lib/user';
+import { getDeterministicUuid, getAppUser } from '../../lib/user';
 import { useConfirm } from '../../components/ConfirmDialog';
 import img14 from '../../assets/WebsiteImages/img14.jpg';
 const imgSoloRide = img14;
@@ -51,6 +51,15 @@ const LiveRide = () => {
   
   const [ride, setRide] = useState<any>(null);
   const [mapLoaded, setMapLoaded] = useState(false);
+  const rootRef = useRef<HTMLDivElement>(null);
+  const [sheetH, setSheetH] = useState<number | null>(null);
+  const [sheetDragging, setSheetDragging] = useState(false);
+  const sheetDrag = useRef<{ y: number; h: number; moved: boolean } | null>(null);
+  const locateBtnRef = useRef<HTMLButtonElement>(null);
+  const [moreOpen, setMoreOpen] = useState(false);
+  const [tappedRiderId, setTappedRiderId] = useState<string | null>(null);
+  const ridersRef = useRef<Record<string, any>>({});
+  const PEEK_H = 112;
   const globalLocation = useLocationStore((state) => state.coordinates);
   const [routeFeature, setRouteFeature] = useState<any>(null);
   const [totalDistance, setTotalDistance] = useState(0);
@@ -102,7 +111,7 @@ const LiveRide = () => {
 
   const [groupIntelligence, setGroupIntelligence] = useState<any>(null);
 
-  // â”€â”€â”€ Edit Ride State â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ─── Edit Ride State ─────────────────────────────────────────────────────
   const [editLog, setEditLog] = useState<any[]>([]);
 
   const formatInstruction = (text: string) => {
@@ -260,7 +269,7 @@ const LiveRide = () => {
     prefetch();
   }, [id]);
 
-  // â”€â”€â”€ Step 2: Init map once we have prefetched data â”€â”€
+  // ─── Step 2: Init map once we have prefetched data ──
   useEffect(() => {
     if (!mapContainer.current || map.current || !isDataLoaded) return;
 
@@ -287,7 +296,7 @@ const LiveRide = () => {
     // Initialize map immediately
     const m = new maplibregl.Map({
       container: mapContainer.current,
-      style: mapStyle === 'dark' ? 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json' : 'https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json',
+      style: mapStyle === 'dark' ? 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json' : 'https://basemaps.cartocdn.com/gl/positron-gl-style/style.json',
       center: liveCenter,
       zoom: 20, maxZoom: 22,
       pitch: 60,
@@ -309,7 +318,7 @@ const LiveRide = () => {
     m.on('load', () => {
         if (!map.current) return;
 
-        // â”€â”€ Glow + Route layers (if available) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        // ── Glow + Route layers (if available) ──────────
         if (routeFeature) {
           map.current.addSource('route', { type: 'geojson', data: routeFeature });
           
@@ -359,7 +368,7 @@ const LiveRide = () => {
     return () => { map.current?.remove(); map.current = null; };
   }, [isDataLoaded]);
 
-  // â”€â”€â”€ Step 3: Add hazard pins + rider markers once map is ready â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ─── Step 3: Add hazard pins + rider markers once map is ready ───────────
   useEffect(() => {
     if (!mapLoaded || !map.current) return;
     
@@ -433,7 +442,7 @@ const LiveRide = () => {
     };
   }, [mapLoaded, incidents, rideStops]);
 
-  // â”€â”€â”€ Handle ride updated (refresh stops, route, map) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ─── Handle ride updated (refresh stops, route, map) ─────────────────────
   const handleRideUpdated = async () => {
     if (!id) return;
     // Re-fetch ride data
@@ -502,7 +511,7 @@ const LiveRide = () => {
     setLastUpdated(new Date());
   };
 
-  // â”€â”€â”€ Fetch edit log on load â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ─── Fetch edit log on load ─────────────────────────────────────────────
   useEffect(() => {
     if (!id || !isDataLoaded) return;
     supabase.from('ride_edit_log').select('*').eq('ride_id', id).order('created_at', { ascending: false }).limit(20).then(({ data }) => {
@@ -510,7 +519,7 @@ const LiveRide = () => {
     });
   }, [id, isDataLoaded]);
 
-  // â”€â”€â”€ Realtime subscriptions â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ─── Realtime subscriptions ───────────────────────────────────────────────
   useEffect(() => {
     if (!id) return;
     const locSub = supabase.channel(`liveride-loc-${id}`)
@@ -536,7 +545,7 @@ const LiveRide = () => {
           // Handle ride updated notifications from other admins
           if (evt.event_type === 'RIDE_UPDATED' && evt.user_id !== auth.currentUser?.uid) {
             const payload = evt.payload || {};
-            showToast(`ðŸ”„ Route updated by ${payload.editor_name || 'admin'}`, 'success');
+            showToast(`🔄 Route updated by ${payload.editor_name || 'admin'}`, 'success');
             handleRideUpdated();
           }
         })
@@ -657,7 +666,7 @@ const LiveRide = () => {
     };
   }, [id]);
 
-  // â”€â”€â”€ GPS watch â†’ camera follow + position broadcast â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ─── GPS watch → camera follow + position broadcast ──────────────────────
   useEffect(() => {
     if (!mapLoaded) return;
     const wid = navigator.geolocation.watchPosition(
@@ -829,7 +838,7 @@ const LiveRide = () => {
     return () => navigator.geolocation.clearWatch(wid);
   }, [mapLoaded, is3D, id, isFollowingUser, routeFeature]);
 
-  // â”€â”€â”€ Hazard & Stop proximity (Turf) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ─── Hazard & Stop proximity (Turf) ────────────────────
   useEffect(() => {
     if (!userLocation || !routeFeature?.geometry?.coordinates?.length) return;
     try {
@@ -957,16 +966,59 @@ const LiveRide = () => {
     return () => { map.current?.off('styledata', updateStyle); }
   }, [mapLoaded, mapStyle]);
 
-  // â”€â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  useEffect(() => {
+    ridersRef.current = riders;
+    Object.entries(riderMarkersRef.current).forEach(([uid, mk]) => {
+      const r = riders[uid];
+      if (!r) return;
+      const el = mk.getElement();
+      const label = el.querySelector('[data-name]');
+      if (label) label.textContent = String(r.display_name || 'Rider').split(' ')[0];
+      const av = el.querySelector('[data-avatar]') as HTMLElement | null;
+      if (av && r.avatar_url && av.getAttribute('data-src') !== r.avatar_url) setMarkerAvatar(av, r.avatar_url, String(r.display_name || 'Rider'));
+    });
+  }, [riders]);
+
+  // ─── Helpers ──────────────────────────────────────────────────────────────
+  const setMarkerAvatar = (av: HTMLElement, url: string | null | undefined, name: string) => {
+    const initial = () => { av.replaceChildren(); av.textContent = name.trim()[0]?.toUpperCase() || 'R'; };
+    if (!url) { initial(); return; }
+    av.setAttribute('data-src', url);
+    const img = document.createElement('img');
+    img.src = url;
+    img.alt = '';
+    img.referrerPolicy = 'no-referrer'; // Google profile photos refuse hot-linked requests that send a referrer
+    img.style.cssText = 'width:100%;height:100%;object-fit:cover;display:block;';
+    img.onerror = initial;
+    av.replaceChildren(img);
+  };
   const placeRiderMarker = (userId: string, lng: number, lat: number) => {
     if (!map.current) return;
     if (isNaN(lng) || isNaN(lat) || lng == null || lat == null) return;
     if (riderMarkersRef.current[userId]) { riderMarkersRef.current[userId].setLngLat([lng, lat]); return; }
-    const isMe = auth.currentUser?.uid === userId;
+    const myUid = getAppUser(auth.currentUser)?.uid;
+    const isMe = userId === 'me' || (!!myUid && (userId === myUid || userId === getDeterministicUuid(myUid)));
     const el = document.createElement('div');
     el.style.cssText = isMe
       ? 'width:96px;height:96px;display:flex;align-items:center;justify-content:center;filter:drop-shadow(0 6px 12px rgba(0,0,0,0.5));'
       : 'width:34px;height:34px;background:#273a5a;border-radius:50%;display:flex;align-items:center;justify-content:center;box-shadow:0 0 14px rgba(59,130,246,0.7);border:3px solid white;';
+    if (!isMe) {
+      const r = ridersRef.current[userId] || {};
+      const name = String(r.display_name || 'Rider').split(' ')[0];
+      el.style.cssText = 'display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer;';
+      const av = document.createElement('div');
+      av.style.cssText = 'width:40px;height:40px;border-radius:50%;border:3px solid #FF5A00;background:#fff;box-shadow:0 3px 10px rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;overflow:hidden;font:800 15px system-ui;color:#FF5A00;';
+      av.setAttribute('data-avatar', '');
+      setMarkerAvatar(av, r.avatar_url, name);
+      const label = document.createElement('div');
+      label.setAttribute('data-name', '');
+      label.textContent = name;
+      label.style.cssText = 'padding:2px 8px;border-radius:999px;background:#111827;color:#fff;font:700 12px system-ui;white-space:nowrap;box-shadow:0 2px 6px rgba(0,0,0,0.25);';
+      el.append(av, label);
+      el.addEventListener('click', (ev) => { ev.stopPropagation(); setTappedRiderId(userId); });
+      riderMarkersRef.current[userId] = new maplibregl.Marker({ element: el, anchor: 'top' }).setLngLat([lng, lat]).addTo(map.current);
+      return;
+    }
     el.innerHTML = isMe
       ? `<svg width="120" height="120" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg"><path d="M20 4L8 32L20 25L32 32L20 4Z" fill="#273a5a" stroke="white" stroke-width="2" stroke-linejoin="round"/></svg>`
       : `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="3 11 22 2 13 21 11 13 3 11"></polygon></svg>`;
@@ -1030,7 +1082,7 @@ const LiveRide = () => {
           const res = await apiClient.get(`/api/v1/analytics/ride/${encodeURIComponent(id)}/group-intelligence`);
           setGroupIntelligence(res.data);
         } catch {
-          // Silently skip â€” backend may not be running
+          // Silently skip — backend may not be running
         }
       }
 
@@ -1096,7 +1148,7 @@ const LiveRide = () => {
         emergency_contact_name: emergencyContactName
       });
       if (res.data?.sms_sent) {
-        showToast('ðŸš¨ SOS sent â€” emergency contact notified via SMS.', 'success');
+        showToast('🚨 SOS sent — emergency contact notified via SMS.', 'success');
       } else {
         showToast(`In-app SOS alert sent to your group. SMS to emergency contact was NOT confirmed${res.data?.reason ? `: ${res.data.reason}` : '.'}`, 'error');
       }
@@ -1124,7 +1176,7 @@ const LiveRide = () => {
     if (!navigator.onLine) {
       savePendingSOS(lat, lng);
       showToast('You are offline. SOS will be sent automatically when your connection returns.', 'error');
-      throw new Error('Offline â€” SOS queued for retry.');
+      throw new Error('Offline — SOS queued for retry.');
     }
 
     try {
@@ -1135,7 +1187,7 @@ const LiveRide = () => {
         description: 'Emergency SOS!',
         payload: sosData
       });
-      showToast('ðŸš¨ SOS Sent to all riders!', 'success');
+      showToast('🚨 SOS Sent to all riders!', 'success');
     } catch (err) {
       console.error('SOS insert failed:', err);
       savePendingSOS(lat, lng);
@@ -1144,7 +1196,7 @@ const LiveRide = () => {
     }
 
     // Best-effort dispatch to real emergency contact via backend SMS gateway.
-    // This is independent of the in-app alert above â€” report failures honestly.
+    // This is independent of the in-app alert above — report failures honestly.
     await dispatchSOSToBackend(lat, lng);
   };
 
@@ -1165,7 +1217,7 @@ const LiveRide = () => {
           payload: sosData
         });
         localStorage.removeItem(PENDING_SOS_KEY);
-        showToast('ðŸš¨ Queued SOS alert has been sent now that you are back online.', 'success');
+        showToast('🚨 Queued SOS alert has been sent now that you are back online.', 'success');
         await dispatchSOSToBackend(pending.lat, pending.lng);
       } catch (err) {
         console.error('Retrying pending SOS failed:', err);
@@ -1190,10 +1242,10 @@ const LiveRide = () => {
       ride_id: id,
       user_id: user.uid,
       event_type: 'SOS_REVOKED',
-      description: 'SOS was revoked â€” false alarm',
+      description: 'SOS was revoked — false alarm',
       payload: sosData
     });
-    showToast('SOS revoked â€” your group has been notified', 'success');
+    showToast('SOS revoked — your group has been notified', 'success');
   };
 
   const handleSOSNavigate = (lat: number, lng: number) => {
@@ -1340,7 +1392,7 @@ const LiveRide = () => {
     };
 
     map.current.on('style.load', handleStyleLoad);
-    map.current.setStyle(mapStyle === 'dark' ? 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json' : 'https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json');
+    map.current.setStyle(mapStyle === 'dark' ? 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json' : 'https://basemaps.cartocdn.com/gl/positron-gl-style/style.json');
 
     return () => {
       map.current?.off('style.load', handleStyleLoad);
@@ -1371,33 +1423,167 @@ const LiveRide = () => {
   const pendingRiders = Object.values(riders).filter((r: any) => r.status === 'pending');
   const isAdmin = currentUserData?.role === 'admin' || ride?.owner_id === auth.currentUser?.uid;
 
-  return (
-    <div className="w-full h-full bg-[#E8F1F2] flex portrait:flex-col landscape:flex-row overflow-hidden font-sans relative">
+  // Portrait bottom drawer: drag the handle or tap it to cycle peek → half → full
+  const sheetSnaps = () => {
+    const h = rootRef.current?.clientHeight || window.innerHeight;
+    return [PEEK_H, h * 0.5, h - 128];
+  };
+  const routeStopRows = rideStops
+    .filter((st: any) => st.stop_type !== 'Start' && typeof st.latitude === 'number' && typeof st.longitude === 'number')
+    .sort((x: any, y: any) => (x.sequence ?? 0) - (y.sequence ?? 0))
+    .map((st: any) => {
+      const here = userLocation || globalLocation;
+      const km = here ? turf.distance(turf.point([here.lng, here.lat]), turf.point([st.longitude, st.latitude])) : null;
+      const pace = avgSpeed > 10 ? avgSpeed : 40;
+      const at = km != null ? new Date(Date.now() + (km / pace) * 3600000) : null;
+      return {
+        key: st.id || `${st.sequence}-${st.stop_name}`,
+        name: st.stop_name || 'Stop',
+        isDest: st.stop_type === 'Destination',
+        dist: km == null ? '--' : km < 1 ? `${Math.round(km * 1000)} m` : `${km.toFixed(1)} km`,
+        eta: at ? at.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : '--',
+      };
+    });
+  const tappedRider = tappedRiderId ? riders[tappedRiderId] : null;
+  const tappedRiderKm = tappedRider && (userLocation || globalLocation) && typeof tappedRider.latitude === 'number'
+    ? turf.distance(turf.point([(userLocation || globalLocation)!.lng, (userLocation || globalLocation)!.lat]), turf.point([tappedRider.longitude, tappedRider.latitude]))
+    : null;
+  const sheetTall = (sheetH ?? PEEK_H) > (rootRef.current?.clientHeight || window.innerHeight) * 0.55;
+  const toggleSheet = () => {
+    const [peek, , full] = sheetSnaps();
+    setSheetH((sheetH ?? PEEK_H) > peek + 20 ? peek : full);
+  };
+  const onSheetDown = (e: React.PointerEvent) => {
+    const h = sheetH ?? PEEK_H;
+    sheetDrag.current = { y: e.clientY, h, moved: false };
+    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+  };
+  const onSheetMove = (e: React.PointerEvent) => {
+    const d = sheetDrag.current;
+    if (!d) return;
+    const dy = d.y - e.clientY;
+    if (Math.abs(dy) > 4) d.moved = true;
+    const [min, , max] = sheetSnaps();
+    setSheetH(Math.max(min, Math.min(max, d.h + dy)));
+    setSheetDragging(true);
+  };
+  const onSheetUp = () => {
+    const d = sheetDrag.current;
+    sheetDrag.current = null;
+    setSheetDragging(false);
+    const snaps = sheetSnaps();
+    if (!d) return;
+    if (!d.moved) {
+      const cur = sheetH ?? PEEK_H;
+      const idx = snaps.findIndex((s) => Math.abs(s - cur) < 8);
+      setSheetH(snaps[(idx + 1) % snaps.length]);
+      return;
+    }
+    const cur = sheetH ?? PEEK_H;
+    setSheetH(snaps.reduce((a, b) => (Math.abs(b - cur) < Math.abs(a - cur) ? b : a)));
+  };
 
-      {/* 1. Telemetry Panel */}
-      <div className="flex flex-col portrait:w-full portrait:h-[50%] portrait:order-2 portrait:border-t landscape:w-[30%] landscape:min-w-[280px] landscape:max-w-[340px] landscape:h-full landscape:order-2 landscape:border-r bg-[#F7F8FA] shrink-0 z-10 shadow-[4px_0_15px_rgba(0,0,0,0.05)] border-gray-200">
-        <div className="flex-1 flex flex-col pt-2 pb-2 overflow-y-auto hide-scrollbar min-h-0">
+  return (
+    <div ref={rootRef} style={{ '--sheet-h': `${sheetH ?? PEEK_H}px` } as React.CSSProperties} className="w-full h-full bg-[#E8F1F2] flex portrait:flex-col landscape:flex-row overflow-hidden font-sans relative">
+
+      {/* 1. Telemetry Panel — side panel in landscape, draggable bottom drawer in portrait */}
+      <div
+        className={`flex flex-col portrait:absolute portrait:inset-x-0 portrait:bottom-0 portrait:h-[var(--sheet-h)] portrait:rounded-t-[24px] portrait:shadow-[0_-8px_30px_rgba(0,0,0,0.18)] portrait:z-20 ${sheetDragging ? '' : 'portrait:transition-[height] portrait:duration-300 portrait:ease-out'} landscape:w-[30%] landscape:min-w-[280px] landscape:max-w-[340px] landscape:h-full landscape:order-2 landscape:border-r bg-[#F7F8FA] shrink-0 z-10 landscape:shadow-[4px_0_15px_rgba(0,0,0,0.05)] border-gray-200`}
+      >
+        <div
+          className="hidden portrait:flex shrink-0 h-7 items-center justify-center cursor-grab active:cursor-grabbing touch-none"
+          onPointerDown={onSheetDown}
+          onPointerMove={onSheetMove}
+          onPointerUp={onSheetUp}
+          onPointerCancel={onSheetUp}
+          role="button"
+          aria-label="Resize ride panel"
+        >
+          <span className="w-12 h-1.5 rounded-full bg-gray-300" />
+        </div>
+        <div className="hidden portrait:flex shrink-0 px-4 pb-3 items-center gap-3 relative">
+          <span className="w-12 h-12 rounded-full bg-red-50 flex items-center justify-center shrink-0">
+            <MapPin className="w-6 h-6 text-red-500" fill="currentColor" stroke="white" strokeWidth={1.5} />
+          </span>
+          <div className="flex-1 min-w-0">
+            <p className="text-[12px] font-semibold text-gray-500 leading-tight">{isArrived ? 'Arrived' : 'Next stop'}</p>
+            <p className="text-[18px] font-bold text-gray-950 leading-tight truncate">{nextStop?.stop_name || ride?.destination?.name?.split(',')[0] || ride?.name || 'Destination'}</p>
+            <p className="text-[14px] text-gray-600 tabular-nums">{etaStr} · {distStr}</p>
+          </div>
+          <button onClick={() => setMoreOpen((v) => !v)} aria-label="More options" aria-expanded={moreOpen} className={`w-12 h-12 rounded-full flex items-center justify-center shrink-0 active:scale-95 transition-all ${moreOpen ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-700'}`}>
+            <MoreHorizontal className="w-6 h-6" />
+          </button>
+          <button onClick={() => { setMoreOpen(false); toggleSheet(); }} aria-label="Expand ride details" className="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center text-gray-700 shrink-0 active:scale-95 transition-all">
+            <ChevronUp className={`w-6 h-6 transition-transform ${(sheetH ?? PEEK_H) > PEEK_H + 20 ? 'rotate-180' : ''}`} />
+          </button>
+
+          {moreOpen && (
+            <>
+              <button className="fixed inset-0 z-30 cursor-default" aria-label="Close menu" onClick={() => setMoreOpen(false)} />
+              <div role="menu" className="absolute right-4 bottom-full mb-2 z-40 w-[220px] bg-white rounded-2xl shadow-[0_12px_32px_rgba(0,0,0,0.18)] py-1.5 overflow-hidden">
+                {[
+                  { label: 'Riders', icon: Users, show: true, act: () => setShowUsersModal(true), danger: false },
+                  { label: 'Edit ride', icon: Edit2, show: isAdmin, act: () => navigate('/ride-plus/create', { state: { editRideId: id } }), danger: false },
+                  { label: isAdmin ? 'End ride' : 'Leave ride', icon: isAdmin ? StopCircle : LogOut, show: true, act: handleLeaveOrEnd, danger: true },
+                  { label: 'Exit to rides', icon: X, show: true, act: () => navigate('/ride-plus'), danger: false },
+                ].filter((m) => m.show).map((m) => (
+                  <button
+                    key={m.label}
+                    role="menuitem"
+                    onClick={() => { setMoreOpen(false); m.act(); }}
+                    className={`w-full min-h-[52px] px-4 flex items-center gap-3 text-left text-[15px] font-semibold active:bg-gray-50 ${m.danger ? 'text-red-600' : 'text-gray-900'}`}
+                  >
+                    <m.icon className="w-5 h-5" />
+                    {m.label}
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
+        <div className={`flex-1 flex flex-col pt-2 portrait:pt-0 pb-2 overflow-y-auto hide-scrollbar min-h-0 ${(sheetH ?? PEEK_H) <= PEEK_H + 4 ? 'portrait:hidden' : ''}`}>
 
           {/* Header */}
-          <div className="px-5 mb-1 flex justify-between items-start shrink-0">
-            <div className="min-w-0">
-              <span className="text-[#111111] font-semibold text-lg tracking-wide uppercase leading-tight block truncate">{ride?.name || 'Live Ride'}</span>
-              {ride?.ride_code && (
-                <span className="text-[11px] font-semibold text-gray-400 mt-0.5 block">Code: {ride.ride_code}</span>
-              )}
+          <div className="px-4 mt-1 mb-3 flex items-center gap-2 shrink-0">
+            <div className="min-w-0 flex-1">
+              <span className="text-gray-950 font-bold text-[16px] leading-tight block truncate">{ride?.name || 'Live Ride'}</span>
+              <div className="flex items-center gap-2 mt-0.5 text-[12px] font-semibold text-gray-500">
+                <button
+                  onClick={() => { if (ride?.ride_code) { navigator.clipboard.writeText(ride.ride_code); showToast('Ride code copied!', 'success'); } }}
+                  className="flex items-center gap-1.5 hover:text-gray-900"
+                  title="Copy ride code"
+                >
+                  <span className="w-1.5 h-1.5 rounded-full bg-success animate-pulse" /> <span className="text-success">LIVE</span> {ride?.ride_code || ''}
+                </button>
+                <span className="text-gray-300">·</span>
+                <button onClick={() => fetchLiveUpdates()} className="flex items-center gap-1 hover:text-[#FF5A00]" title="Refresh">
+                  <RefreshCw className={`w-3 h-3 ${refreshing ? 'animate-spin text-[#FF5A00]' : ''}`} /> {timeSinceUpdate}
+                </button>
+              </div>
             </div>
-            <button onClick={() => navigate('/ride-plus')} className="w-9 h-9 bg-white border border-gray-200 rounded-full flex items-center justify-center text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors shadow-sm shrink-0" title="Exit Ride">
-              <X className="w-4 h-4" />
+            <button onClick={() => navigate('/ride-plus')} className="portrait:hidden w-11 h-11 rounded-full flex items-center justify-center text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors shrink-0" title="Exit Ride">
+              <X className="w-5 h-5" />
             </button>
           </div>
 
           {/* Speedometer */}
           <div className="shrink-0 mb-2">
-            <SpeedometerCluster speed={currentSpeedKph || 0} />
+            <SpeedometerCluster speed={currentSpeedKph || 0} hideSpeedInPortrait />
+          </div>
+
+          {/* Progress (portrait) — the landscape ETA card below carries the same info */}
+          <div className="hidden portrait:block px-4 mt-1 mb-2 shrink-0">
+            <div className="flex items-center justify-between text-[12px] font-semibold text-gray-500 tabular-nums">
+              <span>{userDistKm.toFixed(1)} / {totalDistance.toFixed(1)} km · {Math.round(progress * 100)}%</span>
+              <span>Avg {avgSpeed} · Max {maxSpeed} km/h</span>
+            </div>
+            <div className="w-full h-1.5 bg-gray-200 rounded-full overflow-hidden mt-1.5">
+              <div className="h-full bg-[#FF5A00] rounded-full transition-all duration-1000" style={{ width: `${Math.round(progress * 100)}%` }} />
+            </div>
           </div>
 
           {/* ETA Card */}
-          <div className="px-2 shrink-0 pb-2">
+          <div className="px-2 shrink-0 pb-2 portrait:hidden">
             <div className="bg-white rounded-[8px] border border-gray-100 shadow-sm overflow-hidden">
               <div className="flex">
                 <div className="w-1 shrink-0" />
@@ -1429,8 +1615,8 @@ const LiveRide = () => {
             </div>
           </div>
 
-          {/* Tabs */}
-          <div className="px-2 shrink-0 pb-2">
+          {/* Tabs (stick to the top of the drawer while content scrolls) */}
+          <div className="px-3 shrink-0 pt-2 pb-3 sticky top-0 z-10 bg-[#F7F8FA]">
             <div className="flex bg-gray-200/60 p-1 rounded-xl">
               <button 
                 onClick={() => setActiveTab('details')}
@@ -1454,27 +1640,11 @@ const LiveRide = () => {
           </div>
 
           {/* Tab Content */}
-          <div className="px-2 flex-1 min-h-0 overflow-y-auto hide-scrollbar flex flex-col gap-3">
+          <div className="px-4 flex flex-col gap-6 pb-6">
 
               {activeTab === 'details' && (
-                <div className="flex flex-col gap-3">
+                <div className="flex flex-col gap-6">
 
-              {/* Live Status Row */}
-              <div className="bg-white rounded-[8px] border border-gray-100 shadow-sm p-3 flex items-center justify-between">
-                <div 
-                  onClick={() => { if (ride?.ride_code) { navigator.clipboard.writeText(ride.ride_code); showToast('Ride code copied!', 'success'); } }}
-                  className="bg-gray-50 hover:bg-gray-100 transition-colors cursor-pointer px-3 py-1.5 rounded-full text-[11px] font-semibold text-[#111111] flex items-center gap-1.5"
-                  title="Copy ride code"
-                >
-                  <span className="text-success flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-success animate-pulse" /> LIVE</span>
-                  <span>{ride?.ride_code || '...'}</span>
-                </div>
-                <div onClick={() => fetchLiveUpdates()} className="cursor-pointer flex items-center gap-1 text-[11px] text-gray-400 font-semibold hover:text-[#FF5A00] transition-colors">
-                  <RefreshCw className={`w-3 h-3 ${refreshing ? 'animate-spin text-[#FF5A00]' : ''}`} />
-                  {timeSinceUpdate}
-                </div>
-              </div>
-              
               {/* Pending Approvals Section (Admin Only) */}
               {isAdmin && pendingRiders.length > 0 && (
                 <div className="bg-orange-50 border border-orange-100 rounded-xl p-4 shadow-sm">
@@ -1533,12 +1703,12 @@ const LiveRide = () => {
 
 
               {/* Map Settings Section */}
-              <div className="bg-gray-50 border border-gray-100 rounded-xl p-4 shadow-sm flex flex-col gap-5">
-                <h3 className="text-[#273a5a] font-semibold">Map Settings</h3>
+              <div className="flex flex-col gap-4 px-1 pt-1">
+                <h3 className="text-[13px] font-bold uppercase tracking-wider text-gray-500">Map settings</h3>
                 
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3 text-[#273a5a] font-medium">
-                    <Layers className="w-5 h-5 text-gray-400" /> Live Traffic
+                  <div className="flex items-center gap-3 text-gray-900 font-semibold text-[15px]">
+                    <Car className="w-5 h-5 text-gray-500" /> Live traffic
                   </div>
                   <button 
                     onClick={() => setShowTraffic(!showTraffic)}
@@ -1560,23 +1730,23 @@ const LiveRide = () => {
                 <div className="h-px bg-gray-100 w-full" />
 
                 <div className="flex flex-col gap-3">
-                  <span className="text-[#273a5a] text-sm font-medium">Map Style</span>
+                  <span className="text-gray-900 text-[15px] font-semibold">Map style</span>
                   <div className="flex gap-3">
                     <button 
                       onClick={() => setMapStyle('dark')} 
-                      className={`flex-1 py-3 px-2 rounded-xl text-sm font-semibold transition-all ${mapStyle === 'dark' ? 'bg-primary text-white shadow-lg' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}
+                      className={`flex-1 py-3 px-2 rounded-xl text-sm font-semibold transition-all ${mapStyle === 'dark' ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-600'}`}
                     >
                       Dark
                     </button>
                     <button 
                       onClick={() => setMapStyle('light')} 
-                      className={`flex-1 py-3 px-2 rounded-xl text-sm font-semibold transition-all ${mapStyle === 'light' ? 'bg-[#34C759] text-white shadow-lg' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}
+                      className={`flex-1 py-3 px-2 rounded-xl text-sm font-semibold transition-all ${mapStyle === 'light' ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-600'}`}
                     >
                       Light
                     </button>
                     <button 
                       onClick={() => setMapStyle('satellite')} 
-                      className={`flex-1 py-3 px-2 rounded-xl text-sm font-semibold transition-all ${mapStyle === 'satellite' ? 'bg-[#007AFF] text-white shadow-lg' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}
+                      className={`flex-1 py-3 px-2 rounded-xl text-sm font-semibold transition-all ${mapStyle === 'satellite' ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-600'}`}
                     >
                       Satellite
                     </button>
@@ -1586,51 +1756,29 @@ const LiveRide = () => {
                 </div>
               )}
 
-              {/* Group Intelligence ML Inference (Phase 4) */}
-              {(
-                <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 shadow-sm flex flex-col gap-3">
-                  <h3 className="text-blue-900 font-semibold flex items-center gap-2">
-                    <Layers className="w-5 h-5 text-blue-500" /> Group Intelligence Inference
-                  </h3>
-                  
-                  <div className="flex flex-col gap-2 text-sm text-blue-800">
-                    <p><strong>Source:</strong> {effectiveGroupIntelligence.source === 'backend' ? 'Backend analytics' : 'Local live fallback'}</p>
-                    <p><strong>Status:</strong> {effectiveGroupIntelligence.message || 'OK'}</p>
-                    <p><strong>Separated Riders:</strong> {effectiveGroupIntelligence.separated_riders?.length > 0 ? effectiveGroupIntelligence.separated_riders.map((r: any) => r.name).join(', ') : 'None'}</p>
-                    <p><strong>Total Distance Covered:</strong> {effectiveGroupIntelligence.total_distance_covered_km?.toFixed(2) || 0} km</p>
-                    
-                    {effectiveGroupIntelligence.distances && effectiveGroupIntelligence.distances.length > 0 && (
-                      <div className="mt-2 bg-white p-3 rounded-lg border border-blue-100">
-                        <h4 className="font-semibold mb-2">Distance to Others:</h4>
-                        {effectiveGroupIntelligence.distances.map((d: any, idx: number) => (
-                          <div key={idx} className="flex justify-between items-center py-1 border-b border-gray-50 last:border-0">
-                            <span>{d.name}</span>
-                            <span className="font-mono font-semibold">{Math.round(d.distance_meters)}m</span>
-                          </div>
-                        ))}
+              {activeTab === 'routes' && (
+                <div className="flex flex-col">
+                  {routeStopRows.length === 0 ? (
+                    <p className="py-6 text-center text-[14px] text-gray-500">No stops on this ride.</p>
+                  ) : routeStopRows.map((st, i) => (
+                    <div key={st.key} className="flex items-center gap-3 py-3.5 border-b border-gray-200/70 last:border-0">
+                      <span className={`w-9 h-9 rounded-full flex items-center justify-center text-[13px] font-bold shrink-0 ${st.isDest ? 'bg-gray-900 text-white' : 'bg-orange-50 text-[#FF5A00]'}`}>
+                        {st.isDest ? <MapPin className="w-4 h-4" /> : String(i + 1).padStart(2, '0')}
+                      </span>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[15px] font-semibold text-gray-950 truncate">{st.name}</p>
+                        <p className="text-[13px] text-gray-500">{st.isDest ? 'Destination' : 'Stop'}</p>
                       </div>
-                    )}
-                  </div>
-                </div>
-              )}
-
-              {activeTab === 'routes' && routeFeatureRef.current?.properties?.segments?.[0]?.steps && (
-                <div className="mt-2 flex flex-col gap-4 pb-6">
-                  <h3 className="text-lg font-semibold text-[#273a5a]">Route Steps</h3>
-                  {routeFeatureRef.current.properties.segments[0].steps.slice(0, 10).map((step: any, idx: number) => (
-                    <div key={idx} className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
-                      <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center shadow-sm text-primary shrink-0">
-                        {React.cloneElement(getTurnIcon(step.type) as React.ReactElement<{className?: string}>, { className: 'w-5 h-5' })}
-                      </div>
-                      <div>
-                        <p className="text-[15px] font-semibold text-[#273a5a]">{formatInstruction(step.instruction)}</p>
+                      <div className="text-right shrink-0 tabular-nums">
+                        <p className="text-[15px] font-semibold text-gray-950">{st.dist}</p>
+                        <p className="text-[13px] text-gray-500">{st.eta}</p>
                       </div>
                     </div>
                   ))}
                 </div>
               )}
 
-              {/* â”€â”€ Activity Log Tab â”€â”€ */}
+              {/* ── Activity Log Tab ── */}
               {activeTab === 'activity' && (
                 <div className="mt-2 flex flex-col gap-3 pb-6">
                   <div className="flex items-center justify-between">
@@ -1660,7 +1808,7 @@ const LiveRide = () => {
                               </span>
                             </div>
                             <p className="text-[11px] text-gray-500 font-medium">
-                              {entry.edit_type?.replace(/_/g, ' ').replace(/,\s*/g, ' Â· ')}
+                              {entry.edit_type?.replace(/_/g, ' ').replace(/,\s*/g, ' · ')}
                             </p>
                             {entry.changes && (
                               <div className="mt-2 flex flex-wrap gap-1.5">
@@ -1698,42 +1846,28 @@ const LiveRide = () => {
         {mapLoaded && (
           <>
           {/* Top-right ride actions (SOS + Edit + End/Leave in one stack) */}
-          <div className="absolute top-3 right-3 z-20 flex flex-col gap-2 items-center">
-            <button onClick={handleSOS} className="w-10 h-10 bg-red-500/90 backdrop-blur-md border border-red-400/50 rounded-full flex items-center justify-center text-white shadow-[0_0_20px_rgba(255,59,48,0.6)] shrink-0 hover:scale-110 active:scale-95 transition-all duration-300" title="SOS Emergency">
-              <ShieldAlert className="w-5 h-5" />
+          <div className="absolute top-3 right-3 z-20 flex flex-col gap-3 items-center">
+            <button onClick={handleSOS} className="w-14 h-14 bg-red-500/90 backdrop-blur-md border border-red-400/50 rounded-full flex items-center justify-center text-white shadow-[0_0_20px_rgba(255,59,48,0.6)] shrink-0 hover:scale-110 active:scale-95 transition-all duration-300" title="SOS Emergency">
+              <ShieldAlert className="w-7 h-7" />
             </button>
             {(riders[auth.currentUser?.uid || '']?.role === 'admin' || ride?.owner_id === auth.currentUser?.uid) && (
-              <button onClick={() => navigate('/ride-plus/create', { state: { editRideId: id } })} className="w-9 h-9 rounded-full bg-white/95 backdrop-blur border border-gray-100 shadow-md flex items-center justify-center text-[#FF5A00] hover:bg-gray-50 active:scale-95 transition-all" title="Edit Ride">
-                <Edit2 className="w-4 h-4" />
+              <button onClick={() => navigate('/ride-plus/create', { state: { editRideId: id } })} className="portrait:hidden w-12 h-12 rounded-full bg-white/95 backdrop-blur border border-gray-100 shadow-md flex items-center justify-center text-[#FF5A00] hover:bg-gray-50 active:scale-95 transition-all" title="Edit Ride">
+                <Edit2 className="w-5 h-5" />
               </button>
             )}
             {riders[auth.currentUser?.uid || '']?.role === 'admin' || ride?.owner_id === auth.currentUser?.uid ? (
-              <button onClick={handleLeaveOrEnd} className="w-9 h-9 rounded-full bg-white/95 backdrop-blur border border-gray-100 shadow-md flex items-center justify-center text-red-500 hover:bg-red-50 active:scale-95 transition-all" title="End Ride">
-                <StopCircle className="w-4 h-4" />
+              <button onClick={handleLeaveOrEnd} className="portrait:hidden w-12 h-12 rounded-full bg-white/95 backdrop-blur border border-gray-100 shadow-md flex items-center justify-center text-red-500 hover:bg-red-50 active:scale-95 transition-all" title="End Ride">
+                <StopCircle className="w-5 h-5" />
               </button>
             ) : (
-              <button onClick={handleLeaveOrEnd} className="w-9 h-9 rounded-full bg-white/95 backdrop-blur border border-gray-100 shadow-md flex items-center justify-center text-red-500 hover:bg-red-50 active:scale-95 transition-all" title="Leave Ride">
-                <LogOut className="w-4 h-4" />
+              <button onClick={handleLeaveOrEnd} className="portrait:hidden w-12 h-12 rounded-full bg-white/95 backdrop-blur border border-gray-100 shadow-md flex items-center justify-center text-red-500 hover:bg-red-50 active:scale-95 transition-all" title="Leave Ride">
+                <LogOut className="w-5 h-5" />
               </button>
             )}
           </div>
 
           {/* Map Controls */}
-          <div className="absolute right-3 top-1/2 -translate-y-1/2 z-20 flex flex-col gap-2">
-            <button
-              onClick={() => setShowUsersModal(true)}
-              className="w-9 h-9 rounded-full flex items-center justify-center shadow-md bg-white/95 backdrop-blur border border-gray-100 text-[#111111] hover:bg-gray-50 active:scale-95 transition-all duration-300"
-              title="Show Users"
-            >
-              <Users className="w-4 h-4" />
-            </button> 
-            <button
-              onClick={() => setShowTraffic(!showTraffic)}
-              className={`w-9 h-9 rounded-full flex items-center justify-center active:scale-95 transition-all duration-300 shadow-md ${showTraffic ? 'bg-[#FF5A00] text-white shadow-[0_4px_16px_rgba(255,90,0,0.4)]' : 'bg-white/95 backdrop-blur border border-gray-100 text-[#111111] hover:bg-gray-50'}`}
-              title="Toggle Traffic"
-            >
-              <Layers className="w-4 h-4" />
-            </button>
+          <div className={`absolute right-3 z-20 flex flex-col gap-3 landscape:top-1/2 landscape:-translate-y-1/2 portrait:bottom-[calc(var(--sheet-h)+12px)] portrait:transition-[bottom] portrait:duration-300 ${sheetTall ? 'portrait:hidden' : ''}`}>
             <button
               onClick={() => { 
                 if (!map.current) return; 
@@ -1769,9 +1903,9 @@ const LiveRide = () => {
                 }
                 setIs3D(next3D); 
               }}
-              className={`w-9 h-9 rounded-full flex items-center justify-center active:scale-95 transition-all duration-300 shadow-md ${is3D ? 'bg-[#FF5A00] text-white shadow-[0_4px_16px_rgba(255,90,0,0.4)]' : 'bg-white/95 backdrop-blur border border-gray-100 text-[#111111] hover:bg-gray-50'}`}
+              className={`w-12 h-12 rounded-full flex items-center justify-center active:scale-95 transition-all duration-300 shadow-md ${is3D ? 'bg-[#FF5A00] text-white shadow-[0_4px_16px_rgba(255,90,0,0.4)]' : 'bg-white/95 backdrop-blur border border-gray-100 text-[#111111] hover:bg-gray-50'}`}
             >
-              {is3D ? <Compass className="w-4 h-4" /> : <Navigation2 className="w-4 h-4" />}
+              {is3D ? <Compass className="w-5 h-5" /> : <Navigation2 className="w-5 h-5" />}
             </button>
 
             <button
@@ -1817,11 +1951,12 @@ const LiveRide = () => {
                   });
                 }
               }}
-              className={`w-9 h-9 rounded-full flex items-center justify-center active:scale-95 transition-all duration-300 shadow-md ${isFollowingUser && !focusedRiderId ? 'bg-[#FF5A00] text-white shadow-[0_4px_16px_rgba(255,90,0,0.4)]' : 'bg-white/95 backdrop-blur border border-gray-100 text-[#111111] hover:bg-gray-50'}`}
+              className={`w-12 h-12 rounded-full flex items-center justify-center active:scale-95 transition-all duration-300 shadow-md ${isFollowingUser && !focusedRiderId ? 'bg-[#FF5A00] text-white shadow-[0_4px_16px_rgba(255,90,0,0.4)]' : 'bg-white/95 backdrop-blur border border-gray-100 text-[#111111] hover:bg-gray-50'}`}
+              ref={locateBtnRef}
               title="My Location"
               aria-label="My Location"
             >
-              <Crosshair className="w-4 h-4" />
+              <Crosshair className="w-5 h-5" />
             </button>
           </div>
 
@@ -1839,16 +1974,64 @@ const LiveRide = () => {
             )}
           </div>
 
+          {/* Next maneuver, or the next stop when there is no turn yet (portrait) */}
+          {(
+          <div className="hidden absolute top-3 left-3 right-[80px] z-20 bg-[#0F5132] text-white rounded-2xl portrait:flex shadow-[0_6px_20px_rgba(0,0,0,0.22)] pl-3 pr-4 py-2.5 items-center gap-3">
+            <span className="w-12 h-12 flex items-center justify-center shrink-0">
+              {currentInstruction
+                ? React.cloneElement(getTurnIcon(currentInstruction.type) as React.ReactElement<{ className?: string }>, { className: 'w-11 h-11 text-white' })
+                : <ArrowUp className="w-11 h-11 text-white" />}
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="text-[24px] font-bold leading-none tabular-nums">{currentInstruction?.dist || distStr}</p>
+              <p className="text-[15px] text-white/85 mt-1 leading-snug truncate">
+                {currentInstruction?.text || `Head to ${nextStop?.stop_name || ride?.destination?.name?.split(',')[0] || 'destination'}`}
+              </p>
+            </div>
+          </div>
+          )}
+
+          {/* Tapped rider card */}
+          {tappedRider && (
+            <div className={`absolute left-3 right-3 z-30 portrait:bottom-[calc(var(--sheet-h)+12px)] landscape:bottom-4 bg-white rounded-2xl shadow-[0_8px_24px_rgba(0,0,0,0.18)] px-4 py-3 flex items-center gap-3`}>
+              <span className="w-11 h-11 rounded-full bg-orange-50 border-2 border-[#FF5A00] flex items-center justify-center text-[#FF5A00] font-bold overflow-hidden shrink-0">
+                {tappedRider.avatar_url ? <img src={tappedRider.avatar_url} alt="" className="w-full h-full object-cover" /> : String(tappedRider.display_name || 'R')[0]}
+              </span>
+              <div className="flex-1 min-w-0">
+                <p className="text-[16px] font-bold text-gray-950 truncate">{tappedRider.display_name || 'Rider'}</p>
+                <p className="text-[13px] text-gray-500 tabular-nums">
+                  {tappedRiderKm == null ? 'Distance unknown' : tappedRiderKm < 1 ? `${Math.round(tappedRiderKm * 1000)} m away` : `${tappedRiderKm.toFixed(1)} km away`}
+                  {typeof tappedRider.speed === 'number' ? ` · ${tappedRider.speed > 0 ? `${Math.round(tappedRider.speed)} km/h` : 'Stopped'}` : ''}
+                </p>
+              </div>
+              <button onClick={() => setTappedRiderId(null)} aria-label="Close rider card" className="w-11 h-11 rounded-full bg-gray-100 flex items-center justify-center text-gray-600 shrink-0">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+          )}
+
+          {/* Round speed gauge above the drawer (portrait) */}
+          <div className={`hidden ${sheetTall ? '' : 'portrait:flex'} absolute left-3 z-20 w-[92px] h-[92px] rounded-full bg-white shadow-[0_6px_18px_rgba(0,0,0,0.16)] items-center justify-center portrait:bottom-[calc(var(--sheet-h)+12px)] transition-[bottom] duration-300`} aria-label={`${Math.round(currentSpeedKph || 0)} km/h`}>
+            <svg viewBox="0 0 100 100" className="absolute inset-0 w-full h-full" aria-hidden="true">
+              <circle cx="50" cy="50" r="40" fill="none" stroke="#E5E7EB" strokeWidth="7" strokeLinecap="round" strokeDasharray="188.5 400" transform="rotate(135 50 50)" />
+              <circle cx="50" cy="50" r="40" fill="none" stroke={(currentSpeedKph || 0) > 120 ? '#FF5A00' : '#16A34A'} strokeWidth="7" strokeLinecap="round" strokeDasharray={`${(Math.min(currentSpeedKph || 0, 200) / 200) * 188.5} 400`} transform="rotate(135 50 50)" className="transition-all duration-500" />
+            </svg>
+            <div className="relative flex flex-col items-center leading-none">
+              <span className="text-[30px] font-black text-gray-950 tabular-nums">{Math.round(currentSpeedKph || 0)}</span>
+              <span className="text-[12px] font-semibold text-gray-500 mt-0.5">km/h</span>
+            </div>
+          </div>
+
           {/* Hazard Banner */}
           {nextHazard ? (
-            <div className="absolute top-3 left-1/2 -translate-x-1/2 z-20 pointer-events-none transition-all duration-300">
+            <div className={`absolute top-3 portrait:top-[92px] left-1/2 -translate-x-1/2 z-20 pointer-events-none transition-all duration-300`}>
               <div className="bg-red-500/90 backdrop-blur-md border border-red-400/50 text-white px-3 py-1.5 rounded-full font-semibold text-[11px] flex items-center gap-1.5 shadow-[0_4px_14px_rgba(255,59,48,0.45)] animate-pulse whitespace-nowrap max-w-[70%] overflow-hidden">
                 <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
-                <span className="truncate">{fmtHazard(nextHazard.remainingDist)} â€” {nextHazard.category?.split(':')[0]} Ahead</span>
+                <span className="truncate">{fmtHazard(nextHazard.remainingDist)} — {nextHazard.category?.split(':')[0]} Ahead</span>
               </div>
             </div>
           ) : incidents.length > 0 && userLocation ? (
-            <div className="absolute top-3 left-1/2 -translate-x-1/2 z-20 pointer-events-none transition-all duration-300">
+            <div className={`absolute top-3 portrait:top-[92px] left-1/2 -translate-x-1/2 z-20 pointer-events-none transition-all duration-300`}>
               <div className="bg-success/90 backdrop-blur-md border border-green-400/50 text-white px-3 py-1.5 rounded-full font-semibold text-[11px] flex items-center gap-1.5 shadow-[0_4px_14px_rgba(52,199,89,0.35)] whitespace-nowrap">
                 <Shield className="w-3.5 h-3.5 shrink-0" /> Clear Route Ahead
               </div>

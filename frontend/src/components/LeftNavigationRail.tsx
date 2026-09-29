@@ -13,9 +13,12 @@ export const LeftNavigationRail = () => {
   // relying on an orientation lock the browser may not honour.
   const allowLandscape = isLandscapeAllowedRoute(location.pathname);
 
-  const railClass = allowLandscape
+  // live ride is full-screen in portrait: the ride's own drawer replaces the bottom menu
+  const hideInPortrait = location.pathname.startsWith('/ride-plus/live') ? 'portrait:!hidden ' : '';
+
+  const railClass = hideInPortrait + (allowLandscape
     ? 'portrait:fixed portrait:left-1/2 portrait:-translate-x-1/2 portrait:bottom-3 portrait:z-50 portrait:w-[calc(100%-24px)] portrait:max-w-[420px] portrait:h-[68px] portrait:flex-row portrait:justify-around portrait:px-3 portrait:rounded-full landscape:static landscape:w-[72px] landscape:h-full landscape:flex-col landscape:justify-start landscape:py-4 landscape:gap-3.5 landscape:order-first landscape:rounded-r-[24px] nav-bar-app flex items-center shrink-0'
-    : 'fixed left-1/2 -translate-x-1/2 bottom-3 z-50 w-[calc(100%-24px)] max-w-[420px] h-[68px] flex-row justify-around px-3 rounded-full nav-bar-app flex items-center shrink-0';
+    : 'fixed left-1/2 -translate-x-1/2 bottom-3 z-50 w-[calc(100%-24px)] max-w-[420px] h-[68px] flex-row justify-around px-3 rounded-full nav-bar-app flex items-center shrink-0');
 
   const fabClass = allowLandscape
     ? 'portrait:w-14 portrait:h-14 portrait:-translate-y-4 landscape:w-11 landscape:h-11 landscape:translate-y-0 rounded-full nav-fab-app flex items-center justify-center text-white shrink-0 active:scale-95 transition-all cursor-pointer'

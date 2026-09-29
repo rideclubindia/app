@@ -8,6 +8,7 @@
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview",
+    "test": "vitest run",
     "deploy": "firebase deploy --only hosting:lakshamride",
     "deploy:website": "firebase deploy --project rideclubindia-project --only hosting:lakshamride",
     "deploy:old": "firebase deploy --only hosting:oldsite"
@@ -60,6 +61,7 @@
     "typescript": "~6.0.2",
     "typescript-eslint": "^8.59.2",
     "vite": "^8.0.12",
-    "vite-plugin-pwa": "^1.3.0"
+    "vite-plugin-pwa": "^1.3.0",
+    "vitest": "^3.2.4"
   }
 }

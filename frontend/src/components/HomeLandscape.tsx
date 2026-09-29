@@ -1,69 +1,171 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  Search, Crosshair, Navigation2, MapPin,
-  Users, ArrowUp, CornerUpRight, X, Siren, SlidersHorizontal,
-  Compass, Plus, Calendar, UsersRound, Heart, ArrowRight,
-  ShieldAlert as ShieldAlertIcon, ChevronRight as ChevronRightIcon, Radio
+  Search, MapPin, Users, SlidersHorizontal, Compass, Plus, Calendar, UsersRound,
+  ChevronRight, ChevronDown, ShieldAlert, Radio, Bell, Siren, Clock, Sun, Cloud,
+  CloudRain, CloudFog, CloudLightning, Snowflake, Map as MapIcon, Zap
 } from 'lucide-react';
 import { useLocationStore } from '../store/useLocationStore';
 import { supabase } from '../lib/supabase';
-import { useRealtimeStatus } from '../realtime';
+import { saveOfflineCopy, readOfflineCopy } from '../lib/offlineData';
+import { auth } from '../lib/firebase';
+import { getDeterministicUuid, getAppUser } from '../lib/user';
 import { SOSModal } from './SOSModal';
+import heroImg from '../assets/rideclub/riders_coast_wide.jpg';
+import './HomeLandscape.css';
 
-interface BrowseRide {
+interface Ride {
   id: string;
   name: string;
   ride_date: string | null;
   image_url: string | null;
-  start_location: { name?: string } | null;
-  destination: { name?: string } | null;
+  start_location: { lat?: number; lng?: number; name?: string } | null;
+  destination: { lat?: number; lng?: number; name?: string } | null;
   max_riders: number | null;
+  vehicle_type: string | null;
   rider_count: number;
 }
 
+interface Member { ride_id: string; user_id: string; display_name: string | null; avatar_url: string | null; }
+
+type Filter = 'all' | 'near' | 'weekend' | 'Motorcycle' | 'Scooter';
+
+const NEAR_KM = 25;
+const fallbackRideImage = 'https://images.unsplash.com/photo-1558981806-ec527fa84c39?w=800&q=60';
+
+const distanceKm = (a: { lat: number; lng: number }, b: { lat: number; lng: number }) => {
+  const R = 6371;
+  const dLat = ((b.lat - a.lat) * Math.PI) / 180;
+  const dLng = ((b.lng - a.lng) * Math.PI) / 180;
+  const h = Math.sin(dLat / 2) ** 2 + Math.cos((a.lat * Math.PI) / 180) * Math.cos((b.lat * Math.PI) / 180) * Math.sin(dLng / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(h));
+};
+
+const hasCoords = (p: Ride['start_location']): p is { lat: number; lng: number; name?: string } =>
+  !!p && typeof p.lat === 'number' && typeof p.lng === 'number';
+
+// WMO weather codes (Open-Meteo) → short label + icon
+const weatherInfo = (code: number) => {
+  if (code === 0) return { label: 'Clear', Icon: Sun };
+  if (code <= 3) return { label: 'Cloudy', Icon: Cloud };
+  if (code <= 48) return { label: 'Foggy', Icon: CloudFog };
+  if (code <= 67 || (code >= 80 && code <= 82)) return { label: 'Rain', Icon: CloudRain };
+  if (code <= 77 || code === 85 || code === 86) return { label: 'Snow', Icon: Snowflake };
+  return { label: 'Storm', Icon: CloudLightning };
+};
+
+const isThisWeekend = (s: string | null) => {
+  if (!s) return false;
+  const d = new Date(s);
+  const now = new Date();
+  const sat = new Date(now);
+  sat.setDate(now.getDate() + ((6 - now.getDay() + 7) % 7));
+  sat.setHours(0, 0, 0, 0);
+  const monday = new Date(sat);
+  monday.setDate(sat.getDate() + 2);
+  return (d >= sat && d < monday) || (now.getDay() === 0 && d.toDateString() === now.toDateString());
+};
+
 export const HomeLandscape = ({ currentRide }: { currentRide?: any }) => {
-  const { coordinates } = useLocationStore();
+  const { coordinates, locationName } = useLocationStore();
   const navigate = useNavigate();
-  const rtStatus = useRealtimeStatus();
 
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [showSOSModal, setShowSOSModal] = useState(false);
+  const [rides, setRides] = useState<Ride[]>([]);
+  const [members, setMembers] = useState<Member[]>([]);
+  const [loaded, setLoaded] = useState(false);
+  const [weather, setWeather] = useState<{ temp: number; code: number } | null>(null);
+  const [filter, setFilter] = useState<Filter>('all');
+  const [liveRide, setLiveRide] = useState<{ id: string; name: string } | null>(null);
+  const [liveMembers, setLiveMembers] = useState<Member[]>([]);
 
-  const [browseRides, setBrowseRides] = useState<BrowseRide[]>([]);
+  const user = getAppUser(auth.currentUser);
+  const initial = (user?.displayName || user?.email || 'R')[0].toUpperCase();
+  const hour = new Date().getHours();
+  const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
 
-  // Public upcoming rides, used for the "Featured Ride" banner + "Upcoming
-  // Rides" list when the rider doesn't already have an active/scheduled ride.
   useEffect(() => {
     const load = async () => {
-      const { data: rides } = await supabase
+      const { data, error: ridesErr } = await supabase
         .from('rides')
-        .select('id, name, ride_date, image_url, start_location, destination, max_riders')
+        .select('id, name, ride_date, image_url, start_location, destination, max_riders, vehicle_type')
         .eq('visibility', 'public')
-        .gte('ride_date', new Date().toISOString())
+        .gte('ride_date', new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString())
         .order('ride_date', { ascending: true })
-        .limit(4);
-
-      if (!rides || rides.length === 0) {
-        setBrowseRides([]);
+        .limit(40);
+      if (ridesErr) {
+        const cached = readOfflineCopy<{ rides: Ride[]; members: Member[] }>('home_rides');
+        setRides(cached?.rides || []);
+        setMembers(cached?.members || []);
+        setLoaded(true);
         return;
       }
+      if (!data || data.length === 0) { setRides([]); setLoaded(true); return; }
 
-      const ids = rides.map(r => r.id);
-      const { data: members } = await supabase
+      const { data: mem } = await supabase
         .from('ride_members')
-        .select('ride_id')
-        .in('ride_id', ids);
+        .select('ride_id, user_id, display_name, avatar_url')
+        .in('ride_id', data.map((r) => r.id));
 
       const counts: Record<string, number> = {};
-      (members || []).forEach(m => { counts[m.ride_id] = (counts[m.ride_id] || 0) + 1; });
-
-      setBrowseRides(rides.map(r => ({ ...r, rider_count: counts[r.id] || 0 })));
+      (mem || []).forEach((m) => { counts[m.ride_id] = (counts[m.ride_id] || 0) + 1; });
+      const list = data.map((r) => ({ ...r, rider_count: counts[r.id] || 0 }));
+      saveOfflineCopy('home_rides', { rides: list, members: mem || [] });
+      setMembers(mem || []);
+      setRides(list);
+      setLoaded(true);
     };
     load();
   }, []);
+
+  // the rider's current ride = a 'live' ride they lead or belong to
+  useEffect(() => {
+    const u = getAppUser(auth.currentUser);
+    if (!u) return;
+    const myUuid = u.uid.length === 36 ? u.uid : getDeterministicUuid(u.uid);
+    const loadLive = async () => {
+      const [{ data: owned }, { data: mine }] = await Promise.all([
+        supabase.from('rides').select('id, name').eq('owner_id', u.uid).eq('status', 'live').limit(1),
+        supabase.from('ride_members').select('ride_id').eq('user_id', myUuid),
+      ]);
+      let ride = owned?.[0] || null;
+      if (!ride && mine && mine.length > 0) {
+        const { data } = await supabase.from('rides').select('id, name').in('id', mine.map((m) => m.ride_id)).eq('status', 'live').order('ride_date', { ascending: false }).limit(1);
+        ride = data?.[0] || null;
+      }
+      setLiveRide(ride);
+      if (!ride) { setLiveMembers([]); return; }
+      const { data: mem } = await supabase.from('ride_members').select('ride_id, user_id, display_name, avatar_url').eq('ride_id', ride.id);
+      setLiveMembers(mem || []);
+    };
+    loadLive();
+  }, []);
+
+  useEffect(() => {
+    if (!coordinates) return;
+    const ctrl = new AbortController();
+    fetch(`https://api.open-meteo.com/v1/forecast?latitude=${coordinates.lat.toFixed(3)}&longitude=${coordinates.lng.toFixed(3)}&current=temperature_2m,weather_code`, { signal: ctrl.signal })
+      .then((r) => r.json())
+      .then((d) => { if (d?.current) setWeather({ temp: Math.round(d.current.temperature_2m), code: d.current.weather_code }); })
+      .catch(() => {});
+    return () => ctrl.abort();
+  }, [coordinates?.lat.toFixed(2), coordinates?.lng.toFixed(2)]);
+
+  const distFromMe = (r: Ride) => (coordinates && hasCoords(r.start_location) ? distanceKm(coordinates, r.start_location) : null);
+  const routeKm = (r: Ride) => (hasCoords(r.start_location) && hasCoords(r.destination) ? distanceKm(r.start_location, r.destination) : null);
+
+  const nearbyRides = useMemo(() => rides.filter((r) => { const d = distFromMe(r); return d !== null && d <= NEAR_KM; }), [rides, coordinates]);
+
+  const shownRides = useMemo(() => {
+    let list = rides;
+    if (filter === 'near') list = nearbyRides;
+    else if (filter === 'weekend') list = rides.filter((r) => isThisWeekend(r.ride_date));
+    else if (filter === 'Motorcycle' || filter === 'Scooter') list = rides.filter((r) => r.vehicle_type === filter);
+    return list.slice(0, 12);
+  }, [filter, rides, nearbyRides]);
 
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -80,250 +182,193 @@ export const HomeLandscape = ({ currentRide }: { currentRide?: any }) => {
     }
   };
 
-  // Normal destination navigation: tapping a result starts navigating
-  // immediately. No route-preview / "Start Navigation" confirmation step and
-  // no stop management — those belong to Ride navigation only. Navigation
-  // builds the route itself from this destination (see Navigation.tsx).
+  // Tapping a result starts navigation straight away (Navigation builds the route).
   const selectDestination = (place: any) => {
-    const lat = parseFloat(place.lat);
-    const lng = parseFloat(place.lon);
     setSearchResults([]);
     setSearchQuery('');
     navigate('/navigation', {
-      state: {
-        destLat: lat,
-        destLng: lng,
-        destName: place.name || place.display_name.split(',')[0],
-      },
+      state: { destLat: parseFloat(place.lat), destLng: parseFloat(place.lon), destName: place.name || place.display_name.split(',')[0] },
     });
   };
 
-  const featured = currentRide || browseRides[0] || null;
-  const isFeaturedLive = !!currentRide;
-  const upcomingList = currentRide ? browseRides.slice(0, 2) : browseRides.slice(1, 3);
-
-  const formatRoute = (ride: any) =>
-    [ride.start_location?.name, ride.destination?.name].filter(Boolean).join(' → ') || 'Route TBD';
-
-  const formatWhen = (dateStr?: string | null) => {
-    if (!dateStr) return { day: '--', full: 'Date TBD' };
-    const d = new Date(dateStr);
-    return {
-      day: d.toLocaleDateString([], { weekday: 'short', day: '2-digit', month: 'short' }),
-      full: d.toLocaleString([], { weekday: 'short', day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })
-    };
+  const fmtWhen = (s: string | null) => {
+    if (!s) return 'Date TBD';
+    const d = new Date(s);
+    return `${d.toLocaleDateString([], { day: 'numeric', month: 'short' })} · ${d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`;
   };
 
-  // --- Composed sections -----------------------------------------------
+  const parts = (locationName || '').split(',').map((p) => p.trim()).filter(Boolean);
+  const place = parts[0] || 'Locating…';
+  const address = parts.slice(1, 3).join(', ') || 'Finding your location';
+  const W = weather ? weatherInfo(weather.code) : null;
 
-  const header = (
-    <div className="flex items-center justify-between">
-      <div>
-        <h1 className="text-[20px] font-black tracking-tight leading-tight">
-          <span className="text-gray-950">Ride</span><span className="text-[#FF6B22]">Club</span>
-        </h1>
-        <p className="text-[11px] text-gray-500 font-semibold">Ride Together. Go Further.</p>
-      </div>
-      <div className="flex items-center gap-2.5">
-        <button
-          onClick={() => setShowSOSModal(true)}
-          className="relative w-10 h-10 rounded-full bg-red-50 flex items-center justify-center text-red-600 active:scale-95 transition-all cursor-pointer"
-          title="Sentinel / SOS"
-        >
-          <Siren className="w-4.5 h-4.5" />
-          <span className="absolute top-1.5 right-2 w-1.5 h-1.5 rounded-full bg-[#FF6B22]" />
-        </button>
-        <button
-          onClick={() => navigate('/profile')}
-          className="w-10 h-10 rounded-full bg-[#FF6B22]/10 flex items-center justify-center text-[#FF6B22] font-black text-[13px] active:scale-95 transition-all cursor-pointer"
-          title="Profile"
-        >
-          RC
-        </button>
-      </div>
-    </div>
-  );
+  const categories = [
+    { icon: Compass, label: 'Find Rides', path: '/explore', tone: 'orange' },
+    { icon: Plus, label: 'Create Ride', path: '/ride-plus/create', tone: 'dark' },
+    { icon: Calendar, label: 'My Rides', path: '/ride-plus', tone: 'blue' },
+    { icon: UsersRound, label: 'Clubs', path: '/groups', tone: 'violet' },
+    { icon: MapIcon, label: 'Map', path: '/map', tone: 'green' },
+    { icon: Radio, label: 'Live Updates', path: '/alerts', tone: 'sky' },
+    { icon: ShieldAlert, label: 'Report', path: '/map', state: { reportMode: true }, tone: 'red' },
+  ];
 
-  // Results show right here on Home (not a full-screen "Map" overlay) —
-  // tapping one goes straight to the route screen with the destination
-  // already filled in. See selectDestination.
-  const searchBar = (
-    <div className="relative z-30">
-      <form onSubmit={handleSearch} className="flex items-center gap-2.5">
-        <div className="relative flex-1">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+  const filters: { id: Filter; label: string; icon?: typeof Zap }[] = [
+    { id: 'all', label: 'All rides' },
+    { id: 'near', label: 'Near me', icon: Zap },
+    { id: 'weekend', label: 'This weekend' },
+    { id: 'Motorcycle', label: 'Motorcycle' },
+    { id: 'Scooter', label: 'Scooter' },
+  ];
+
+  return (
+    <div className="hl-root">
+      {/* Top: location + actions + search sit on the banner's colour */}
+      <header className="hl-top">
+        <img src={heroImg} alt="" className="hl-top-img" />
+        <div className="hl-top-fade" />
+
+        <div className="hl-bar">
+          <button className="hl-loc" onClick={() => navigate('/map')}>
+            <span className="hl-loc-1"><MapPin size={20} fill="currentColor" strokeWidth={0} /> {place} <ChevronDown size={18} /></span>
+            <span className="hl-loc-2">{address}</span>
+          </button>
+          <div className="hl-bar-actions">
+            <button className="hl-round hl-sos" onClick={() => setShowSOSModal(true)} aria-label="SOS"><Siren size={20} /></button>
+            <button className="hl-round" onClick={() => navigate('/alerts')} aria-label="Alerts"><Bell size={20} /><i className="hl-dot" /></button>
+            <button className="hl-round hl-me" onClick={() => navigate('/profile')} aria-label="Profile">{initial}</button>
+          </div>
+        </div>
+
+        <form onSubmit={handleSearch} className="hl-search">
+          <Search size={22} className="hl-search-ico" />
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search rides, locations, or riders..."
-            className="w-full h-12 card-app pl-4 pr-4 text-[13px] font-semibold text-gray-900 placeholder-gray-400 outline-none focus:ring-2 focus:ring-[#FF6B22]"
+            placeholder='Search "Ananthagiri Hills"'
+            aria-label="Search places"
           />
-        </div>
-        <button type="button" className="w-12 h-12 shrink-0 card-app flex items-center justify-center text-gray-600 cursor-pointer">
-          <SlidersHorizontal className="w-4 h-4" />
-        </button>
-      </form>
-
-      {(searchResults.length > 0 || isSearching) && (
-        <div className="absolute top-[54px] left-0 right-0 card-app py-1.5 flex flex-col max-h-[280px] overflow-y-auto z-30">
-          {isSearching && searchResults.length === 0 && (
-            <div className="px-4 py-3 text-center text-[12px] text-gray-500 font-medium">Searching "{searchQuery}"...</div>
-          )}
-          {searchResults.map((result, i) => (
-            <button
-              key={i}
-              type="button"
-              onClick={() => selectDestination(result)}
-              className="w-full text-left px-3.5 py-2.5 border-b border-gray-100 last:border-0 hover:bg-gray-50 flex items-start gap-2.5 cursor-pointer"
-            >
-              <MapPin className="w-4 h-4 text-gray-500 shrink-0 mt-0.5" />
-              <div className="flex flex-col overflow-hidden min-w-0">
-                <span className="font-bold text-gray-900 text-[12.5px] truncate">{result.name || result.display_name.split(',')[0]}</span>
-                <span className="text-[11px] text-gray-500 truncate">{result.display_name}</span>
-              </div>
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-
-  const incidentBanner = (
-    <button
-      onClick={() => navigate('/map', { state: { reportMode: true } })}
-      className="w-full card-app p-3.5 flex items-center gap-3 text-left cursor-pointer bg-red-50/60" style={{ backgroundColor: '#FEF2EE', border: '1px solid #ffd2d2'}}
-    >
-      <div className="w-10 h-10 icon-badge bg-red-100 shrink-0">
-        <ShieldAlertIcon className="w-5 h-5 text-red-600" />
-      </div>
-      <div className="flex-1 min-w-0">
-        <h4 className="text-[13px] font-bold text-gray-950">Report an Incident</h4>
-        <p className="text-[11px] text-gray-500 font-medium">Spotted an issue? Help keep the community safe.</p>
-      </div>
-      <ChevronRightIcon className="w-4 h-4 text-gray-400 shrink-0" />
-    </button>
-  );
-
-  // Live Updates: a plain list of active community reports, no embedded map
-  // (that's what /map is for) — just an icon on Home into the feed.
-  const liveUpdatesBanner = (
-    <button
-      onClick={() => navigate('/alerts')}
-      className="w-full card-app p-3.5 flex items-center gap-3 text-left cursor-pointer"
-    >
-      <div className="w-10 h-10 icon-badge bg-blue-50 shrink-0">
-        <Radio className="w-5 h-5 text-blue-600" />
-      </div>
-      <div className="flex-1 min-w-0">
-        <h4 className="text-[13px] font-bold text-gray-950">Live Updates</h4>
-        <p className="text-[11px] text-gray-500 font-medium">See what riders are reporting nearby.</p>
-      </div>
-      <ChevronRightIcon className="w-4 h-4 text-gray-400 shrink-0" />
-    </button>
-  );
-
-  // Bento grid: one dominant tile (Featured Ride) + supporting tiles (quick
-  // actions, upcoming rides) sharing the .bento-tile surface/radius/shadow
-  // tokens from index.css. Collapses to 1 col on mobile, 2 on tablet, up to
-  // 4 on desktop via the shared .bento-grid utility.
-  const bentoContent = (
-    <div className="bento-grid">
-      {featured && (
-        <button
-          onClick={() => navigate(currentRide ? `/ride-plus/live/${featured.id}` : `/ride-plus/view/${featured.id}`)}
-          className="bento-tile bento-tile--lg bento-tile--media relative min-h-[168px] overflow-hidden text-left cursor-pointer group"
-        >
-          <img
-            src={featured.image_url || fallbackRideImage}
-            alt=""
-            className="absolute inset-0 w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-500"
-          />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/10 to-transparent" />
-
-          <span className="absolute top-3 left-3 flex items-center gap-1.5 bg-black/50 backdrop-blur-sm text-white text-[10px] font-bold px-2.5 py-1 rounded-full">
-            <Users className="w-3 h-3" /> {isFeaturedLive ? 'Your Ride' : 'Featured Ride'}
-          </span>
-          <span className="absolute top-3 right-3 text-white/80 text-[11px] font-medium italic">Good Rides, Better People</span>
-
-          <div className="absolute bottom-3 left-3.5 right-3.5 flex items-end justify-between">
-            <div className="min-w-0">
-              <h3 className="text-white text-[17px] font-bold truncate">{featured.name || 'My Ride'}</h3>
-              <p className="text-white/80 text-[11px] font-medium truncate">{formatRoute(featured)}</p>
-            </div>
-            <div className="w-9 h-9 rounded-full bg-[#FF6B22] flex items-center justify-center shrink-0 ml-2">
-              <ArrowRight className="w-4 h-4 text-white" />
-            </div>
+          <button type="button" className="hl-search-filter" onClick={() => navigate('/explore')} aria-label="Filters">
+            <SlidersHorizontal size={20} />
+          </button>
+        </form>
+        {(searchResults.length > 0 || isSearching) && (
+          <div className="hl-results">
+            {isSearching && searchResults.length === 0 && <div className="hl-results-empty">Searching "{searchQuery}"…</div>}
+            {searchResults.map((r, i) => (
+              <button key={i} type="button" onClick={() => selectDestination(r)} className="hl-result">
+                <MapPin size={18} />
+                <span><strong>{r.name || r.display_name.split(',')[0]}</strong><small>{r.display_name}</small></span>
+              </button>
+            ))}
           </div>
-        </button>
-      )}
+        )}
 
-      <div className="bento-tile bento-tile--wide p-3.5 flex items-center">
-        <div className="grid grid-cols-4 gap-2.5 w-full">
-          {[
-            { icon: Compass, label: 'Find Rides', path: '/explore', tint: '#FFE3D1', color: '#FF6B22' },
-            { icon: Plus, label: 'Create Ride', path: '/ride-plus/create', tint: '#FFE3D1', color: '#FF6B22' },
-            { icon: Calendar, label: 'My Rides', path: '/ride-plus', tint: '#E4E9FB', color: '#3B5BDB' },
-            { icon: UsersRound, label: 'Clubs', path: '/groups', tint: '#EDE6FB', color: '#7C4DFF' },
-          ].map(action => (
+        <div className="hl-banner">
+          <p className="hl-banner-hi">{greeting}</p>
+          <h1 className="hl-banner-title">Ready to <span>Ride?</span></h1>
+          {W && weather && (
+            <p className="hl-banner-meta"><W.Icon size={16} /> {weather.temp}°C · {W.label} · great riding weather</p>
+          )}
+          <button className="hl-banner-cta" onClick={() => navigate('/explore')}>Find a ride <ChevronRight size={18} /></button>
+        </div>
+      </header>
+
+      <div className="hl-body">
+        {/* Category row — like Zomato's cuisine strip */}
+        <nav className="hl-cats" aria-label="Quick actions">
+          {categories.map((c) => (
             <button
-              key={action.label}
-              onClick={() => navigate(action.path)}
-              className="flex flex-col items-center gap-1.5 cursor-pointer"
+              key={c.label}
+              className={`hl-cat hl-cat-${c.tone}`}
+              onClick={() => navigate(c.path, c.state ? { state: c.state } : undefined)}
             >
-              <div className="w-12 h-12 icon-badge" style={{ backgroundColor: action.tint }}>
-                <action.icon className="w-5 h-5" style={{ color: action.color }} />
-              </div>
-              <span className="text-[10.5px] font-bold text-gray-700 text-center leading-tight">{action.label}</span>
+              <span className="hl-cat-ico"><c.icon size={28} strokeWidth={2.2} /></span>
+              <span className="hl-cat-label">{c.label}</span>
+            </button>
+          ))}
+        </nav>
+
+        {/* Your current (live) ride and the riders on it */}
+        {liveRide ? (
+          <button className="hl-near" onClick={() => navigate(`/ride-plus/live/${liveRide.id}`)}>
+            <span className="hl-near-avs">
+              {liveMembers.slice(0, 4).map((m) =>
+                m.avatar_url
+                  ? <img key={m.user_id} src={m.avatar_url} alt={m.display_name || ''} onError={(e) => { e.currentTarget.style.display = 'none'; }} />
+                  : <span key={m.user_id}>{(m.display_name || 'R')[0]}</span>
+              )}
+              {liveMembers.length > 4 && <span>+{liveMembers.length - 4}</span>}
+            </span>
+            <span className="hl-near-txt">
+              <strong><i /> {liveRide.name || 'Your ride'}</strong>
+              <small>Riding now · {liveMembers.length} {liveMembers.length === 1 ? 'rider' : 'riders'} in your pack</small>
+            </span>
+            <ChevronRight size={20} />
+          </button>
+        ) : (
+          <button className="hl-near hl-near-idle" onClick={() => navigate('/explore')}>
+            <span className="hl-near-avs"><span className="hl-near-empty"><Users size={18} /></span></span>
+            <span className="hl-near-txt">
+              <strong>You're not on a ride</strong>
+              <small>Join or start a ride to see your pack here</small>
+            </span>
+            <ChevronRight size={20} />
+          </button>
+        )}
+
+        {/* Filter chips */}
+        <div className="hl-chips" role="tablist" aria-label="Filter rides">
+          <button className="hl-chip hl-chip-filter" onClick={() => navigate('/explore')}><SlidersHorizontal size={16} /> Filters <ChevronDown size={16} /></button>
+          {filters.map((f) => (
+            <button
+              key={f.id}
+              role="tab"
+              aria-selected={filter === f.id}
+              className={`hl-chip${filter === f.id ? ' is-on' : ''}`}
+              onClick={() => setFilter(f.id)}
+            >
+              {f.icon && <f.icon size={15} className="hl-chip-ico" />}{f.label}
             </button>
           ))}
         </div>
-      </div>
 
-      <div className="flex items-center justify-between" style={{ gridColumn: '1 / -1' }}>
-        <h3 className="text-[15px] font-bold text-gray-950">Upcoming Rides</h3>
-        <button onClick={() => navigate('/explore')} className="text-[12px] font-bold text-[#FF6B22] cursor-pointer">See All</button>
-      </div>
+        <h2 className="hl-label">Upcoming rides for you</h2>
 
-      {upcomingList.length === 0 ? (
-        <div className="bento-tile p-4 text-center" style={{ gridColumn: '1 / -1' }}>
-          <p className="text-[12px] font-semibold text-gray-500">No upcoming public rides yet — be the first to create one.</p>
-        </div>
-      ) : (
-        upcomingList.map(ride => {
-          const when = formatWhen(ride.ride_date);
-          return (
-            <button
-              key={ride.id}
-              onClick={() => navigate(`/ride-plus/view/${ride.id}`)}
-              className="bento-tile p-2.5 flex items-center gap-3 text-left cursor-pointer"
-            >
-              <img src={ride.image_url || fallbackRideImage} alt="" className="w-16 h-16 rounded-2xl object-cover shrink-0" />
-              <div className="flex-1 min-w-0">
-                <h4 className="text-[13px] font-bold text-gray-950 truncate">{ride.name || 'Group Ride'}</h4>
-                <p className="text-[11px] text-gray-500 font-medium truncate">{formatRoute(ride)}</p>
-                <div className="flex items-center gap-2.5 mt-1 text-[10px] text-gray-500 font-semibold">
-                  <span className="flex items-center gap-1"><Calendar className="w-3 h-3" />{when.day}</span>
-                  <span className="flex items-center gap-1"><Users className="w-3 h-3" />{ride.rider_count}/{ride.max_riders || '--'}</span>
-                </div>
-              </div>
-              <Heart className="w-4 h-4 text-gray-300 shrink-0" />
+        {!loaded ? (
+          <div className="hl-grid">
+            {Array.from({ length: 6 }).map((_, i) => <div key={i} className="hl-card is-skeleton"><div className="hl-card-img" /><div className="hl-sk-line" /><div className="hl-sk-line short" /></div>)}
+          </div>
+        ) : shownRides.length === 0 ? (
+          <div className="hl-empty">
+            <p>{rides.length === 0 ? 'No upcoming rides yet — start one for your crew.' : 'No rides match this filter.'}</p>
+            <button onClick={() => (rides.length === 0 ? navigate('/ride-plus/create') : setFilter('all'))}>
+              {rides.length === 0 ? 'Create a ride' : 'Show all rides'}
             </button>
-          );
-        })
-      )}
-    </div>
-  );
-
-
-  return (
-    <div className="w-full h-full bg-app-canvas overflow-y-auto">
-      <div className="flex flex-col gap-3 p-4 pb-[50px] max-w-[520px] mx-auto">
-        {header}
-        {searchBar}
-        {incidentBanner}
-        {liveUpdatesBanner}
-        {bentoContent}
+          </div>
+        ) : (
+          <div className="hl-grid">
+            {shownRides.map((r) => {
+              const km = routeKm(r);
+              const isLive = currentRide?.id === r.id;
+              return (
+                <button
+                  key={r.id}
+                  className="hl-card"
+                  onClick={() => navigate(isLive ? `/ride-plus/live/${r.id}` : `/ride-plus/view/${r.id}`)}
+                >
+                  <span className="hl-card-img">
+                    <img src={r.image_url || fallbackRideImage} alt="" loading="lazy" onError={(e) => { if (e.currentTarget.src !== fallbackRideImage) e.currentTarget.src = fallbackRideImage; }} />
+                    {km !== null && <span className="hl-card-tag">{Math.round(km)} km route</span>}
+                    <span className="hl-card-badge"><Users size={12} strokeWidth={2.6} /> {r.rider_count}</span>
+                  </span>
+                  <span className="hl-card-name">{r.name || 'Group Ride'}</span>
+                  <span className="hl-card-meta"><Clock size={14} /> {fmtWhen(r.ride_date)}</span>
+                </button>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       {showSOSModal && (
@@ -342,5 +387,3 @@ export const HomeLandscape = ({ currentRide }: { currentRide?: any }) => {
     </div>
   );
 };
-
-const fallbackRideImage = 'https://images.unsplash.com/photo-1558981806-ec527fa84c39?w=800&q=60';

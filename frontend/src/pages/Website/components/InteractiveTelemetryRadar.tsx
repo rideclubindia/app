@@ -47,7 +47,7 @@ export const InteractiveTelemetryRadar: React.FC = () => {
 
         <button
           onClick={() => setIsSimulating(!isSimulating)}
-          className="font-mono text-xs flex items-center gap-1 text-zinc-400 hover:text-white px-2 py-1 rounded border border-zinc-800 bg-zinc-900"
+          className="font-mono text-xs flex items-center gap-1 text-zinc-400 hover:text-white px-2 py-1 border border-zinc-800 bg-zinc-900"
         >
           {isSimulating ? <RotateCcw size={12} /> : <Play size={12} />}
           {isSimulating ? 'Pause Stream' : 'Resume Stream'}
@@ -56,7 +56,7 @@ export const InteractiveTelemetryRadar: React.FC = () => {
 
       <div className="dev-radar-grid">
         {/* Left: Graphic Lean Angle Gauge */}
-        <div className="relative flex flex-col items-center justify-center p-6 rounded-lg bg-zinc-950/70 border border-zinc-800/80">
+        <div className="relative flex flex-col items-center justify-center p-6 bg-zinc-950/70 border border-zinc-800/80">
           <div className="relative w-48 h-48 flex items-center justify-center">
             {/* Compass / Degree circles */}
             <div className="absolute inset-0 rounded-full border border-dashed border-zinc-700/60" />
@@ -69,11 +69,8 @@ export const InteractiveTelemetryRadar: React.FC = () => {
 
             {/* Motorcycle lean needle */}
             <div
-              className="absolute w-1 h-36 bg-gradient-to-t from-transparent via-orange-500 to-orange-400 rounded transition-transform duration-300 origin-center"
-              style={{
-                transform: `rotate(${lean}deg)`,
-                boxShadow: '0 0 12px rgba(239, 69, 35, 0.6)'
-              }}
+              className="absolute w-1 h-36 bg-gradient-to-t from-transparent via-orange-500 to-orange-400 transition-transform duration-300 origin-center"
+              style={{ transform: `rotate(${lean}deg)` }}
             />
 
             {/* Pivot point */}
@@ -94,8 +91,8 @@ export const InteractiveTelemetryRadar: React.FC = () => {
         </div>
 
         {/* Right: Real-time Metric Tiles */}
-        <div className="grid grid-cols-2 gap-3">
-          <div className="p-4 rounded-lg bg-zinc-900/60 border border-zinc-800">
+        <div className="grid grid-cols-2 gap-px bg-zinc-800">
+          <div className="p-4 bg-zinc-950">
             <div className="font-mono text-[11px] text-zinc-500 uppercase">Velocity</div>
             <div className="font-mono text-2xl font-bold text-white mt-1">
               {Math.round(speed)} <span className="text-xs font-normal text-zinc-400">km/h</span>
@@ -105,7 +102,7 @@ export const InteractiveTelemetryRadar: React.FC = () => {
             </div>
           </div>
 
-          <div className="p-4 rounded-lg bg-zinc-900/60 border border-zinc-800">
+          <div className="p-4 bg-zinc-950">
             <div className="font-mono text-[11px] text-zinc-500 uppercase">Lateral G-Force</div>
             <div className="font-mono text-2xl font-bold text-white mt-1">
               {gForce.toFixed(2)} <span className="text-xs font-normal text-zinc-400">G</span>
@@ -115,12 +112,12 @@ export const InteractiveTelemetryRadar: React.FC = () => {
             </div>
           </div>
 
-          <div className="p-4 rounded-lg bg-zinc-900/60 border border-zinc-800">
+          <div className="p-4 bg-zinc-950">
             <div className="font-mono text-[11px] text-zinc-500 uppercase">Tachometer</div>
             <div className="font-mono text-2xl font-bold text-white mt-1">
               {rpm.toLocaleString()} <span className="text-xs font-normal text-zinc-400">RPM</span>
             </div>
-            <div className="w-full bg-zinc-800 h-1.5 rounded mt-2 overflow-hidden">
+            <div className="w-full bg-zinc-800 h-1 mt-2 overflow-hidden">
               <div
                 className="bg-orange-500 h-full transition-all duration-300"
                 style={{ width: `${(rpm / 10000) * 100}%` }}
@@ -128,7 +125,7 @@ export const InteractiveTelemetryRadar: React.FC = () => {
             </div>
           </div>
 
-          <div className="p-4 rounded-lg bg-zinc-900/60 border border-zinc-800">
+          <div className="p-4 bg-zinc-950">
             <div className="font-mono text-[11px] text-zinc-500 uppercase">Pack Proximity</div>
             <div className="font-mono text-2xl font-bold text-white mt-1">
               {packDistance} <span className="text-xs font-normal text-zinc-400">m</span>

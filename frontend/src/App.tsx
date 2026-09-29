@@ -179,18 +179,6 @@ const RequireAuth = ({ children }: { children: React.ReactNode }) => {
         }
       }
 
-      // On localhost / development: automatically provide a dev user session so developer doesn't have to log in every time
-      const isLocalDev = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-      if (!currentUser && !rieToken && isLocalDev) {
-        effectiveUser = {
-          uid: 'dev-local-user-id',
-          email: 'dev@rideclub.local',
-          displayName: 'Dev Rider',
-          getIdToken: async () => 'dev-token',
-          photoURL: null
-        };
-      }
-
       if (!effectiveUser) {
         setUser(null);
         setLoading(false);
@@ -444,7 +432,7 @@ const Layout = () => {
 
 const MobileShell = () => (
   <div className="w-full h-full bg-white flex justify-center font-sans overflow-hidden">
-    <div className="w-full h-full bg-white overflow-hidden relative">
+    <div className="w-full h-full max-w-[64rem] bg-white overflow-hidden relative">
       <Outlet />
     </div>
   </div>

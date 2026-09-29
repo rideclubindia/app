@@ -22,6 +22,13 @@ class EmailSendError(Exception):
 
 def send_otp_email(to_email: str, code: str) -> None:
     if not settings.EMAILJS_SERVICE_ID or not settings.EMAILJS_TEMPLATE_ID or not settings.EMAILJS_PUBLIC_KEY:
+        if settings.DEBUG:
+            # No EmailJS creds in local dev (DEBUG=true) — print the code
+            # instead of failing the whole login flow. Must stay opt-in: a
+            # misconfigured production deployment (DEBUG unset/false) should
+            # still fail loudly rather than silently never emailing anyone.
+            logger.warning("EmailJS not configured — OTP for %s is: %s", to_email, code)
+            return
         raise EmailSendError("EmailJS is not configured on the server")
 
     payload = {

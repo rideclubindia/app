@@ -259,7 +259,7 @@ export const GroupRideDashboard: React.FC = () => {
 
         mapRef.current = new maplibregl.Map({
             container: mapContainer.current,
-            style: 'https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json',
+            style: 'https://basemaps.cartocdn.com/gl/positron-gl-style/style.json',
             center: [dashboardData.center_lon || 78.486, dashboardData.center_lat || 17.385],
             zoom: 12,
             attributionControl: false
@@ -474,10 +474,10 @@ export const GroupRideDashboard: React.FC = () => {
             <title>Group Dashboard | Ride Club</title>
         </Helmet>
 
-        <div className="w-full h-full bg-[#F2F4F7] flex flex-row overflow-hidden font-sans">
+        <div className="w-full h-full bg-[#F2F4F7] flex flex-col overflow-hidden font-sans">
 
-            {/* ===== LEFT: Tracker Panel ===== */}
-            <div className="w-[340px] min-w-[300px] max-w-[380px] shrink-0 bg-[#F7F8FA] border-r border-gray-200 flex flex-col">
+            {/* ===== Tracker Panel (below the map) ===== */}
+            <div className="order-2 flex-1 min-h-0 w-full bg-[#F7F8FA] border-t border-gray-200 rounded-t-[24px] -mt-5 relative z-10 shadow-[0_-8px_24px_rgba(0,0,0,0.08)] flex flex-col">
 
                 {/* Header */}
                 <div className="flex items-center justify-between shrink-0 px-4 pt-4 pb-2">
@@ -497,7 +497,7 @@ export const GroupRideDashboard: React.FC = () => {
                     </div>
                 </div>
 
-                <div className="flex-1 overflow-y-auto hide-scrollbar px-3 pb-3 flex flex-col gap-3">
+                <div className="flex-1 overflow-y-auto hide-scrollbar px-3 pb-[104px] flex flex-col gap-3">
 
                     {/* Core Stats */}
                     <div className="grid grid-cols-2 gap-2">
@@ -615,8 +615,8 @@ export const GroupRideDashboard: React.FC = () => {
                 </div>
             </div>
 
-            {/* ===== RIGHT: Live Map ===== */}
-            <div className="flex-1 relative min-w-0 overflow-hidden">
+            {/* ===== Live Map (top) ===== */}
+            <div className="order-1 h-[40%] shrink-0 relative min-w-0 overflow-hidden">
                 <div ref={mapContainer} className="absolute inset-0 w-full h-full" />
 
                 {/* Legend */}

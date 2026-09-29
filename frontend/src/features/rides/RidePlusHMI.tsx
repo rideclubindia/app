@@ -2,10 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Plus, Users, MapPin, Navigation2, Clock, ChevronRight, LogOut, Calendar, Edit2, Compass, ShieldAlert } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
+import { saveOfflineCopy, readOfflineCopy } from '../../lib/offlineData';
 import { auth } from '../../lib/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 import { useToast } from '../../components/ToastContext';
-import { getDeterministicUuid } from '../../lib/user';
+import { getDeterministicUuid, getAppUser } from '../../lib/user';
 import { useConfirm } from '../../components/ConfirmDialog';
 import { apiClient } from '../../lib/apiClient';
 import { IncidentDrawer } from '../../components/IncidentDrawer';
@@ -31,15 +32,8 @@ const RidePlusHMI = () => {
   // Wait for Firebase auth to fully initialize
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, (user) => {
-      let activeUid = user?.uid;
-      const rieToken = localStorage.getItem('rie_token');
-      if (!activeUid && rieToken) {
-        try {
-          const payload = JSON.parse(atob(rieToken.split('.')[1]));
-          if (payload.uid) activeUid = payload.uid;
-        } catch (e) {}
-      }
-      
+      const activeUid = getAppUser(user)?.uid;
+
       setCurrentUid(activeUid || null);
       setAuthReady(true);
     });
@@ -98,8 +92,11 @@ const RidePlusHMI = () => {
         return { ...ride, myRole: mem?.role || 'member' };
       });
 
+      saveOfflineCopy('my_rides_' + uid, withRole);
       setActiveRides(withRole);
     } catch (e: any) {
+      const cached = readOfflineCopy<any[]>('my_rides_' + uid);
+      if (cached) { setActiveRides(cached); return; }
       setDbError(e.message);
       showToast('Failed to load rides: ' + e.message, 'error');
     } finally {
