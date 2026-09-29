@@ -666,62 +666,79 @@ const CreateRide = () => {
     }
   };
 
-  const inputClass = "w-full h-11 card-app px-3.5 text-[13px] text-gray-950 placeholder-gray-400 font-medium outline-none focus:ring-2 focus:ring-[#FF6B22] transition-all";
+  const inputClass = "w-full h-12 bg-gray-50 border border-gray-200 rounded-xl px-3.5 pr-24 text-[16px] text-gray-950 placeholder-gray-400 outline-none focus:border-[#FF6B22] focus:bg-white transition-all";
 
   // ---- Shared header/stepper ----
   const header = (
-    <div className="shrink-0 px-4 pt-4 pb-3.5 max-w-[560px] w-full mx-auto">
-      <div className="flex items-center justify-between">
+    <div className="shrink-0 px-4 pb-3 max-w-[560px] w-full mx-auto">
+      <div className="flex items-center gap-3">
         <button
           onClick={() => step === 1 ? navigate(-1) : goToStep(step - 1)}
-          className="w-10 h-10 rounded-full card-app flex items-center justify-center text-gray-800 active:scale-95 transition-all cursor-pointer"
+          aria-label={step === 1 ? 'Close' : 'Previous step'}
+          className="w-11 h-11 rounded-full bg-white border border-gray-200 flex items-center justify-center text-gray-900 active:scale-95 transition-all cursor-pointer shrink-0"
         >
-          <ChevronLeft className="w-5 h-5" />
+          {step === 1 ? <X className="w-5 h-5" /> : <ChevronLeft className="w-5 h-5" />}
         </button>
-        <div className="text-center">
-          <h1 className="text-[16px] font-bold text-gray-950 leading-tight">{isEditMode ? 'Edit Ride' : 'Create a Ride'}</h1>
-          <p className="text-[10.5px] font-semibold text-gray-400 leading-tight">Step {step} of {STEPS.length} &middot; {STEPS[step - 1]}</p>
+        <div className="flex-1 min-w-0">
+          <h1 className="text-[18px] font-bold text-gray-950 leading-tight truncate">{isEditMode ? 'Edit ride' : 'Create a ride'}</h1>
+          <p className="text-[12px] text-gray-500 leading-tight">Step {step} of {STEPS.length} · {STEPS[step - 1]}</p>
         </div>
-        <button onClick={saveDraft} className="text-[12px] font-bold text-[#FF6B22] cursor-pointer px-2 py-1">Save Draft</button>
+        <button onClick={saveDraft} className="h-10 px-3.5 rounded-full text-[13px] font-semibold text-gray-700 bg-white border border-gray-200 cursor-pointer active:scale-95 shrink-0">Save draft</button>
       </div>
 
-      <div className="flex items-center gap-2 mt-4">
+      <div className="grid grid-cols-4 gap-1.5 mt-4" role="list" aria-label="Progress">
         {STEPS.map((label, idx) => {
           const n = idx + 1;
-          const isDone = step > n;
-          const isCurrent = step === n;
+          const reached = step >= n;
           return (
-            <React.Fragment key={label}>
-              <button
-                onClick={() => n < step && goToStep(n)}
-                disabled={n > step}
-                aria-label={`${label} step ${n}${isCurrent ? ', current' : isDone ? ', completed' : ''}`}
-                className={`flex items-center gap-1.5 text-[11px] font-bold whitespace-nowrap py-2.5 -my-2.5 ${n <= step ? 'cursor-pointer' : 'cursor-default'}`}
-              >
-                <span className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] shrink-0 transition-all ${
-                  isDone ? 'bg-[#FF6B22] text-white' : isCurrent ? 'bg-[#FF6B22] text-white ring-4 ring-[#FF6B22]/15' : 'bg-gray-100 text-gray-400'
-                }`}>
-                  {isDone ? <Check className="w-3 h-3" /> : n}
-                </span>
-                <span className={`hidden xs:inline ${isCurrent ? 'text-gray-950' : isDone ? 'text-gray-600' : 'text-gray-400'}`}>{label}</span>
-              </button>
-              {n < STEPS.length && <div className={`flex-1 h-[2px] rounded-full transition-colors ${step > n ? 'bg-[#FF6B22]' : 'bg-gray-100'}`} />}
-            </React.Fragment>
+            <button
+              key={label}
+              role="listitem"
+              onClick={() => n < step && goToStep(n)}
+              disabled={n > step}
+              aria-current={step === n ? 'step' : undefined}
+              className={`text-left ${n < step ? 'cursor-pointer' : 'cursor-default'}`}
+            >
+              <span className={`block h-1.5 rounded-full transition-colors ${reached ? 'bg-[#FF6B22]' : 'bg-gray-200'}`} />
+              <span className={`block mt-1.5 text-[11px] font-semibold ${step === n ? 'text-gray-950' : reached ? 'text-gray-600' : 'text-gray-400'}`}>{label}</span>
+            </button>
           );
         })}
       </div>
     </div>
   );
 
-  const sectionLabel = (icon: React.ElementType, text: string) => {
-    const Icon = icon;
-    return (
-      <div className="flex items-center gap-1.5 mb-2">
-        <Icon className="w-3.5 h-3.5 text-[#FF6B22]" />
-        <span className="text-[13px] font-bold text-gray-950">{text}</span>
+  const card = 'bg-white border border-gray-200 rounded-2xl';
+  const chip = (on: boolean) => `border transition-colors cursor-pointer ${on ? 'border-[#FF6B22] bg-orange-50 text-[#E2561B]' : 'border-gray-200 bg-white text-gray-800'}`;
+  const sectionLabel = (_icon: React.ElementType, text: string, hint?: string) => (
+    <div className="mb-2 px-1">
+      <p className="text-[13px] font-semibold text-gray-500 uppercase tracking-wide">{text}</p>
+      {hint && <p className="text-[12px] text-gray-400 mt-0.5">{hint}</p>}
+    </div>
+  );
+
+  // Sticky footer for the form steps; the Route step keeps its own controls inside the map panel
+  const footer = step !== 2 && (
+    <div className="shrink-0 border-t border-gray-200 bg-white/95 backdrop-blur px-4 pt-3 pb-[max(12px,env(safe-area-inset-bottom))]">
+      <div className="max-w-[560px] mx-auto flex gap-2.5">
+        {step > 1 && (
+          <button onClick={() => goToStep(step - 1)} className="h-13 min-h-[52px] px-5 rounded-2xl bg-white border border-gray-200 text-gray-900 font-semibold text-[15px] cursor-pointer flex items-center gap-1.5">
+            <ChevronLeft className="w-5 h-5" /> Back
+          </button>
+        )}
+        {step < 4 ? (
+          <button onClick={() => goToStep(step + 1)} className="flex-1 min-h-[52px] rounded-2xl bg-[#FF6B22] text-white font-bold text-[15px] cursor-pointer flex items-center justify-center gap-2 active:scale-[0.99]">
+            {step === 1 ? 'Next: Plan route' : 'Next: Review'} <ArrowRight className="w-5 h-5" />
+          </button>
+        ) : (
+          <button onClick={handleFinalCreate} disabled={loading} className="flex-1 min-h-[52px] rounded-2xl bg-[#FF6B22] text-white font-bold text-[15px] cursor-pointer flex items-center justify-center gap-2 disabled:opacity-60 active:scale-[0.99]">
+            {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
+            {isEditMode ? 'Save changes' : 'Publish ride'}
+          </button>
+        )}
       </div>
-    );
-  };
+    </div>
+  );
 
   return (
     <div className="w-full h-full bg-app-canvas flex flex-col font-sans overflow-hidden">
@@ -729,114 +746,70 @@ const CreateRide = () => {
 
       {/* ====== STEP 1: BASICS ====== */}
       {step === 1 && (
-        <div className="flex-1 min-h-0 overflow-y-auto hide-scrollbar px-4 pb-[100px] max-w-[560px] w-full mx-auto flex flex-col gap-5">
-          <div>
-            <h2 className="text-[19px] font-black text-gray-950">Ride Basics</h2>
-            <p className="text-[12px] text-gray-500 font-medium mt-0.5">Start with the essentials. You can add more details later.</p>
-          </div>
-
-          <div className="card-app p-3.5 flex flex-col divide-y divide-gray-100">
-            <div className="pb-3">
-              <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider block mb-1">Ride Title *</span>
+        <div className="flex-1 min-h-0 overflow-y-auto hide-scrollbar px-4 pb-6 max-w-[560px] w-full mx-auto flex flex-col gap-6">
+          <div className={`${card} divide-y divide-gray-100`}>
+            <label className="block px-4 pt-3.5 pb-3">
+              <span className="text-[12px] font-semibold text-gray-500">Ride name</span>
               <input
                 type="text"
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value.slice(0, 60) })}
-                placeholder="e.g. Sunday Morning Cruise"
-                className="w-full bg-transparent text-[16px] font-bold text-gray-950 placeholder-gray-400 placeholder:font-medium focus:outline-none"
+                placeholder="Sunday morning cruise"
+                className="w-full mt-1 bg-transparent text-[18px] font-bold text-gray-950 placeholder-gray-300 focus:outline-none"
               />
-            </div>
-            <div className="pt-3">
-              <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider block mb-1">Short Description</span>
+            </label>
+            <label className="block px-4 pt-3 pb-3.5">
+              <span className="text-[12px] font-semibold text-gray-500">Short description <span className="font-normal text-gray-400">· optional</span></span>
               <textarea
                 value={formData.tagline}
                 onChange={(e) => setFormData({ ...formData, tagline: e.target.value.slice(0, 200) })}
-                placeholder="A refreshing morning ride with amazing views, coffee stop and great company."
-                rows={3}
-                className="w-full bg-transparent text-[13px] text-gray-800 placeholder-gray-400 font-medium focus:outline-none resize-none"
+                placeholder="Easy morning ride with a coffee stop and great views."
+                rows={2}
+                className="w-full mt-1 bg-transparent text-[16px] text-gray-800 placeholder-gray-300 focus:outline-none resize-none"
               />
-            </div>
+            </label>
           </div>
 
-          <div>
-            {sectionLabel(Sparkles, 'Ride Type')}
+          <section>
+            {sectionLabel(Sparkles, 'Ride type')}
             <div className="grid grid-cols-3 gap-2">
               {RIDE_TYPES.map(rt => (
-                <button
-                  key={rt.value}
-                  onClick={() => setRideType(rt.value)}
-                  className={`flex d-flex flex-row items-center gap-2 px-3 py-2.5 rounded-xl text-[12px] font-bold cursor-pointer transition-all ${
-                    rideType === rt.value ? 'bg-[#FF6B22]/10 text-[#FF6B22] ring-2 ring-[#FF6B22]/40' : 'card-app text-gray-700'
-                  }`}
-                >
-                  <rt.icon className="w-4 h-4 shrink-0" /> {rt.label}
+                <button key={rt.value} onClick={() => setRideType(rt.value)} className={`min-h-[76px] rounded-2xl flex flex-col items-center justify-center gap-1.5 text-[13px] font-semibold ${chip(rideType === rt.value)}`}>
+                  <rt.icon className="w-5 h-5" /> {rt.label}
                 </button>
               ))}
             </div>
-          </div>
+          </section>
 
-          <div>
-            {sectionLabel(Motorcycle, 'Vehicle Type')}
+          <section>
+            {sectionLabel(Motorcycle, 'Vehicle')}
             <div className="flex flex-wrap gap-2">
               {vehicleTypes.map(vt => {
                 const VtIcon = vehicleTypeIcon(vt.label);
                 return (
-                  <button
-                    key={vt.value}
-                    onClick={() => setFormData({ ...formData, vehicle_type: vt.value })}
-                    className={`flex items-center gap-1.5 px-3.5 py-2 rounded-2xl text-[12px] font-bold cursor-pointer transition-all ${
-                      formData.vehicle_type === vt.value ? 'bg-[#FF6B22]/10 text-[#FF6B22] ring-2 ring-[#FF6B22]/40' : 'card-app text-gray-700'
-                    }`}
-                  >
-                    <VtIcon className="w-3.5 h-3.5 shrink-0" /> {vt.label}
+                  <button key={vt.value} onClick={() => setFormData({ ...formData, vehicle_type: vt.value })} className={`h-11 px-4 rounded-full flex items-center gap-2 text-[14px] font-semibold ${chip(formData.vehicle_type === vt.value)}`}>
+                    <VtIcon className="w-4 h-4" /> {vt.label}
                   </button>
                 );
               })}
             </div>
-          </div>
+          </section>
 
-          <div>
-            {sectionLabel(Globe, 'Visibility')}
-            <div className="card-app flex flex-col overflow-hidden divide-y divide-gray-100">
-              <button
-                onClick={() => setFormData({ ...formData, visibility: 'public' })}
-                className="p-3.5 flex items-center justify-between cursor-pointer"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 icon-badge bg-emerald-50 shrink-0"><Globe className="w-4 h-4 text-emerald-600" /></div>
-                  <div className="text-left">
-                    <p className="text-[13px] font-bold text-gray-950">Public Ride</p>
-                    <p className="text-[11px] text-gray-500 font-medium">Visible to all riders on RideClub</p>
-                  </div>
-                </div>
-                <div className={`w-5 h-5 rounded-full flex items-center justify-center shrink-0 ${formData.visibility === 'public' ? 'bg-[#FF6B22]' : 'bg-gray-200'}`}>
-                  {formData.visibility === 'public' && <Check className="w-3 h-3 text-white" />}
-                </div>
-              </button>
-              <button
-                onClick={() => setFormData({ ...formData, visibility: 'private' })}
-                className="p-3.5 flex items-center justify-between cursor-pointer"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 icon-badge bg-gray-100 shrink-0"><Lock className="w-4 h-4 text-gray-600" /></div>
-                  <div className="text-left">
-                    <p className="text-[13px] font-bold text-gray-950">Private Ride</p>
-                    <p className="text-[11px] text-gray-500 font-medium">Only invited riders can join</p>
-                  </div>
-                </div>
-                <div className={`w-5 h-5 rounded-full flex items-center justify-center shrink-0 ${formData.visibility === 'private' ? 'bg-[#FF6B22]' : 'bg-gray-200'}`}>
-                  {formData.visibility === 'private' && <Check className="w-3 h-3 text-white" />}
-                </div>
-              </button>
+          <section>
+            {sectionLabel(Globe, 'Who can join')}
+            <div className="grid grid-cols-2 gap-2">
+              {([
+                { v: 'public', icon: Globe, title: 'Public', sub: 'Any rider can find and join' },
+                { v: 'private', icon: Lock, title: 'Private', sub: 'Only riders you invite' },
+              ] as const).map(o => (
+                <button key={o.v} onClick={() => setFormData({ ...formData, visibility: o.v })} className={`rounded-2xl p-3.5 text-left ${chip(formData.visibility === o.v)}`}>
+                  <o.icon className="w-5 h-5" />
+                  <p className="text-[15px] font-bold mt-2">{o.title}</p>
+                  <p className="text-[12px] text-gray-500 mt-0.5">{o.sub}</p>
+                </button>
+              ))}
             </div>
-          </div>
-
-          <button
-            onClick={() => goToStep(2)}
-            className="w-full py-4 btn-app-primary text-white font-bold text-[14px] rounded-full active:scale-[0.98] transition-all flex items-center justify-center gap-2 cursor-pointer mt-1"
-          >
-            Next: Plan Route <ArrowRight className="w-4 h-4" />
-          </button>
+          </section>
         </div>
       )}
 
@@ -895,12 +868,12 @@ const CreateRide = () => {
           )}
 
           {/* Floating route panel, docked above the app's bottom nav bar */}
-          <div className="absolute bottom-[92px] left-0 right-0 z-20 px-3 max-w-[560px] w-full mx-auto">
-            <div className="card-app-lg p-3 flex flex-col max-h-[54vh]">
+          <div className="absolute bottom-0 left-0 right-0 z-20 px-3 pb-[max(12px,env(safe-area-inset-bottom))] max-w-[560px] w-full mx-auto">
+            <div className="bg-white border border-gray-200 rounded-3xl shadow-[0_10px_30px_rgba(0,0,0,0.14)] p-4 flex flex-col max-h-[58vh]">
               <div className="flex items-center justify-between gap-2 shrink-0">
                 <div className="min-w-0">
-                  <h2 className="text-[14px] font-black text-gray-950 truncate">Plan Your Route</h2>
-                  <p className="text-[10.5px] text-gray-500 font-medium truncate">Set a start, destination and any stops.</p>
+                  <h2 className="text-[17px] font-bold text-gray-950 truncate">Plan your route</h2>
+                  <p className="text-[12px] text-gray-500 truncate">Start, destination and any stops</p>
                 </div>
                 {routeStats && (
                   <div className="flex items-center gap-2.5 shrink-0 pl-2 border-l border-gray-100">
@@ -1009,19 +982,19 @@ const CreateRide = () => {
                 {stops.length < 5 && (
                   <button
                     onClick={() => { setWaypointDraft({ type: 'Other', text: '', coords: null }); setOpenDropdownIdx(null); setShowWaypointModal(true); }}
-                    className="w-full mt-1 text-[12px] font-bold text-[#FF6B22] bg-[#FF6B22]/10 hover:bg-[#FF6B22]/15 transition-colors flex items-center justify-center gap-1.5 py-2.5 rounded-2xl cursor-pointer"
+                    className="w-full mt-2 min-h-[48px] text-[14px] font-semibold text-gray-900 border border-dashed border-gray-300 hover:bg-gray-50 transition-colors flex items-center justify-center gap-1.5 rounded-2xl cursor-pointer"
                   >
-                    + Add Waypoint
+                    + Add a stop
                   </button>
                 )}
               </div>
 
               <div className="flex gap-2.5 shrink-0 mt-3 pt-3 border-t border-gray-100">
-                <button onClick={() => goToStep(1)} className="px-5 py-3 card-app text-gray-700 font-bold text-[13px] rounded-full cursor-pointer flex items-center gap-1.5">
+                <button onClick={() => goToStep(1)} className="min-h-[52px] px-5 rounded-2xl bg-white border border-gray-200 text-gray-900 font-semibold text-[15px] cursor-pointer flex items-center gap-1.5">
                   <ChevronLeft className="w-4 h-4" /> Back
                 </button>
-                <button onClick={() => goToStep(3)} className="flex-1 py-3 btn-app-primary text-white font-bold text-[13px] rounded-full cursor-pointer flex items-center justify-center gap-1.5">
-                  Next: Add Details <ArrowRight className="w-4 h-4" />
+                <button onClick={() => goToStep(3)} className="flex-1 min-h-[52px] rounded-2xl bg-[#FF6B22] text-white font-bold text-[15px] cursor-pointer flex items-center justify-center gap-2">
+                  Next: Details <ArrowRight className="w-5 h-5" />
                 </button>
               </div>
             </div>
@@ -1060,7 +1033,7 @@ const CreateRide = () => {
       {showWaypointModal && (
         <div className="fixed inset-0 z-[80] flex items-end justify-center" role="dialog" aria-modal="true">
           <div className="absolute inset-0 bg-gray-950/40" onClick={() => setShowWaypointModal(false)} />
-          <div className="relative w-full max-w-[480px] card-app m-3 mb-[92px] p-4 max-h-[80vh] overflow-y-auto hide-scrollbar animate-in slide-in-from-bottom-4 fade-in duration-200">
+          <div className="relative w-full max-w-[480px] card-app m-3 mb-[max(12px,env(safe-area-inset-bottom))] p-4 max-h-[80vh] overflow-y-auto hide-scrollbar animate-in slide-in-from-bottom-4 fade-in duration-200">
             <div className="flex items-center justify-between mb-3">
               <h3 className="text-[15px] font-bold text-gray-950">{openDropdownIdx !== null ? 'Edit Waypoint' : 'Add Waypoint'}</h3>
               <button onClick={() => setShowWaypointModal(false)} className="w-11 h-11 rounded-full bg-gray-100 flex items-center justify-center text-gray-600 cursor-pointer" aria-label="Close">
@@ -1151,171 +1124,163 @@ const CreateRide = () => {
 
       {/* ====== STEP 3: DETAILS ====== */}
       {step === 3 && (
-        <div className="flex-1 min-h-0 overflow-y-auto hide-scrollbar px-4 pb-[100px] max-w-[560px] w-full mx-auto flex flex-col gap-5">
-          <div>
-            <h2 className="text-[19px] font-black text-gray-950">Ride Details</h2>
-            <p className="text-[12px] text-gray-500 font-medium mt-0.5">Add schedule, meeting point and additional information.</p>
-          </div>
-
-          <div className="flex flex-col gap-2.5">
-            {sectionLabel(Calendar, 'Schedule')}
-            <div className="card-app p-3.5 flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className={`w-10 h-10 icon-badge ${isInstant ? 'bg-[#FFE7D1]' : 'bg-blue-50'} shrink-0`}>
-                  {isInstant ? <Zap className="w-5 h-5 text-[#FF6B22]" fill="currentColor" /> : <Calendar className="w-5 h-5 text-blue-500" />}
-                </div>
-                <div>
-                  <p className="text-[13px] font-bold text-gray-950">{isInstant ? 'Ride Now' : 'Schedule Later'}</p>
-                  <p className="text-[11px] text-gray-500 font-medium">{isInstant ? 'Start immediately' : 'Pick a date and time'}</p>
-                </div>
-              </div>
+        <div className="flex-1 min-h-0 overflow-y-auto hide-scrollbar px-4 pb-6 max-w-[560px] w-full mx-auto flex flex-col gap-6">
+          <section>
+            {sectionLabel(Calendar, 'When')}
+            <div className="grid grid-cols-2 gap-2">
               <button
                 onClick={() => {
-                  if (restrictInstant && !isEditMode) {
-                    showToast('You already have an active ride. Leave or end it to create an instant ride.', 'error');
-                    return;
-                  }
-                  setIsInstant(!isInstant);
+                  if (restrictInstant && !isEditMode) { showToast('You already have an active ride. Leave or end it to create an instant ride.', 'error'); return; }
+                  setIsInstant(true);
                 }}
-                className={`w-11 h-6 rounded-full p-1 cursor-pointer transition-colors relative shrink-0 ${isInstant ? 'bg-[#FF6B22]' : 'bg-gray-200'}`}
+                className={`rounded-2xl p-3.5 text-left ${chip(isInstant)}`}
               >
-                <div className={`absolute top-1 w-4 h-4 rounded-full bg-white shadow-sm transition-transform ${isInstant ? 'translate-x-5' : 'translate-x-0'}`} />
+                <Zap className="w-5 h-5" />
+                <p className="text-[15px] font-bold mt-2">Ride now</p>
+                <p className="text-[12px] text-gray-500 mt-0.5">Starts as soon as you publish</p>
+              </button>
+              <button onClick={() => setIsInstant(false)} className={`rounded-2xl p-3.5 text-left ${chip(!isInstant)}`}>
+                <Calendar className="w-5 h-5" />
+                <p className="text-[15px] font-bold mt-2">Schedule</p>
+                <p className="text-[12px] text-gray-500 mt-0.5">Pick a date and time</p>
               </button>
             </div>
-
             {!isInstant && (
-              <div className="grid grid-cols-2 gap-3">
-                <div className="card-app p-3">
-                  <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider block mb-1 flex items-center gap-1"><Calendar className="w-3 h-3" /> Date *</span>
-                  <input type="date" value={formData.ride_date} onChange={(e) => setFormData({ ...formData, ride_date: e.target.value })} className="w-full bg-transparent text-[13px] font-bold text-gray-950 outline-none" />
-                </div>
-                <div className="card-app p-3">
-                  <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider block mb-1 flex items-center gap-1"><Clock className="w-3 h-3" /> Start Time *</span>
-                  <input type="time" value={formData.ride_time} onChange={(e) => setFormData({ ...formData, ride_time: e.target.value })} className="w-full bg-transparent text-[13px] font-bold text-gray-950 outline-none" />
-                </div>
+              <div className={`${card} mt-2 grid grid-cols-2 divide-x divide-gray-100`}>
+                <label className="block px-4 py-3">
+                  <span className="text-[12px] font-semibold text-gray-500 flex items-center gap-1"><Calendar className="w-3.5 h-3.5" /> Date</span>
+                  <input type="date" value={formData.ride_date} onChange={(e) => setFormData({ ...formData, ride_date: e.target.value })} className="w-full mt-1 bg-transparent text-[16px] font-semibold text-gray-950 outline-none" />
+                </label>
+                <label className="block px-4 py-3">
+                  <span className="text-[12px] font-semibold text-gray-500 flex items-center gap-1"><Clock className="w-3.5 h-3.5" /> Start time</span>
+                  <input type="time" value={formData.ride_time} onChange={(e) => setFormData({ ...formData, ride_time: e.target.value })} className="w-full mt-1 bg-transparent text-[16px] font-semibold text-gray-950 outline-none" />
+                </label>
               </div>
             )}
-          </div>
+          </section>
 
-          <div className="flex flex-col gap-2.5">
-            {sectionLabel(Users, 'Capacity & Meeting Point')}
-            <div className="card-app p-3.5">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-[13px] font-bold text-gray-950 flex items-center gap-2"><Users className="w-4 h-4 text-indigo-500" /> Max Riders</span>
-                <span className="bg-gray-950 text-white px-2.5 py-0.5 rounded-full text-[12px] font-bold tabular-nums">{formData.max_riders}</span>
+          <section>
+            {sectionLabel(Users, 'Riders')}
+            <div className={`${card} p-4`}>
+              <div className="flex items-center justify-between">
+                <span className="text-[15px] font-semibold text-gray-950">Maximum riders</span>
+                <div className="flex items-center gap-2">
+                  <button aria-label="Fewer riders" onClick={() => setFormData({ ...formData, max_riders: Math.max(2, formData.max_riders - 1) })} className="w-10 h-10 rounded-full border border-gray-200 text-[20px] font-semibold text-gray-800 cursor-pointer">−</button>
+                  <span className="w-10 text-center text-[18px] font-bold text-gray-950 tabular-nums">{formData.max_riders}</span>
+                  <button aria-label="More riders" onClick={() => setFormData({ ...formData, max_riders: Math.min(50, formData.max_riders + 1) })} className="w-10 h-10 rounded-full border border-gray-200 text-[20px] font-semibold text-gray-800 cursor-pointer">+</button>
+                </div>
               </div>
-              <input type="range" min={2} max={50} value={formData.max_riders} onChange={(e) => setFormData({ ...formData, max_riders: parseInt(e.target.value) })} className="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-[#FF6B22]" />
-              <div className="flex justify-between text-[10px] text-gray-400 font-semibold mt-1"><span>2 riders</span><span>50 riders</span></div>
+              <input type="range" min={2} max={50} value={formData.max_riders} onChange={(e) => setFormData({ ...formData, max_riders: parseInt(e.target.value) })} className="w-full mt-3 accent-[#FF6B22] cursor-pointer" aria-label="Maximum riders" />
             </div>
+          </section>
 
-            {/* Meeting point — reuses the real start location from Route step */}
-            <div className="card-app p-3.5 flex items-center gap-3">
-              <div className="w-14 h-14 rounded-2xl bg-[#E4F1F0] flex items-center justify-center shrink-0">
-                <MapPin className="w-6 h-6 text-[#1A9A5C]" />
+          <section>
+            {sectionLabel(MapPin, 'Meeting point')}
+            <button onClick={() => goToStep(2)} className={`${card} w-full p-4 flex items-center gap-3 text-left cursor-pointer`}>
+              <span className="w-11 h-11 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0"><MapPin className="w-5 h-5" /></span>
+              <div className="flex-1 min-w-0">
+                <p className="text-[15px] font-semibold text-gray-950 truncate">{originText || 'Not set'}</p>
+                <p className="text-[12px] text-gray-500">The ride's start point · tap to change</p>
               </div>
-              <div className="min-w-0 flex-1">
-                <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider block">Meeting Point</span>
-                <p className="text-[13px] font-bold text-gray-950 truncate">{originText || 'Not set'}</p>
-                <button onClick={() => goToStep(2)} className="text-[11px] font-bold text-[#FF6B22] cursor-pointer mt-0.5">Change on Route step</button>
-              </div>
-            </div>
-          </div>
+              <ChevronLeft className="w-4 h-4 text-gray-400 rotate-180 shrink-0" />
+            </button>
+          </section>
 
-          <div className="flex flex-col gap-2.5">
-            {sectionLabel(Camera, 'Cover Photo')}
-            <div className="flex gap-2.5">
-              <div className="relative w-20 h-20 rounded-2xl overflow-hidden shrink-0">
+          <section>
+            {sectionLabel(Camera, 'Cover photo', 'Shown on the ride card and invite.')}
+            <div className={`${card} overflow-hidden`}>
+              <div className="relative h-40 bg-gray-100">
                 <img src={coverPreview} alt="" className="w-full h-full object-cover" />
+                {!coverFile && <span className="absolute top-3 left-3 text-[11px] font-semibold text-white bg-black/50 px-2 py-1 rounded-full">Default photo</span>}
               </div>
-              <button onClick={() => coverInputRef.current?.click()} className="w-20 h-20 rounded-2xl card-app flex flex-col items-center justify-center gap-1 text-gray-500 cursor-pointer shrink-0">
-                <Camera className="w-5 h-5" />
-                <span className="text-[9px] font-bold">Change</span>
-              </button>
+              <div className="p-3 flex gap-2">
+                <button onClick={() => coverInputRef.current?.click()} className="flex-1 h-11 rounded-xl bg-gray-900 text-white text-[14px] font-semibold flex items-center justify-center gap-2 cursor-pointer">
+                  <Camera className="w-4 h-4" /> {coverFile ? 'Change photo' : 'Add your photo'}
+                </button>
+                {coverFile && (
+                  <button onClick={() => { setCoverFile(null); setCoverPreview(imgSoloRide); }} className="h-11 px-4 rounded-xl border border-gray-200 text-[14px] font-semibold text-gray-700 cursor-pointer">Remove</button>
+                )}
+              </div>
             </div>
-          </div>
+          </section>
 
-          <div className="flex flex-col gap-2.5">
-            {sectionLabel(Sparkles, 'Additional Notes')}
-            <div className="card-app p-3.5">
-            <textarea
-              value={formData.description}
-              onChange={(e) => setFormData({ ...formData, description: e.target.value.slice(0, 300) })}
-              placeholder="e.g. Don't forget to carry water, helmet and a full tank!"
-              rows={3}
-              className="w-full bg-transparent text-[13px] text-gray-800 font-medium placeholder-gray-400 focus:outline-none resize-none"
-            />
-            <div className="text-right"><span className="text-[10px] text-gray-400 font-medium">{formData.description.length}/300</span></div>
+          <section>
+            {sectionLabel(Sparkles, 'Notes for riders', 'Optional')}
+            <div className={`${card} p-4`}>
+              <textarea
+                value={formData.description}
+                onChange={(e) => setFormData({ ...formData, description: e.target.value.slice(0, 300) })}
+                placeholder="Carry water and a full tank. We regroup at every stop."
+                rows={3}
+                className="w-full bg-transparent text-[16px] text-gray-800 placeholder-gray-300 focus:outline-none resize-none"
+              />
+              <p className="text-right text-[11px] text-gray-400">{formData.description.length}/300</p>
             </div>
-          </div>
-
-          <div className="flex gap-2.5">
-            <button onClick={() => goToStep(2)} className="px-5 py-3.5 card-app text-gray-700 font-bold text-[13px] rounded-full cursor-pointer flex items-center gap-1.5">
-              <ChevronLeft className="w-4 h-4" /> Back
-            </button>
-            <button onClick={() => goToStep(4)} className="flex-1 py-3.5 btn-app-primary text-white font-bold text-[13px] rounded-full cursor-pointer flex items-center justify-center gap-1.5">
-              Next: Review Ride <ArrowRight className="w-4 h-4" />
-            </button>
-          </div>
+          </section>
         </div>
       )}
 
       {/* ====== STEP 4: REVIEW ====== */}
       {step === 4 && (
-        <div className="flex-1 min-h-0 overflow-y-auto hide-scrollbar px-4 pb-[100px] max-w-[560px] w-full mx-auto flex flex-col gap-4">
-          <div>
-            <h2 className="text-[19px] font-black text-gray-950">Review Your Ride</h2>
-            <p className="text-[12px] text-gray-500 font-medium mt-0.5">Double-check everything before you {isEditMode ? 'save' : 'publish'}.</p>
-          </div>
-
-          <div className="relative h-[140px] rounded-[20px] overflow-hidden shrink-0">
+        <div className="flex-1 min-h-0 overflow-y-auto hide-scrollbar px-4 pb-6 max-w-[560px] w-full mx-auto flex flex-col gap-5">
+          <div className="relative h-48 rounded-3xl overflow-hidden shrink-0">
             <img src={coverPreview} alt="" className="w-full h-full object-cover" />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
-            <div className="absolute bottom-3 left-3.5">
-              <span className="text-[9px] font-bold bg-[#FF6B22] text-white px-2 py-0.5 rounded-full uppercase">{rideType}</span>
-              <h3 className="text-white text-[16px] font-black mt-1">{formData.name || 'Untitled Ride'}</h3>
+            <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/10 to-transparent" />
+            <div className="absolute bottom-4 left-4 right-4">
+              <span className="text-[11px] font-bold bg-[#FF6B22] text-white px-2 py-1 rounded-full uppercase tracking-wide">{rideType}</span>
+              <h2 className="text-white text-[22px] font-bold mt-2 leading-tight">{formData.name || 'Untitled ride'}</h2>
+              {formData.tagline && <p className="text-white/80 text-[13px] mt-1 line-clamp-2">{formData.tagline}</p>}
             </div>
           </div>
 
-          <div className="card-app divide-y divide-gray-100 overflow-hidden">
-            {[
-              { icon: isInstant ? Zap : Calendar, label: isInstant ? 'Starts' : 'Date & Time', value: isInstant ? 'Immediately' : `${formData.ride_date} at ${formData.ride_time}` },
-              { icon: MapPin, label: 'Meeting Point', value: originText || '—' },
-              { icon: Flag, label: 'Destination', value: destText || '—' },
-              { icon: RouteIcon, label: 'Waypoints', value: `${stops.length} stop${stops.length === 1 ? '' : 's'}` },
-              ...(routeStats ? [{ icon: RouteIcon, label: 'Distance / Time', value: `${routeStats.distanceKm.toFixed(0)} km · ~${Math.round(routeStats.durationMin)} min` }] : []),
-              { icon: Motorcycle, label: 'Vehicle Type', value: vehicleTypes.find(v => v.value === formData.vehicle_type)?.label || 'All' },
-              { icon: Users, label: 'Max Riders', value: `${formData.max_riders}` },
-              { icon: formData.visibility === 'public' ? Globe : Lock, label: 'Visibility', value: formData.visibility === 'public' ? 'Public' : 'Private' },
-            ].map(row => (
-              <div key={row.label} className="p-3.5 flex items-center justify-between">
-                <span className="text-[12px] font-semibold text-gray-500 flex items-center gap-2"><row.icon className="w-4 h-4 text-gray-400" /> {row.label}</span>
-                <span className="text-[13px] font-bold text-gray-950 text-right max-w-[55%] truncate">{row.value}</span>
+          <div className={`${card} p-4`}>
+            <div className="flex gap-3">
+              <div className="flex flex-col items-center pt-1.5">
+                <span className="w-3 h-3 rounded-full bg-emerald-500" />
+                <span className="w-px flex-1 bg-gray-200 my-1" />
+                <span className="w-3 h-3 rounded-full bg-[#FF6B22]" />
               </div>
-            ))}
+              <div className="flex-1 min-w-0 flex flex-col gap-3">
+                <div><p className="text-[12px] text-gray-500">Start</p><p className="text-[15px] font-semibold text-gray-950 truncate">{originText || '—'}</p></div>
+                {stops.length > 0 && <p className="text-[12px] text-gray-500">{stops.length} stop{stops.length === 1 ? '' : 's'} on the way</p>}
+                <div><p className="text-[12px] text-gray-500">Destination</p><p className="text-[15px] font-semibold text-gray-950 truncate">{destText || '—'}</p></div>
+              </div>
+            </div>
+            {routeStats && (
+              <div className="grid grid-cols-2 mt-4 pt-3 border-t border-gray-100 text-center">
+                <div><p className="text-[18px] font-bold text-gray-950 tabular-nums">{routeStats.distanceKm.toFixed(0)} km</p><p className="text-[11px] text-gray-500">Distance</p></div>
+                <div className="border-l border-gray-100"><p className="text-[18px] font-bold text-gray-950 tabular-nums">{routeStats.durationMin < 60 ? `${Math.round(routeStats.durationMin)} min` : `${Math.floor(routeStats.durationMin / 60)}h ${Math.round(routeStats.durationMin % 60)}m`}</p><p className="text-[11px] text-gray-500">Riding time</p></div>
+              </div>
+            )}
           </div>
+
+          <dl className={`${card} divide-y divide-gray-100`}>
+            {[
+              { icon: isInstant ? Zap : Calendar, label: isInstant ? 'Starts' : 'When', value: isInstant ? 'Right after publishing' : `${formData.ride_date} · ${formData.ride_time}`, step: 3 },
+              { icon: Motorcycle, label: 'Vehicle', value: vehicleTypes.find(v => v.value === formData.vehicle_type)?.label || 'All', step: 1 },
+              { icon: Users, label: 'Max riders', value: `${formData.max_riders}`, step: 3 },
+              { icon: formData.visibility === 'public' ? Globe : Lock, label: 'Who can join', value: formData.visibility === 'public' ? 'Public' : 'Private', step: 1 },
+            ].map(row => (
+              <button key={row.label} onClick={() => goToStep(row.step)} className="w-full min-h-[52px] px-4 flex items-center gap-3 text-left cursor-pointer">
+                <row.icon className="w-5 h-5 text-gray-400 shrink-0" />
+                <dt className="flex-1 text-[14px] text-gray-500">{row.label}</dt>
+                <dd className="text-[15px] font-semibold text-gray-950 text-right truncate max-w-[55%]">{row.value}</dd>
+              </button>
+            ))}
+          </dl>
 
           {formData.description && (
-            <div className="card-app p-3.5">
-              <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider block mb-1">Notes</span>
-              <p className="text-[13px] text-gray-800 font-medium">{formData.description}</p>
+            <div className={`${card} p-4`}>
+              <p className="text-[12px] text-gray-500 mb-1">Notes</p>
+              <p className="text-[15px] text-gray-800">{formData.description}</p>
             </div>
           )}
-
-          <div className="flex gap-2.5">
-            <button onClick={() => goToStep(3)} className="px-5 py-3.5 card-app text-gray-700 font-bold text-[13px] rounded-full cursor-pointer flex items-center gap-1.5">
-              <ChevronLeft className="w-4 h-4" /> Back
-            </button>
-            <button
-              onClick={handleFinalCreate}
-              disabled={loading}
-              className="flex-1 py-3.5 btn-app-primary text-white font-bold text-[13px] rounded-full cursor-pointer flex items-center justify-center gap-2 disabled:opacity-60"
-            >
-              {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-              {isEditMode ? 'Save Changes' : 'Publish Ride'}
-            </button>
-          </div>
+          <p className="text-[12px] text-gray-400 text-center">Tap any row to change it.</p>
         </div>
       )}
+
+      {footer}
+      <input ref={coverInputRef} type="file" accept="image/*" className="hidden" onChange={handleCoverSelect} />
     </div>
   );
 };

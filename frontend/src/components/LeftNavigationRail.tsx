@@ -14,7 +14,7 @@ export const LeftNavigationRail = () => {
   const allowLandscape = isLandscapeAllowedRoute(location.pathname);
 
   // live ride is full-screen in portrait: the ride's own drawer replaces the bottom menu
-  const hideInPortrait = location.pathname.startsWith('/ride-plus/live') ? 'portrait:!hidden ' : '';
+  const hideInPortrait = location.pathname.startsWith('/ride-plus/live') ? 'portrait:!hidden ' : location.pathname.startsWith('/ride-plus/create') ? '!hidden ' : '';
 
   const railClass = hideInPortrait + (allowLandscape
     ? 'portrait:fixed portrait:left-1/2 portrait:-translate-x-1/2 portrait:bottom-3 portrait:z-50 portrait:w-[calc(100%-24px)] portrait:max-w-[420px] portrait:h-[68px] portrait:flex-row portrait:justify-around portrait:px-3 portrait:rounded-full landscape:static landscape:w-[72px] landscape:h-full landscape:flex-col landscape:justify-start landscape:py-4 landscape:gap-3.5 landscape:order-first landscape:rounded-r-[24px] nav-bar-app flex items-center shrink-0'

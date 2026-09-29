@@ -8,6 +8,7 @@ import { fetchTomTomRoutes, TOMTOM_API_KEY } from '../lib/routing';
 import { useLocationStore } from '../store/useLocationStore';
 import { useOrientationLock } from '../hooks/useOrientationLock';
 import { getRouteOrigin } from '../lib/routeOrigin';
+import { requestLocation, openLocationSettings, canOpenSettings } from '../lib/locationPermission';
 
 // Standalone navigation: current location, traffic, route options and search (with stops). Nothing else.
 
@@ -47,6 +48,8 @@ export default function Navigation() {
   const [selected, setSelected] = useState(0);
   const [routing, setRouting] = useState(false);
   const [routeError, setRouteError] = useState<string | null>(null);
+  const [locIssue, setLocIssue] = useState<'denied' | 'unavailable' | null>(null);
+  const [askingLoc, setAskingLoc] = useState(false);
   const [navigating, setNavigating] = useState(false);
 
   const [searchOpen, setSearchOpen] = useState(false);
@@ -72,7 +75,7 @@ export default function Navigation() {
     if (!navigator.geolocation) return;
     const id = navigator.geolocation.watchPosition(
       (p) => setMe({ lng: p.coords.longitude, lat: p.coords.latitude, heading: p.coords.heading ?? null }),
-      () => { /* keep last known */ },
+      (e) => { if (e.code === e.PERMISSION_DENIED) setLocIssue('denied'); },
       { enableHighAccuracy: true, maximumAge: 2000, timeout: 10000 },
     );
     return () => navigator.geolocation.clearWatch(id);
@@ -113,7 +116,7 @@ export default function Navigation() {
     if (!dest) { setRoutes([]); return; }
     // Always the latest valid location, never a previous route origin or the first stop
     const origin = getRouteOrigin(meRef.current);
-    if (!origin) { setRoutes([]); setRouteError('Waiting for your location… Turn on location to get routes.'); return; }
+    if (!origin) { setRoutes([]); setRouteError('NO_LOCATION'); return; }
     lastCalcRef.current = Date.now();
     setRouting(true);
     setRouteError(null);
@@ -133,6 +136,18 @@ export default function Navigation() {
   }, [dest, stops, hasFix, routeTick]);
 
   useEffect(() => { computeRoutes(); }, [computeRoutes]);
+
+  // Back from system settings with location allowed: pick up a fresh fix without another tap
+  useEffect(() => {
+    if (!locIssue) return;
+    const recheck = async () => {
+      if (document.visibilityState !== 'visible') return;
+      const r = await requestLocation();
+      if (r.status === 'granted') { setLocIssue(null); setMe({ lng: r.lng, lat: r.lat, heading: null }); setRouteTick((t) => t + 1); }
+    };
+    document.addEventListener('visibilitychange', recheck);
+    return () => document.removeEventListener('visibilitychange', recheck);
+  }, [locIssue]);
 
   // Resume from background / network back: recalculate from where the rider is now
   useEffect(() => {
@@ -319,6 +334,39 @@ export default function Navigation() {
                 <div className="max-h-[34vh] overflow-y-auto">
                   {routing ? (
                     <div className="py-6 flex justify-center"><Loader2 className="w-6 h-6 text-[#FF5A00] animate-spin" /></div>
+                  ) : routeError === 'NO_LOCATION' ? (
+                    <div className="px-4 py-4 flex items-start gap-3">
+                      <span className="w-10 h-10 rounded-full bg-orange-50 text-[#FF5A00] flex items-center justify-center shrink-0"><Crosshair className="w-5 h-5" /></span>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[15px] font-semibold text-gray-950">{locIssue === 'denied' ? 'Location is blocked' : locIssue === 'unavailable' ? 'Location is turned off' : 'Location needed'}</p>
+                        <p className="text-[13px] text-gray-500 mt-0.5">
+                          {locIssue === 'denied'
+                            ? (canOpenSettings() ? 'Open settings, tap Permissions → Location and choose Allow.' : 'Allow location for this site in your browser settings, then try again.')
+                            : locIssue === 'unavailable' ? 'Turn on location (GPS) on your phone, then try again.'
+                            : 'Routes start from where you are.'}
+                        </p>
+                        <div className="flex gap-2 mt-3">
+                          {locIssue === 'denied' && canOpenSettings() ? (
+                            <button onClick={() => openLocationSettings('app')} className="h-11 px-4 rounded-xl bg-[#FF5A00] text-white text-[14px] font-semibold">Open settings</button>
+                          ) : locIssue === 'unavailable' && canOpenSettings() ? (
+                            <button onClick={() => openLocationSettings('services')} className="h-11 px-4 rounded-xl bg-[#FF5A00] text-white text-[14px] font-semibold">Turn on location</button>
+                          ) : null}
+                          <button
+                            disabled={askingLoc}
+                            onClick={async () => {
+                              setAskingLoc(true);
+                              const r = await requestLocation();
+                              setAskingLoc(false);
+                              if (r.status === 'granted') { setLocIssue(null); setMe({ lng: r.lng, lat: r.lat, heading: null }); setRouteTick((t) => t + 1); }
+                              else setLocIssue(r.status);
+                            }}
+                            className={`h-11 px-4 rounded-xl text-[14px] font-semibold disabled:opacity-60 ${locIssue ? 'border border-gray-200 text-gray-900' : 'bg-[#FF5A00] text-white'}`}
+                          >
+                            {askingLoc ? 'Checking…' : locIssue ? 'Try again' : 'Allow location'}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
                   ) : routeError ? (
                     <p className="px-4 py-5 text-center text-[14px] text-gray-600">{routeError} <button onClick={computeRoutes} className="font-semibold text-[#FF5A00]">Retry</button></p>
                   ) : routes.map((r, i) => {
