@@ -455,3 +455,11 @@ html, body {
 details.maplibregl-ctrl.maplibregl-ctrl-attrib.maplibregl-compact.maplibregl-compact-show {
     display: none !important;
 }
+/* Top spacing on every app screen: padding on the page itself, so its own background reaches the top edge (never a gap). At least 20px, more under a notch. */
+.app-page > * {
+  padding-top: max(20px, env(safe-area-inset-top));
+}
+/* Home pads inside its photo header so the photo reaches the top edge */
+.app-page > .hl-root {
+  padding-top: 0;
+}

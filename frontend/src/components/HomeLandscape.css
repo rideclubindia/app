@@ -14,7 +14,7 @@
 }
 
 /* Top area over the banner photo */
-.hl-top { position: relative; padding: 14px 16px 0; color: #fff; overflow: hidden; }
+.hl-top { position: relative; padding: max(20px, env(safe-area-inset-top)) 16px 0; color: #fff; overflow: hidden; }
 .hl-top-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 50% 62%; }
 .hl-top-fade { position: absolute; inset: 0; background: linear-gradient(180deg, rgba(12, 12, 16, 0.72) 0%, rgba(12, 12, 16, 0.25) 38%, rgba(12, 12, 16, 0.15) 60%, rgba(12, 12, 16, 0.7) 100%); }
 .hl-top > *:not(.hl-top-img):not(.hl-top-fade) { position: relative; }

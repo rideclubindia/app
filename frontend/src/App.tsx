@@ -405,7 +405,7 @@ const Layout = () => {
 
   return (
     // Device insets (status bar/notch, gesture bar, landscape cut-outs) applied once for every app screen; 0 where there is none
-    <div className={`w-full h-full flex overflow-hidden pt-[max(20px,env(safe-area-inset-top))] pb-[env(safe-area-inset-bottom)] pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)] ${allowLandscape ? 'portrait:flex-col landscape:flex-row' : 'flex-col'}`}>
+    <div className={`w-full h-full flex overflow-hidden pb-[env(safe-area-inset-bottom)] pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)] ${allowLandscape ? 'portrait:flex-col landscape:flex-row' : 'flex-col'}`}>
       <LeftNavigationRail />
       <div className="flex-1 min-w-0 min-h-0">
         <RiderCockpitLayout
@@ -435,7 +435,7 @@ const Layout = () => {
               </div>
             )
           }
-          leftPanel={<Outlet context={{ map: mapInstance, currentRide }} />}
+          leftPanel={<div className="app-page w-full h-full"><Outlet context={{ map: mapInstance, currentRide }} /></div>}
         />
       </div>
     </div>
