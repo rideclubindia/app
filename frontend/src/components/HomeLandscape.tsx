@@ -12,7 +12,7 @@ import { auth } from '../lib/firebase';
 import { getDeterministicUuid, getAppUser } from '../lib/user';
 import { SOSModal } from './SOSModal';
 import heroImg from '../assets/rideclub/riders_coast_wide.jpg';
-import { useAvatar } from '../hooks/useAvatar';
+import { useAvatar, initialsImage } from '../hooks/useAvatar';
 import './HomeLandscape.css';
 
 interface Ride {
@@ -268,7 +268,7 @@ export const HomeLandscape = ({ currentRide }: { currentRide?: any }) => {
           <div className="hl-bar-actions">
             <button className="hl-round hl-sos" onClick={() => setShowSOSModal(true)} aria-label="SOS"><Siren size={20} /></button>
             <button className="hl-round" onClick={() => navigate('/alerts')} aria-label="Alerts"><Bell size={20} /><i className="hl-dot" /></button>
-            <button className="hl-round hl-me" onClick={() => navigate('/profile')} aria-label="Profile"><img src={avatar} alt="" referrerPolicy="no-referrer" className="hl-me-img" /></button>
+            <button className="hl-round hl-me" onClick={() => navigate('/profile')} aria-label="Profile"><img src={avatar} alt="" referrerPolicy="no-referrer" onError={(e) => { const f = initialsImage(user?.displayName || user?.email?.split('@')[0] || 'Rider'); if (e.currentTarget.src !== f) e.currentTarget.src = f; }} className="hl-me-img" /></button>
           </div>
         </div>
 

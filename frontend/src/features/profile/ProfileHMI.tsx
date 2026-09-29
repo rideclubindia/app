@@ -7,7 +7,7 @@ import { supabase } from '../../lib/supabase';
 import { useToast } from '../../components/ToastContext';
 import { Helmet } from 'react-helmet-async';
 import { getDeterministicUuid, getAppUser, signOutApp } from '../../lib/user';
-import { useAvatar } from '../../hooks/useAvatar';
+import { useAvatar, initialsImage } from '../../hooks/useAvatar';
 import { useLocationStore } from '../../store/useLocationStore';
 
 const getDistanceKm = (lat1: number, lon1: number, lat2: number, lon2: number) => {
@@ -270,7 +270,7 @@ const ProfileHMI = () => {
         </button>
       </div>
 
-      <div className="flex-1 overflow-y-auto hide-scrollbar px-4 pb-28 flex flex-col gap-4 max-w-[560px] w-full mx-auto">
+      <div className="flex-1 min-h-0 overflow-y-auto hide-scrollbar px-4 pb-28 flex flex-col gap-4 max-w-[560px] w-full mx-auto [&>*]:shrink-0">
 
         {/* Identity hero with stats */}
         <section className="relative overflow-hidden rounded-3xl bg-[#14161B] text-white">
@@ -278,7 +278,7 @@ const ProfileHMI = () => {
           <div className="relative p-5">
             <div className="flex items-center gap-4">
               <div className="relative shrink-0">
-                <img src={avatarUrl} alt="" referrerPolicy="no-referrer" className="w-[72px] h-[72px] rounded-full object-cover ring-2 ring-white/20 bg-white/10" />
+                <img src={avatarUrl} alt="" referrerPolicy="no-referrer" onError={(e) => { const f = initialsImage(fullName); if (e.currentTarget.src !== f) e.currentTarget.src = f; }} className="w-[72px] h-[72px] rounded-full object-cover ring-2 ring-white/20 bg-white/10" />
                 {stats.trust >= 80 && (
                   <span className="absolute -bottom-0.5 -right-0.5 w-6 h-6 rounded-full bg-[#FF6B22] ring-2 ring-[#14161B] flex items-center justify-center" title="Verified rider">
                     <Check className="w-3.5 h-3.5 text-white" strokeWidth={3} />

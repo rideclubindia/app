@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { getDeterministicUuid } from '../lib/user';
 
-const initialsImage = (name: string) =>
+export const initialsImage = (name: string) =>
   `https://ui-avatars.com/api/?background=FF6B22&color=fff&bold=true&name=${encodeURIComponent(name || 'Rider')}`;
 
 const sha256 = async (text: string) => {
@@ -25,7 +25,8 @@ export function useAvatar(user: { uid?: string; email?: string | null; displayNa
       }
       if (!photo && user?.email) {
         const hash = await sha256(user.email.trim().toLowerCase());
-        photo = `https://gravatar.com/avatar/${hash}?s=160&d=${encodeURIComponent(initialsImage(name))}`;
+        // Gravatar rejects fallback URLs with a query string, so ask for a 404 and let the <img> fall back to initials
+        photo = `https://gravatar.com/avatar/${hash}?s=160&d=404`;
       }
       if (!cancelled) setUrl(photo || initialsImage(name));
     })().catch(() => {});
