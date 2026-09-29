@@ -37,6 +37,7 @@ import { useOrientationLock } from '../../hooks/useOrientationLock';
 import { Capacitor, registerPlugin } from '@capacitor/core';
 import type { BackgroundGeolocationPlugin } from '@capacitor-community/background-geolocation';
 
+import { getRouteOrigin, upcomingStops } from '../../lib/routeOrigin';
 import { triggerSos, resumePendingSos, resolveSos, resolveSosLocation, reportLocationFix } from '../../lib/sos/sosOrchestrator';
 
 const BackgroundGeolocation = registerPlugin<BackgroundGeolocationPlugin>('BackgroundGeolocation');
@@ -150,6 +151,7 @@ const LiveRide = () => {
   };
 
   const routeFeatureRef = useRef<any>(null);
+  const appliedStyleRef = useRef<string | null>(null);
   const userLocationRef = useRef<{lat: number, lng: number} | null>(null);
   
   useEffect(() => { routeFeatureRef.current = routeFeature; }, [routeFeature]);
@@ -919,6 +921,60 @@ const LiveRide = () => {
     };
   }, [id]);
 
+  // ─── Personal route: always from the rider's latest location through the stops still ahead ───
+  const [routeTick, setRouteTick] = useState(0);
+  const lastRouteCalcRef = useRef(0);
+  const stopsKey = rideStops.map((st: any) => `${st.id}:${st.sequence}:${st.latitude},${st.longitude}`).join('|');
+  const hasFix = !!(userLocation || globalLocation);
+
+  useEffect(() => {
+    const onResume = () => { if (document.visibilityState === 'visible') setRouteTick((t) => t + 1); };
+    document.addEventListener('visibilitychange', onResume);
+    window.addEventListener('online', onResume);
+    return () => { document.removeEventListener('visibilitychange', onResume); window.removeEventListener('online', onResume); };
+  }, []);
+
+  // Off-route by more than 250 m: recalculate from where the rider is now (at most every 30 s)
+  useEffect(() => {
+    const here = userLocation;
+    const line = routeFeatureRef.current?.geometry?.coordinates;
+    if (!here || !line || line.length < 2) return;
+    if (Date.now() - lastRouteCalcRef.current < 30000) return;
+    try {
+      const off = turf.pointToLineDistance(turf.point([here.lng, here.lat]), turf.lineString(line), { units: 'kilometers' });
+      if (off > 0.25) setRouteTick((t) => t + 1);
+    } catch { /* ignore malformed line */ }
+  }, [userLocation]);
+
+  useEffect(() => {
+    if (!hasFix || !rideStops.length) return;
+    const origin = getRouteOrigin(userLocationRef.current || userLocation || globalLocation);
+    if (!origin) return;
+    const ordered = [...rideStops]
+      .filter((st: any) => typeof st.latitude === 'number' && typeof st.longitude === 'number' && !/start|origin/i.test(st.stop_type || ''))
+      .sort((a: any, b: any) => (a.sequence ?? 0) - (b.sequence ?? 0))
+      .map((st: any) => ({ ...st, lng: st.longitude, lat: st.latitude }));
+    if (!ordered.length) return;
+    const ahead = upcomingStops(origin, ordered, (a, b) => turf.distance(turf.point(a), turf.point(b)));
+    const coords = [origin, ...ahead.map((st: any) => [st.lng, st.lat])];
+    let cancelled = false;
+    lastRouteCalcRef.current = Date.now();
+    (async () => {
+      try {
+        const { fetchTomTomRoute } = await import('../../lib/routing');
+        const feature = await fetchTomTomRoute(coords, ride?.vehicle_type === 'bike' ? 'motorcycle' : 'driving-car');
+        if (!feature || cancelled) return;
+        setRouteFeature(feature);
+        setTotalDuration(feature.properties.summary.duration);
+        setTotalDistance(feature.properties.summary.distance / 1000);
+      } catch (e) {
+        console.debug('Personal route skipped:', (e as Error).message);
+      }
+    })();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [stopsKey, hasFix, routeTick]);
+
   // ─── Hazard & Stop proximity (Turf) ────────────────────
   useEffect(() => {
     if (!userLocation || !routeFeature?.geometry?.coordinates?.length) return;
@@ -1414,6 +1470,16 @@ const LiveRide = () => {
       }
     };
 
+    // Same style already applied: just refresh the route line instead of reloading the whole map
+    if (appliedStyleRef.current === mapStyle && map.current.isStyleLoaded()) {
+      const route = map.current.getSource('route') as maplibregl.GeoJSONSource | undefined;
+      const remaining = map.current.getSource('route-remaining') as maplibregl.GeoJSONSource | undefined;
+      if (route && remaining && routeFeature) { route.setData(routeFeature); remaining.setData(routeFeature); }
+      else handleStyleLoad();
+      return;
+    }
+
+    appliedStyleRef.current = mapStyle;
     map.current.on('style.load', handleStyleLoad);
     map.current.setStyle(mapStyle === 'dark' ? 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json' : 'https://basemaps.cartocdn.com/gl/positron-gl-style/style.json');
 

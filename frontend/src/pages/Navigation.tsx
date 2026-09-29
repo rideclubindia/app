@@ -7,6 +7,7 @@ import { ArrowLeft, ArrowUp, CornerUpLeft, CornerUpRight, Crosshair, Flag, Loade
 import { fetchTomTomRoutes, TOMTOM_API_KEY } from '../lib/routing';
 import { useLocationStore } from '../store/useLocationStore';
 import { useOrientationLock } from '../hooks/useOrientationLock';
+import { getRouteOrigin } from '../lib/routeOrigin';
 
 // Standalone navigation: current location, traffic, route options and search (with stops). Nothing else.
 
@@ -42,7 +43,7 @@ export default function Navigation() {
     state?.destLat != null && state?.destLng != null ? { id: 'dest', name: state.destName || 'Destination', lat: Number(state.destLat), lng: Number(state.destLng) } : null,
   );
   const [stops, setStops] = useState<Stop[]>([]);
-  const [routes, setRoutes] = useState<RouteFeature[]>(state?.routeFeature ? [state.routeFeature] : []);
+  const [routes, setRoutes] = useState<RouteFeature[]>([]);
   const [selected, setSelected] = useState(0);
   const [routing, setRouting] = useState(false);
   const [routeError, setRouteError] = useState<string | null>(null);
@@ -104,11 +105,16 @@ export default function Navigation() {
 
   // Routes: current location → stops → destination
   const hasFix = me != null;
+  const [routeTick, setRouteTick] = useState(0);
+  const meRef = useRef(me);
+  meRef.current = me;
+  const lastCalcRef = useRef(0);
   const computeRoutes = useCallback(async () => {
     if (!dest) { setRoutes([]); return; }
-    const pos = useLocationStore.getState().coordinates;
-    const origin = me ? [me.lng, me.lat] : pos ? [pos.lng, pos.lat] : null;
-    if (!origin) { setRouteError('Waiting for your location…'); return; }
+    // Always the latest valid location, never a previous route origin or the first stop
+    const origin = getRouteOrigin(meRef.current);
+    if (!origin) { setRoutes([]); setRouteError('Waiting for your location… Turn on location to get routes.'); return; }
+    lastCalcRef.current = Date.now();
     setRouting(true);
     setRouteError(null);
     try {
@@ -124,9 +130,26 @@ export default function Navigation() {
     }
     // Recalculate when the trip changes or the first GPS fix arrives, not on every GPS tick
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dest, stops, hasFix]);
+  }, [dest, stops, hasFix, routeTick]);
 
   useEffect(() => { computeRoutes(); }, [computeRoutes]);
+
+  // Resume from background / network back: recalculate from where the rider is now
+  useEffect(() => {
+    const bump = () => { if (document.visibilityState === 'visible') setRouteTick((t) => t + 1); };
+    document.addEventListener('visibilitychange', bump);
+    window.addEventListener('online', bump);
+    return () => { document.removeEventListener('visibilitychange', bump); window.removeEventListener('online', bump); };
+  }, []);
+
+  // Off the selected route by more than 150 m while navigating: reroute from the current position (at most every 20 s)
+  useEffect(() => {
+    const line = routes[selected]?.geometry?.coordinates;
+    if (!navigating || !me || !line || line.length < 2 || Date.now() - lastCalcRef.current < 20000) return;
+    try {
+      if (turf.pointToLineDistance([me.lng, me.lat], turf.lineString(line), { units: 'kilometers' }) > 0.15) setRouteTick((t) => t + 1);
+    } catch { /* ignore */ }
+  }, [me, navigating, routes, selected]);
 
   // Draw routes (selected on top) and fit
   useEffect(() => {
@@ -230,7 +253,7 @@ export default function Navigation() {
     setFollowing(true);
     if (me && map.current) map.current.easeTo({ center: [me.lng, me.lat], zoom: navigating ? 17 : 15, duration: 700 });
   };
-  const start = () => { setNavigating(true); setFollowing(true); if (me && map.current) map.current.easeTo({ center: [me.lng, me.lat], zoom: 17, pitch: 45, duration: 900 }); };
+  const start = () => { setRouteTick((t) => t + 1); setNavigating(true); setFollowing(true); if (me && map.current) map.current.easeTo({ center: [me.lng, me.lat], zoom: 17, pitch: 45, duration: 900 }); };
   const stop = () => { setNavigating(false); setFollowing(false); map.current?.easeTo({ pitch: 0, bearing: 0, duration: 600 }); };
 
   const iconBtn = (on: boolean) => `w-12 h-12 rounded-2xl shadow-md border flex items-center justify-center active:scale-95 ${on ? 'bg-[#FF5A00] border-[#FF5A00] text-white' : 'bg-white border-gray-100 text-gray-900'}`;

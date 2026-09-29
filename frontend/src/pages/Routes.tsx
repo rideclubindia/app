@@ -15,6 +15,7 @@ import { useIncidentCategories, incidentIconMap } from '../hooks/useIncidentCate
 import { filterActiveIncidents } from '../lib/incidentExpiry';
 import { useToast } from '../components/ToastContext';
 import { LeftNavigationRail } from '../components/LeftNavigationRail';
+import { getRouteOrigin } from '../lib/routeOrigin';
 import { Helmet } from 'react-helmet-async';
 
 const Routes = () => {
@@ -95,7 +96,9 @@ const Routes = () => {
   }, []);
 
   useEffect(() => {
-    if (originLat && originLng) {
+    // "My Location" is always the latest fix; a position handed in by the previous screen is only used until one arrives
+    const latest = getRouteOrigin(globalLocation);
+    if (!latest && originLat && originLng) {
       setOriginCoords({ lat: originLat, lng: originLng });
       setOriginText('My Location');
       return;
@@ -109,8 +112,10 @@ const Routes = () => {
         setOriginCoords({ lat: loc.lat, lng: loc.lng });
         setOriginText(loc.locationName || 'My Location');
       }).catch(() => {
-        setOriginText('Hyderabad Center');
-        setOriginCoords({ lat: 17.3850, lng: 78.4867 });
+        // No silent fallback to an unrelated place: ask for location or a typed start point
+        setOriginText('');
+        setOriginCoords(null);
+        showToast?.('Location unavailable. Turn on location or type a start point.', 'error');
       });
     }
   }, [originLat, originLng, globalLocation]);
