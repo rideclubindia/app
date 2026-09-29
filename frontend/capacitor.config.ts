@@ -4,6 +4,11 @@ const config: CapacitorConfig = {
   appId: 'com.lakshamride',
   appName: 'Ride Club',
   webDir: 'dist',
+  // Serve the bundled app as https://app.rideclub.in so its API requests come from an origin the backend already allows
+  server: {
+    hostname: 'app.rideclub.in',
+    androidScheme: 'https',
+  },
   plugins: {
     GoogleAuth: {
       scopes: ['profile', 'email'],
