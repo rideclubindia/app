@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { ShieldAlert, X, Bike, Droplet, Phone, HeartHandshake, ChevronDown, Check } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import { updateMyProfile } from '../lib/myProfile';
 
 interface Props {
   userId: string;
@@ -22,18 +23,12 @@ export const EmergencySetupModal: React.FC<Props> = ({ userId, onComplete, onClo
     if (!bikeDetails || !emergencyContact) return;
     setLoading(true);
     try {
-      const { error } = await supabase
-        .from('profiles')
-        .update({ 
-          bike_details: bikeDetails, 
-          blood_group: bloodGroup, 
-          emergency_contact: `${emergencyContact} (${relation})`
-        })
-        .eq('id', userId);
-        
-      if (!error) {
-        onComplete();
-      }
+      await updateMyProfile({
+        bike_details: bikeDetails,
+        blood_group: bloodGroup,
+        emergency_contact: `${emergencyContact} (${relation})`
+      });
+      onComplete();
     } catch (err) {
       console.error(err);
     } finally {

@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
 import { DataTable, type ColumnDef } from '../../components/admin/DataTable';
 import { Activity, Search, Filter } from 'lucide-react';
+import { adminProfiles } from '../../lib/myProfile';
 
 const AdminAuditLogs = () => {
   const [logs, setLogs] = useState<any[]>([]);
@@ -22,7 +23,7 @@ const AdminAuditLogs = () => {
     } else if (data) {
       const userIds = Array.from(new Set(data.map((log: any) => log.actor_id).filter(Boolean)));
       if (userIds.length > 0) {
-        const { data: profiles } = await supabase.from('profiles').select('id, full_name, email').in('id', userIds);
+        const { data: profiles } = await adminProfiles.list({ ids: userIds });
         if (profiles) {
           const profileMap = Object.fromEntries(profiles.map(p => [p.id, p]));
           data.forEach((log: any) => {

@@ -9,6 +9,7 @@ import ErrorBoundary from './components/ErrorBoundary';
 import { LoadingSpinner } from './components/LoadingSpinner';
 import { getDeterministicUuid, getAppUser } from './lib/user';
 import { auth } from './lib/firebase';
+import { getMyProfile } from './lib/myProfile';
 import { onAuthStateChanged } from 'firebase/auth';
 import { supabase, setSupabaseToken } from './lib/supabase';
 import BannedScreen from './pages/BannedScreen';
@@ -215,21 +216,10 @@ const RequireAuth = ({ children }: { children: React.ReactNode }) => {
       }
 
       try {
-        const profileRes = await supabase.from('profiles').select('*').eq('id', userId).maybeSingle();
+        // The backend creates the profile row at sign-in
+        const profileRes = { data: await getMyProfile(true) };
 
-        if (profileRes.error) {
-          console.warn('Profile fetch failed', profileRes.error.message);
-        }
-
-        if (!profileRes.data) {
-          await supabase.from('profiles').upsert({
-            id: userId,
-            full_name: effectiveUser.displayName || effectiveUser.email?.split('@')[0] || 'User',
-            email: effectiveUser.email || '',
-            avatar_url: effectiveUser.photoURL || undefined,
-            status: 'active'
-          }, { onConflict: 'email' });
-        } else {
+        if (profileRes.data) {
           setBanned(profileRes.data.status === 'suspended' || profileRes.data.status === 'banned');
           setWarning(profileRes.data.status === 'warning');
         }

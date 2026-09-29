@@ -10,6 +10,7 @@ import { getDeterministicUuid, getAppUser, signOutApp } from '../../lib/user';
 import { useAvatar, initialsImage } from '../../hooks/useAvatar';
 import { useLocationStore } from '../../store/useLocationStore';
 import SafetyStatus from '../../components/SafetyStatus';
+import { getMyProfile } from '../../lib/myProfile';
 
 const getDistanceKm = (lat1: number, lon1: number, lat2: number, lon2: number) => {
   const R = 6371;
@@ -48,31 +49,7 @@ const ProfileHMI = () => {
     }
   }, [globalLocationName, locationError]);
 
-  const resolveProfileId = async (firebaseUid: string): Promise<string | null> => {
-    const deterministicUid = getDeterministicUuid(firebaseUid);
-
-    const { data: byIdRows, error: byIdError } = await supabase
-      .from('profiles')
-      .select('id')
-      .in('id', [firebaseUid, deterministicUid])
-      .limit(1);
-
-    if (!byIdError && byIdRows && byIdRows.length > 0) {
-      return String(byIdRows[0].id);
-    }
-
-    const email = auth.currentUser?.email;
-    if (!email) return null;
-
-    const { data: byEmailRows, error: byEmailError } = await supabase
-      .from('profiles')
-      .select('id')
-      .eq('email', email)
-      .limit(1);
-
-    if (byEmailError) return null;
-    return byEmailRows && byEmailRows.length > 0 ? String(byEmailRows[0].id) : null;
-  };
+  const resolveProfileId = async (_firebaseUid: string): Promise<string | null> => (await getMyProfile())?.id ?? null;
 
   useEffect(() => {
     const fetchUserData = async (uid: string) => {
@@ -83,7 +60,7 @@ const ProfileHMI = () => {
       try {
         const profileId = await resolveProfileId(uid);
         if (profileId) {
-          const { data: pData } = await supabase.from('profiles').select('*').eq('id', profileId).single();
+          const pData = await getMyProfile(true);
           if (pData) setProfileData(pData);
         }
 

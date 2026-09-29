@@ -10,6 +10,7 @@ import { auth } from '../../lib/firebase';
 import { signOut } from 'firebase/auth';
 import { supabase } from '../../lib/supabase';
 import { SearchInput } from '../../components/ui/SearchInput';
+import { getMyProfile } from '../../lib/myProfile';
 
 const AdminLayout = () => {
   const location = useLocation();
@@ -81,15 +82,11 @@ const AdminLayout = () => {
       // Fetch admin profile — try by UID first, then by email as fallback
       if (auth.currentUser) {
         let profile: any = null;
-        const { data: byUid } = await supabase.from('profiles').select('*').eq('id', auth.currentUser.uid).maybeSingle();
+        const byUid = await getMyProfile();
         if (byUid) {
           profile = byUid;
         } else if (auth.currentUser.email) {
-          const { data: byEmail } = await supabase
-            .from('profiles')
-            .select('*')
-            .eq('email', auth.currentUser.email)
-            .maybeSingle();
+          const byEmail = null;
           profile = byEmail;
         }
         setAdminProfile(profile || {

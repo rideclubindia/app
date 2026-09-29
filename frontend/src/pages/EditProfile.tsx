@@ -8,6 +8,7 @@ import { supabase } from '../lib/supabase';
 import { getDeterministicUuid, getAppUser } from '../lib/user';
 import { useToast } from '../components/ToastContext';
 import { Helmet } from 'react-helmet-async';
+import { getMyProfile, updateMyProfile } from '../lib/myProfile';
 
 const EditProfile = () => {
   const navigate = useNavigate();
@@ -28,27 +29,7 @@ const EditProfile = () => {
     bike_number: ''
   });
 
-  const resolveProfileId = async (firebaseUid: string): Promise<string | null> => {
-    const deterministicUid = getDeterministicUuid(firebaseUid);
-    const { data: byIdRows } = await supabase
-      .from('profiles')
-      .select('id')
-      .in('id', [firebaseUid, deterministicUid])
-      .limit(1);
-
-    if (byIdRows && byIdRows.length > 0) return String(byIdRows[0].id);
-
-    const email = auth.currentUser?.email;
-    if (!email) return null;
-
-    const { data: byEmailRows } = await supabase
-      .from('profiles')
-      .select('id')
-      .eq('email', email)
-      .limit(1);
-
-    return byEmailRows && byEmailRows.length > 0 ? String(byEmailRows[0].id) : null;
-  };
+  const resolveProfileId = async (_firebaseUid: string): Promise<string | null> => (await getMyProfile())?.id ?? null;
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -63,8 +44,7 @@ const EditProfile = () => {
         if (!pid) throw new Error('Profile not found');
         setProfileId(pid);
 
-        const { data, error } = await supabase.from('profiles').select('*').eq('id', pid).single();
-        if (error) throw error;
+        const data = await getMyProfile(true);
         
         if (data) {
           let bModel = '';
@@ -111,8 +91,7 @@ const EditProfile = () => {
     setPhotoBusy('uploading');
     try {
       const url = await uploadImage(file, 'avatar');
-      const { error } = await supabase.from('profiles').update({ avatar_url: url }).eq('id', profileId);
-      if (error) throw error;
+      await updateMyProfile({ avatar_url: url });
       setAvatarUrl(url);
       showToast('Profile photo updated', 'success');
     } catch (e: any) {
@@ -127,8 +106,7 @@ const EditProfile = () => {
     if (!profileId || !avatarUrl) return;
     setPhotoBusy('removing');
     try {
-      const { error } = await supabase.from('profiles').update({ avatar_url: null }).eq('id', profileId);
-      if (error) throw error;
+      await updateMyProfile({ avatar_url: null });
       setAvatarUrl(null);
       showToast('Profile photo removed', 'success');
     } catch {
@@ -148,9 +126,7 @@ const EditProfile = () => {
     setIsSaving(true);
     
     try {
-      const { error } = await supabase
-        .from('profiles')
-        .update({
+      await updateMyProfile({
           full_name: formData.full_name,
           phone_number: formData.phone_number,
           blood_group: formData.blood_group,
@@ -159,10 +135,7 @@ const EditProfile = () => {
             model: formData.bike_model,
             number: formData.bike_number
           }
-        })
-        .eq('id', profileId);
-
-      if (error) throw error;
+        });
       showToast('Profile updated successfully', 'success');
       navigate('/profile');
     } catch (err) {

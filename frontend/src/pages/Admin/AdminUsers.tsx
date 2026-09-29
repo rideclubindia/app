@@ -6,6 +6,7 @@ import { Shield, ShieldAlert, Edit, Trash2, X, Users, Car, MapPin, RotateCcw, Us
 import { useConfirm } from '../../components/ConfirmDialog';
 import { useToast } from '../../components/ToastContext';
 import { getDeterministicUuid } from '../../lib/user';
+import { adminProfiles } from '../../lib/myProfile';
 
 const RESTORE_DAYS = 30;
 
@@ -35,39 +36,7 @@ const AdminUsers = () => {
 
   const fetchUsers = async () => {
     setLoading(true);
-    let { data, error } = await supabase
-      .from('profiles')
-      .select('*')
-      .order('created_at', { ascending: false });
-      
-    // Auto-backfill if profiles is empty!
-    if (!error && (!data || data.length === 0)) {
-      const { data: rideMembers } = await supabase.from('ride_members').select('user_id, display_name, avatar_url');
-      if (rideMembers && rideMembers.length > 0) {
-        const uniqueUsers = new Map();
-        rideMembers.forEach((m: any) => {
-          if (!uniqueUsers.has(m.user_id)) {
-            uniqueUsers.set(m.user_id, {
-              id: m.user_id,
-              full_name: m.display_name,
-              email: 'firebase.user@app.com', // placeholder
-              avatar_url: m.avatar_url,
-              role: 'user',
-              status: 'active'
-            });
-          }
-        });
-        
-        const usersToInsert = Array.from(uniqueUsers.values());
-        if (usersToInsert.length > 0) {
-          await supabase.from('profiles').upsert(usersToInsert, { onConflict: 'id' });
-          // Fetch again after backfill
-          const res = await supabase.from('profiles').select('*').order('created_at', { ascending: false });
-          data = res.data;
-          error = res.error;
-        }
-      }
-    }
+    const { data, error } = await adminProfiles.list({ limit: 5000 });
 
     if (error) {
       setErrorMsg(error.message);
@@ -146,7 +115,7 @@ const AdminUsers = () => {
       });
       if (!ok) return;
       const deletedAt = new Date().toISOString();
-      const { error } = await supabase.from('profiles').update({ deleted_at: deletedAt, status: 'suspended' }).eq('id', row.id);
+      const { error } = await adminProfiles.update(row.id, { deleted_at: deletedAt, status: 'suspended' });
       if (error) { showToast('Delete failed: ' + error.message, 'error'); return; }
       await logAudit('DELETE', row.id, { name: row.full_name, email: row.email, deleted_at: deletedAt });
       showToast(`${row.full_name || 'User'} moved to Deleted Users`, 'info');
@@ -154,7 +123,7 @@ const AdminUsers = () => {
       fetchUsers();
     } else {
       const newStatus = action === 'suspend' ? 'suspended' : 'active';
-      const { error } = await supabase.from('profiles').update({ status: newStatus }).eq('id', row.id);
+      const { error } = await adminProfiles.update(row.id, { status: newStatus });
       if (error) { showToast('Status update failed: ' + error.message, 'error'); return; }
       await logAudit('UPDATE', row.id, { field: 'status', old: row.status, new: newStatus });
       showToast(`Account ${newStatus === 'suspended' ? 'suspended' : 'activated'}`, 'success');
@@ -169,7 +138,7 @@ const AdminUsers = () => {
   const handleRestore = async (row: any) => {
     const ok = await confirm({ title: 'Restore Account', message: `${row.full_name || 'This user'} will regain full access to the platform.`, confirmLabel: 'Restore', variant: 'info' });
     if (!ok) return;
-    const { error } = await supabase.from('profiles').update({ deleted_at: null, status: 'active' }).eq('id', row.id);
+    const { error } = await adminProfiles.update(row.id, { deleted_at: null, status: 'active' });
     if (error) { showToast('Restore failed: ' + error.message, 'error'); return; }
     await logAudit('UPDATE', row.id, { action: 'restore', name: row.full_name });
     showToast(`${row.full_name || 'Account'} restored`, 'success');
@@ -180,7 +149,8 @@ const AdminUsers = () => {
   const handlePermanentDelete = async (row: any) => {
     const ok = await confirm({ title: 'Permanently Delete', message: `${row.full_name || 'This account'} will be erased forever with all associated data. This cannot be undone.`, confirmLabel: 'Delete Forever', variant: 'danger' });
     if (!ok) return;
-    await supabase.from('profiles').delete().eq('id', row.id);
+    const { error } = await adminProfiles.remove(row.id);
+    if (error) { showToast('Delete failed: ' + error.message, 'error'); return; }
     await logAudit('DELETE', row.id, { action: 'permanent_delete', name: row.full_name });
     showToast('Account permanently deleted', 'success');
     if (selectedUser?.id === row.id) setSelectedUser(null);
@@ -188,11 +158,11 @@ const AdminUsers = () => {
   };
 
   const handleSaveChanges = async () => {
-    const { error } = await supabase.from('profiles').update({
+    const { error } = await adminProfiles.update(selectedUser.id, {
       full_name: editForm.full_name,
       role: editForm.role,
       status: editForm.status
-    }).eq('id', selectedUser.id);
+    });
     if (error) {
       showToast('Failed to update user: ' + error.message, 'error');
     } else {

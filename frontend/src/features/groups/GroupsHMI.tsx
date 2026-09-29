@@ -11,6 +11,7 @@ import { useToast } from '../../components/ToastContext';
 import { useConfirm } from '../../components/ConfirmDialog';
 import { getDeterministicUuid, getAppUser } from '../../lib/user';
 import { useLocationStore } from '../../store/useLocationStore';
+import { searchRiders } from '../../lib/myProfile';
 
 const GroupsHMI = () => {
   const confirm = useConfirm();
@@ -529,12 +530,7 @@ const GroupsHMI = () => {
     setMemberSearchQuery(query);
     if (query.trim().length < 2) { setMemberSearchResults([]); return; }
     try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('id, full_name, email, avatar_url')
-        .or(`full_name.ilike.%${query}%,email.ilike.%${query}%`)
-        .limit(10);
-      if (error) throw error;
+      const data = await searchRiders(query.trim());
       const existingIds = new Set(groupMembers.map(m => m.user_id));
       setMemberSearchResults((data || []).filter(p => !existingIds.has(p.id)));
     } catch (e) {

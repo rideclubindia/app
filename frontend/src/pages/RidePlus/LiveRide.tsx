@@ -39,6 +39,7 @@ import type { BackgroundGeolocationPlugin } from '@capacitor-community/backgroun
 
 import { getRouteOrigin, upcomingStops } from '../../lib/routeOrigin';
 import { triggerSos, resumePendingSos, resolveSos, resolveSosLocation, reportLocationFix } from '../../lib/sos/sosOrchestrator';
+import { getMyProfile } from '../../lib/myProfile';
 
 const BackgroundGeolocation = registerPlugin<BackgroundGeolocationPlugin>('BackgroundGeolocation');
 
@@ -239,7 +240,7 @@ const LiveRide = () => {
       let userProfiles: any[] = [];
       if (members && members.length > 0) {
         const uids = members.map((m: any) => m.user_id.length === 36 ? m.user_id : getDeterministicUuid(m.user_id));
-        const { data: profiles } = await supabase.from('profiles').select('*').in('id', uids);
+        const { data: profiles } = await supabase.from('profiles').select('id, full_name, avatar_url').in('id', uids);
         if (profiles) userProfiles = profiles;
       }
 
@@ -268,20 +269,10 @@ const LiveRide = () => {
         });
       }
       setRiders(prev => ({ ...prev, ...init }));
-      if (auth.currentUser) {
-        const myUid = auth.currentUser.uid;
-        const myProfile = userProfiles.find((p: any) => p.id === myUid || p.id === getDeterministicUuid(myUid));
-        if (myProfile) {
-          setCurrentUserProfile(myProfile);
-          if (!myProfile.bike_details || !myProfile.emergency_contact) setShowEmergencySetup(true);
-        } else {
-          const searchId = myUid.length === 36 ? myUid : getDeterministicUuid(myUid);
-          const { data: myP } = await supabase.from('profiles').select('*').eq('id', searchId).single();
-          if (myP) {
-            setCurrentUserProfile(myP);
-            if (!myP.bike_details || !myP.emergency_contact) setShowEmergencySetup(true);
-          }
-        }
+      const myP = await getMyProfile(true);
+      if (myP) {
+        setCurrentUserProfile(myP);
+        if (!myP.bike_details || !myP.emergency_contact) setShowEmergencySetup(true);
       }
       setIsDataLoaded(true);
     };
@@ -323,11 +314,8 @@ const LiveRide = () => {
     });
     map.current = m;
 
-    // Ride navigation must stay locked onto the rider automatically —
-    // riders shouldn't be able to accidentally (or deliberately) drag the
-    // map away from the route while riding. Panning is disabled outright
-    // rather than just re-centering after the fact.
-    m.dragPan.disable();
+    // A manual drag pauses auto-follow; the recenter button resumes it
+    m.on('dragstart', (e: any) => { if (e.originalEvent) { setIsFollowingUser(false); setFocusedRiderId(null); } });
 
     // Asynchronously try to get GPS and fly to it later
     if (globalLocation && map.current) {
@@ -367,12 +355,6 @@ const LiveRide = () => {
             paint: { 'line-color': '#ef4523', 'line-width': 12, 'line-opacity': 1 },
           });
         }
-
-        // Panning itself is disabled (dragPan.disable() above), and the
-        // camera is meant to stay auto-following at all times — so this no
-        // longer drops out of follow mode on drag/touch. (Tapping a
-        // specific rider marker still switches the view via
-        // `focusedRiderId`, which is a deliberate, separate action.)
 
         if (routeFeature && (ride?.status === 'ended' || ride?.status === 'arrived')) {
           setIsFollowingUser(false);
@@ -1177,7 +1159,7 @@ const LiveRide = () => {
       let userProfiles: any[] = [];
       if (members && members.length > 0) {
         const uids = members.map((m: any) => m.user_id.length === 36 ? m.user_id : getDeterministicUuid(m.user_id));
-        const { data: profiles } = await supabase.from('profiles').select('*').in('id', uids);
+        const { data: profiles } = await supabase.from('profiles').select('id, full_name, avatar_url').in('id', uids);
         if (profiles) userProfiles = profiles;
       }
 
@@ -2538,13 +2520,7 @@ const LiveRide = () => {
           userId={auth.currentUser?.uid?.length === 36 ? auth.currentUser.uid : getDeterministicUuid(auth.currentUser?.uid || '')}
           onComplete={() => {
             setShowEmergencySetup(false);
-            const myUid = auth.currentUser?.uid;
-            if (myUid) {
-               const searchId = myUid.length === 36 ? myUid : getDeterministicUuid(myUid);
-               supabase.from('profiles').select('*').eq('id', searchId).single().then(({ data }) => {
-                  if (data) setCurrentUserProfile(data);
-               });
-            }
+            getMyProfile(true).then((data) => { if (data) setCurrentUserProfile(data); });
           }}
           onClose={() => setShowEmergencySetup(false)}
         />

@@ -8,6 +8,7 @@ import { useToast } from '../components/ToastContext';
 import { auth } from '../lib/firebase';
 import { supabase } from '../lib/supabase';
 import { getDeterministicUuid } from '../lib/user';
+import { getMyProfile } from '../lib/myProfile';
 
 const FALLBACK_RASTER_STYLE: maplibregl.StyleSpecification = {
   version: 8,
@@ -48,30 +49,7 @@ const SavedLocationPicker = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [isMapReady, setIsMapReady] = useState(false);
 
-  const resolveProfileId = async (firebaseUid: string): Promise<string | null> => {
-    const deterministicUid = getDeterministicUuid(firebaseUid);
-    const { data: byIdRows, error: byIdError } = await supabase
-      .from('profiles')
-      .select('id')
-      .in('id', [firebaseUid, deterministicUid])
-      .limit(1);
-
-    if (!byIdError && byIdRows && byIdRows.length > 0) {
-      return String(byIdRows[0].id);
-    }
-
-    const email = auth.currentUser?.email;
-    if (!email) return null;
-
-    const { data: byEmailRows, error: byEmailError } = await supabase
-      .from('profiles')
-      .select('id')
-      .eq('email', email)
-      .limit(1);
-
-    if (byEmailError) return null;
-    return byEmailRows && byEmailRows.length > 0 ? String(byEmailRows[0].id) : null;
-  };
+  const resolveProfileId = async (_firebaseUid: string): Promise<string | null> => (await getMyProfile())?.id ?? null;
 
   useEffect(() => {
     if (!mapContainer.current || map.current) return;

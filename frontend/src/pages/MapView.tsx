@@ -18,6 +18,7 @@ import { filterActiveIncidents } from '../lib/incidentExpiry';
 import { useIncidentNotifications } from '../hooks/useIncidentNotifications';
 import { getDeterministicUuid } from '../lib/user';
 import logoLight from '../assets/Logos/Logo for White Backgrounds 2.svg';
+import { getMyProfile } from '../lib/myProfile';
 
 const MapView = () => {
   const navigate = useNavigate();
@@ -185,30 +186,7 @@ const MapView = () => {
     return null;
   };
 
-  const resolveProfileId = async (firebaseUid: string): Promise<string | null> => {
-    const deterministicUid = getDeterministicUuid(firebaseUid);
-    const { data: byIdRows, error: byIdError } = await supabase
-      .from('profiles')
-      .select('id')
-      .in('id', [firebaseUid, deterministicUid])
-      .limit(1);
-
-    if (!byIdError && byIdRows && byIdRows.length > 0) {
-      return String(byIdRows[0].id);
-    }
-
-    const email = auth.currentUser?.email;
-    if (!email) return null;
-
-    const { data: byEmailRows, error: byEmailError } = await supabase
-      .from('profiles')
-      .select('id')
-      .eq('email', email)
-      .limit(1);
-
-    if (byEmailError) return null;
-    return byEmailRows && byEmailRows.length > 0 ? String(byEmailRows[0].id) : null;
-  };
+  const resolveProfileId = async (_firebaseUid: string): Promise<string | null> => (await getMyProfile())?.id ?? null;
 
   // Track auth state. Firebase's onAuthStateChanged only reflects a real
   // Firebase session — most riders here are actually signed in via a

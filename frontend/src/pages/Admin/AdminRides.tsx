@@ -8,6 +8,7 @@ import { SearchInput } from '../../components/ui/SearchInput';
 import { renderToString } from 'react-dom/server';
 import { useConfirm } from '../../components/ConfirmDialog';
 import { useToast } from '../../components/ToastContext';
+import { adminProfiles } from '../../lib/myProfile';
 
 const AdminRides = () => {
     const confirm = useConfirm();
@@ -238,7 +239,7 @@ const AdminRides = () => {
         supabase.from('ride_members').select('*').eq('ride_id', ride.id),
         supabase.from('ride_stops').select('*').eq('ride_id', ride.id).order('sequence', { ascending: true }),
         supabase.from('ride_locations').select('*').eq('ride_id', ride.id).order('updated_at', { ascending: false }).limit(1000),
-        supabase.from('profiles').select('*').eq('id', ride.owner_id).single()
+        adminProfiles.list({ ids: [String(ride.owner_id)] }).then((r) => ({ data: r.data?.[0] || null }))
       ]);
 
       let stops = stopsRes.data || [];

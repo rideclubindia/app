@@ -1,7 +1,7 @@
-import { supabase } from './supabase';
 import { auth } from './firebase';
 import { getAppUser, getDeterministicUuid } from './user';
 import { parseEmergencyContacts } from './sos/sosOrchestrator';
+import { getMyProfile, updateMyProfile } from './myProfile';
 
 export interface EmergencyContactInfo { name: string; phone: string }
 
@@ -26,7 +26,7 @@ export const myProfileId = () => {
 export async function loadMyEmergencyContact(): Promise<{ raw: string | null; primary: EmergencyContactInfo | null }> {
   const id = myProfileId();
   if (!id) return { raw: null, primary: null };
-  const { data } = await supabase.from('profiles').select('emergency_contact').eq('id', id).maybeSingle();
+  const data = await getMyProfile(true);
   const raw = data?.emergency_contact || null;
   const first = parseEmergencyContacts(raw)[0];
   return { raw, primary: first ? { name: first.name || 'Emergency contact', phone: first.phone } : null };
@@ -35,6 +35,5 @@ export async function loadMyEmergencyContact(): Promise<{ raw: string | null; pr
 export async function saveMyEmergencyContact(c: EmergencyContactInfo) {
   const id = myProfileId();
   if (!id) throw new Error('Please log in again.');
-  const { error } = await supabase.from('profiles').update({ emergency_contact: formatEmergencyContact(c) }).eq('id', id);
-  if (error) throw error;
+  await updateMyProfile({ emergency_contact: formatEmergencyContact(c) });
 }

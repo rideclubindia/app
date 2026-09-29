@@ -9,6 +9,7 @@ import { getDeterministicUuid } from '../lib/user';
 import darkLogo from '../assets/Logos/Logo for Dark Backgrounds 2.svg';
 import permissionsBackground from '../assets/permissions.png';
 import { useToast } from '../components/ToastContext';
+import { updateMyProfile } from '../lib/myProfile';
 
 interface PolicyAcceptanceProps {
   onAccept?: () => void;
@@ -114,7 +115,7 @@ const PolicyAcceptance: React.FC<PolicyAcceptanceProps> = ({ onAccept }) => {
           accepted_privacy_version: 2,
           accepted_terms_version: 2
         };
-        await supabase.from('profiles').update(updates).eq('id', userId);
+        await updateMyProfile(updates);
       } catch (e) {
         console.warn('Could not update profiles table with policy acceptance.', e);
       }

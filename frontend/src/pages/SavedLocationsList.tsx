@@ -6,6 +6,7 @@ import { auth } from '../lib/firebase';
 import { useToast } from '../components/ToastContext';
 import { getDeterministicUuid, getAppUser } from '../lib/user';
 import { Helmet } from 'react-helmet-async';
+import { getMyProfile } from '../lib/myProfile';
 
 const SavedLocationsList = () => {
   const navigate = useNavigate();
@@ -13,30 +14,7 @@ const SavedLocationsList = () => {
   const [savedLocations, setSavedLocations] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  const resolveProfileId = async (firebaseUid: string): Promise<string | null> => {
-    const deterministicUid = getDeterministicUuid(firebaseUid);
-    const { data: byIdRows, error: byIdError } = await supabase
-      .from('profiles')
-      .select('id')
-      .in('id', [firebaseUid, deterministicUid])
-      .limit(1);
-
-    if (!byIdError && byIdRows && byIdRows.length > 0) {
-      return String(byIdRows[0].id);
-    }
-
-    const email = auth.currentUser?.email;
-    if (!email) return null;
-
-    const { data: byEmailRows, error: byEmailError } = await supabase
-      .from('profiles')
-      .select('id')
-      .eq('email', email)
-      .limit(1);
-
-    if (byEmailError) return null;
-    return byEmailRows && byEmailRows.length > 0 ? String(byEmailRows[0].id) : null;
-  };
+  const resolveProfileId = async (_firebaseUid: string): Promise<string | null> => (await getMyProfile())?.id ?? null;
 
   const fetchSavedLocations = async () => {
     try {

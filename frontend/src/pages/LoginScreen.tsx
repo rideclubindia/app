@@ -177,20 +177,6 @@ const LoginScreen = ({ adminOnly = false, redirectTo = '/home' }: { adminOnly?: 
       }
       localStorage.setItem('rie_token', accessToken);
 
-      // Keep the Supabase profile row in sync using the server-assigned id
-      // (never a client-chosen id) for websocket/profile association.
-      if (uid) {
-        try {
-          await supabase.from('profiles').upsert({
-            id: uid,
-            full_name: email.split('@')[0],
-            email: email,
-            status: 'active'
-          }, { onConflict: 'email' }).select();
-        } catch (dbErr) {
-          console.warn("Profile upsert notice:", dbErr);
-        }
-      }
 
       showToast("Successfully logged in!", 'success');
       navigate(target, { replace: true });
