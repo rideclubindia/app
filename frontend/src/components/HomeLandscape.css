@@ -26,7 +26,8 @@
 .hl-bar-actions { display: flex; gap: 8px; flex-shrink: 0; }
 .hl-round { position: relative; width: 44px; height: 44px; border: none; border-radius: 50%; display: grid; place-items: center; background: rgba(255, 255, 255, 0.92); color: var(--hl-ink); cursor: pointer; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18); }
 .hl-sos { background: #e03a2f; color: #fff; }
-.hl-me { background: #ffe9dc; color: var(--hl-orange-dark); font-size: 18px; font-weight: 800; }
+.hl-me { background: #ffe9dc; color: var(--hl-orange-dark); font-size: 18px; font-weight: 800; overflow: hidden; padding: 0; }
+.hl-me-img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .hl-dot { position: absolute; top: 9px; right: 10px; width: 9px; height: 9px; border-radius: 50%; background: #e03a2f; border: 2px solid #fff; }
 
 .hl-search { display: flex; align-items: center; gap: 10px; height: 52px; margin-top: 14px; padding: 0 6px 0 16px; border-radius: 14px; background: #fff; box-shadow: 0 2px 10px rgba(0, 0, 0, 0.16); }

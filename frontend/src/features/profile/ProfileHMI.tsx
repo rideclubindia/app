@@ -7,6 +7,7 @@ import { supabase } from '../../lib/supabase';
 import { useToast } from '../../components/ToastContext';
 import { Helmet } from 'react-helmet-async';
 import { getDeterministicUuid, getAppUser, signOutApp } from '../../lib/user';
+import { useAvatar } from '../../hooks/useAvatar';
 import { useLocationStore } from '../../store/useLocationStore';
 
 const getDistanceKm = (lat1: number, lon1: number, lat2: number, lon2: number) => {
@@ -214,7 +215,7 @@ const ProfileHMI = () => {
     }
   };
 
-  const avatarUrl = profileData?.avatar_url || user?.photoURL || `https://ui-avatars.com/api/?name=${user?.displayName || user?.email?.split('@')[0] || "User"}&background=FF6600&color=fff`;
+  const avatarUrl = useAvatar(getAppUser(auth.currentUser) || user, profileData?.avatar_url);
   const fullName = profileData?.full_name || user?.displayName || user?.email?.split('@')[0] || "User";
 
   let bModel = 'Not set';
