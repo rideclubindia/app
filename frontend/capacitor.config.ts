@@ -4,10 +4,12 @@ const config: CapacitorConfig = {
   appId: 'com.lakshamride',
   appName: 'Ride Club',
   webDir: 'dist',
-  // Serve the bundled app as https://app.rideclub.in so its API requests come from an origin the backend already allows
+  // Load the live web app so every web deploy reaches installed APKs; the bundled copy is the offline fallback
   server: {
+    url: 'https://app.rideclub.in',
     hostname: 'app.rideclub.in',
     androidScheme: 'https',
+    errorPath: 'index.html',
   },
   plugins: {
     GoogleAuth: {
