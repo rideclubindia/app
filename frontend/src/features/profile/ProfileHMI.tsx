@@ -346,6 +346,38 @@ const ProfileHMI = () => {
 
         {tab === 'overview' && (
         <>
+        {/* Personal and safety details saved in Edit Profile */}
+        <section>
+          <div className="flex items-center justify-between mb-2 px-1">
+            <h3 className="text-[13px] font-semibold text-gray-500 uppercase tracking-wide">Details</h3>
+            <button onClick={() => navigate('/edit-profile')} className="text-[13px] font-semibold text-[#FF6B22] cursor-pointer">Edit</button>
+          </div>
+          <dl className="rounded-2xl bg-white border border-gray-200 divide-y divide-gray-100">
+            {[
+              { label: 'Full name', value: profileData?.full_name || fullName },
+              { label: 'Email', value: profileData?.email || user?.email },
+              { label: 'Phone', value: profileData?.phone_number },
+              { label: 'Emergency contact', value: profileData?.emergency_contact, important: true },
+              { label: 'Blood group', value: profileData?.blood_group, important: true },
+              { label: 'Bike', value: bModel !== 'Not set' ? bModel : null },
+              { label: 'Registration', value: bNumber !== 'Not set' ? bNumber : null },
+            ].map(row => (
+              <div key={row.label} className="flex items-center gap-3 px-4 min-h-[52px] py-2.5">
+                <dt className="w-[132px] shrink-0 text-[13px] text-gray-500">{row.label}</dt>
+                <dd className="flex-1 min-w-0 text-right">
+                  {row.value ? (
+                    <span className="text-[14px] font-medium text-gray-950 break-words">{row.value}</span>
+                  ) : (
+                    <button onClick={() => navigate('/edit-profile')} className={`text-[13px] font-semibold cursor-pointer ${row.important ? 'text-[#FF6B22]' : 'text-gray-400'}`}>
+                      {row.important ? 'Add for SOS' : 'Add'}
+                    </button>
+                  )}
+                </dd>
+              </div>
+            ))}
+          </dl>
+        </section>
+
         {/* Riding: goal + monthly distance in one card */}
         <section className="rounded-2xl bg-white border border-gray-200 p-4">
           <div className="flex items-center justify-between">
