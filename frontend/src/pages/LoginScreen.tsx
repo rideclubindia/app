@@ -225,7 +225,7 @@ const LoginScreen = ({ adminOnly = false, redirectTo = '/home' }: { adminOnly?: 
 
       {/* ====== PORTRAIT LAYOUT ====== */}
       {!isLandscape && (
-        <div className="relative z-10 flex-1 flex flex-col justify-center gap-5 px-6 pt-[max(16px,env(safe-area-inset-top))] pb-[max(20px,env(safe-area-inset-bottom))] overflow-y-auto hide-scrollbar">
+        <div className="relative z-10 flex-1 flex flex-col justify-center gap-5 px-6 pt-[max(20px,env(safe-area-inset-top))] pb-[max(20px,env(safe-area-inset-bottom))] overflow-y-auto hide-scrollbar">
           
           {/* Logo */}
           <img src={darkLogo} alt="Ride Club" className="h-32 w-auto drop-shadow-[0_2px_8px_rgba(255,255,255,0.15)] object-left object-contain" />

@@ -195,7 +195,7 @@ const PolicyAcceptance: React.FC<PolicyAcceptanceProps> = ({ onAccept }) => {
       <div className="relative shrink-0 h-[168px] landscape:h-full landscape:w-[38%] landscape:max-w-[440px] overflow-hidden">
         <img src={permissionsBackground} alt="" className="absolute inset-0 w-full h-full object-cover" style={{ objectPosition: 'center 35%' }} />
         <div className="absolute inset-0 bg-gradient-to-b from-[#1B2A42]/30 via-[#1B2A42]/60 to-[#1B2A42] landscape:bg-gradient-to-r landscape:from-[#1B2A42]/40 landscape:via-[#1B2A42]/70 landscape:to-[#1B2A42]" />
-        <div className="relative h-full flex flex-col justify-end landscape:justify-center px-5 pb-4 pt-[max(12px,env(safe-area-inset-top))] landscape:px-8">
+        <div className="relative h-full flex flex-col justify-end landscape:justify-center px-5 pb-4 pt-[max(20px,env(safe-area-inset-top))] landscape:px-8">
           <img src={darkLogo} alt="RIDE CLUB" className="h-10 w-auto self-start object-contain mb-auto landscape:mb-6" />
           <h1 className="text-[26px] landscape:text-[30px] font-extrabold leading-tight tracking-tight">Before your first ride</h1>
           <p className="text-[14px] text-[#C9D1DC] mt-1 leading-snug max-w-sm">A few permissions keep you and your group safe. You can change any of them later in Settings.</p>

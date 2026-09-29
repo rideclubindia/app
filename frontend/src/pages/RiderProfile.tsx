@@ -41,7 +41,7 @@ export default function RiderProfile() {
   const since = rider?.memberSince ? new Date(rider.memberSince) : null;
 
   return (
-    <div className="fixed inset-0 bg-app-canvas flex flex-col font-sans pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]">
+    <div className="fixed inset-0 bg-app-canvas flex flex-col font-sans pt-[max(20px,env(safe-area-inset-top))] pb-[env(safe-area-inset-bottom)]">
       <div className="flex items-center gap-3 px-4 pt-3 pb-2 max-w-[560px] w-full mx-auto">
         <button onClick={() => navigate(-1)} aria-label="Back" className="w-11 h-11 rounded-full bg-white border border-gray-200 flex items-center justify-center active:scale-95">
           <ArrowLeft className="w-5 h-5 text-gray-900" />

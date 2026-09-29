@@ -259,7 +259,7 @@ export default function Navigation() {
   const iconBtn = (on: boolean) => `w-12 h-12 rounded-2xl shadow-md border flex items-center justify-center active:scale-95 ${on ? 'bg-[#FF5A00] border-[#FF5A00] text-white' : 'bg-white border-gray-100 text-gray-900'}`;
 
   return (
-    <div className="fixed inset-0 bg-[#F7F8FA] overflow-hidden pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)]">
+    <div className="fixed inset-0 bg-[#F7F8FA] overflow-hidden pt-[max(20px,env(safe-area-inset-top))] pb-[env(safe-area-inset-bottom)] pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)]">
       <div className="relative w-full h-full">
         <div ref={mapEl} className="absolute inset-0" />
 

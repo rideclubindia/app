@@ -54,7 +54,7 @@ const PrivacyPolicy = () => {
   }, []);
 
   return (
-    <div className="fixed inset-0 z-[9999] flex flex-col bg-[#273a5a] text-white overflow-hidden font-sans pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]">
+    <div className="fixed inset-0 z-[9999] flex flex-col bg-[#273a5a] text-white overflow-hidden font-sans pt-[max(20px,env(safe-area-inset-top))] pb-[env(safe-area-inset-bottom)]">
       <Helmet>
         <title>Privacy Policy | Ride Club</title>
         <meta name="description" content="Read the Privacy Policy and learn how your data is protected on Ride Club." />
