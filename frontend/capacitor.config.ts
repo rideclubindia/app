@@ -2,7 +2,7 @@ import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
   appId: 'com.lakshamride',
-  appName: 'Laksham Ride',
+  appName: 'Ride Club',
   webDir: 'dist',
   plugins: {
     GoogleAuth: {

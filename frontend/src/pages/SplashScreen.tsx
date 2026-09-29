@@ -11,7 +11,7 @@ const SplashScreen = () => {
   }, []);
 
   return (
-    <div className="w-full h-full bg-black text-white flex flex-col items-center justify-center relative overflow-hidden">
+    <div className="fixed inset-0 bg-black text-white flex flex-col items-center justify-center overflow-hidden pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]">
       
       {/* Background Decorative Elements */}
       <div className="absolute inset-0 z-0">

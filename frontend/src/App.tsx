@@ -593,14 +593,15 @@ function App() {
   const isWebsitePath = websitePaths.includes(window.location.pathname) || window.location.pathname.startsWith('/website');
   const storedMode = localStorage.getItem('rideclub_mode');
 
-  const isWebsiteDomain =
+  // The Android app is served from https://localhost, so it must never fall into website mode
+  const isWebsiteDomain = !Capacitor.isNativePlatform() && (
     hostname === 'rideclub.in' ||
     hostname === 'www.rideclub.in' ||
     hostname === 'website.localhost' ||
     storedMode === 'website' ||
     searchParams.get('view') === 'website' ||
     searchParams.get('website') === 'true' ||
-    (isWebsitePath && storedMode !== 'app');
+    (isWebsitePath && storedMode !== 'app'));
 
   useEffect(() => {
     useNavigationStore.getState().init();
@@ -778,7 +779,7 @@ function App() {
               {/* Catch-all 404 Route */}
               {!isAdminDomain && <Route path="*" element={<RideDash404 />} />}
             </Routes>
-            <CookieConsent />
+            {!Capacitor.isNativePlatform() && <CookieConsent />}
           </Suspense>
           </MaintenanceGuard>
         </BrowserRouter>

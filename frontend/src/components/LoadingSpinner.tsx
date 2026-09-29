@@ -1,5 +1,7 @@
 import React from 'react';
+import { Capacitor } from '@capacitor/core';
 import whiteLogo from '../assets/Logos/Logo for White Backgrounds 2.svg';
+import darkLogo from '../assets/Logos/Logo for Dark Backgrounds 2.svg';
 
 interface LoadingSpinnerProps {
   fullScreen?: boolean;
@@ -32,6 +34,19 @@ export const LoadingSpinner: React.FC<LoadingSpinnerProps> = ({
       {message && <p className="text-gray-500 font-medium animate-pulse">{message}</p>}
     </div>
   );
+
+  // Native app only: continue the orange launch splash so there is no white flash between splash and first screen
+  if (fullScreen && Capacitor.isNativePlatform()) {
+    return (
+      <div className="fixed inset-0 z-50 bg-[#EF4523] flex flex-col items-center justify-center" role="status" aria-label="Loading">
+        <img src={darkLogo} alt="Ride Club" className="w-[40vw] max-w-[220px] h-auto animate-pulse" />
+        <div className="mt-8 h-1 w-24 rounded-full bg-white/25 overflow-hidden">
+          <div className="h-full w-1/3 rounded-full bg-white animate-[rc-load_1.1s_ease-in-out_infinite]" />
+        </div>
+        <style>{'@keyframes rc-load{0%{transform:translateX(-100%)}100%{transform:translateX(300%)}}'}</style>
+      </div>
+    );
+  }
 
   if (fullScreen) {
     return (
