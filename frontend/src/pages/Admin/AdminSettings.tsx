@@ -23,7 +23,7 @@ const AdminSettings = () => {
     comingSoonShowCountdown: false,
     requireEmailVerification: true,
     maxPinsPerUserDaily: 10,
-    supportEmail: 'support@rideclub.in'
+    supportEmail: 'rideclubindia@gmail.com'
   });
   const [loading, setLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);

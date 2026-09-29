@@ -342,7 +342,7 @@ const WebsiteHome: React.FC = () => {
           <Reveal className="rc-contact-info">
             <div>
               <strong>Rider support</strong>
-              <a href="mailto:support@rideclub.in">support@rideclub.in</a>
+              <a href="mailto:rideclubindia@gmail.com">rideclubindia@gmail.com</a>
             </div>
             <div>
               <strong>Ride updates</strong>

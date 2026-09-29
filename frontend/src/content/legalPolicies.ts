@@ -94,7 +94,7 @@ In accordance with the Digital Personal Data Protection Act, 2023, you have the 
 We may update our Privacy Policy from time to time. We will notify you of any changes by posting the new Privacy Policy on this page and updating the "Last Updated" date. You are advised to review this Privacy Policy periodically for any changes. Changes to this Privacy Policy are effective when they are posted on this page.
 
 14. CONTACT US
-If you have any questions about this Privacy Policy, the practices of this application, or your dealings with this application, please contact us via email at legal@rideclub.in or by mail at Ride Club Privacy Team, Hitech City, Hyderabad, Telangana, India.`;
+If you have any questions about this Privacy Policy, the practices of this application, or your dealings with this application, please contact us via email at rideclubindia@gmail.com or by mail at Ride Club Privacy Team, Hitech City, Hyderabad, Telangana, India.`;
 
 export const TERMS_TEXT = `RIDE CLUB TERMS OF SERVICE
 
@@ -164,4 +164,4 @@ Ride Club shall not be liable for any delay or failure to perform resulting from
 If any provision of these Terms is found to be unenforceable or invalid, that provision will be limited or eliminated to the minimum extent necessary so that these Terms will otherwise remain in full force and effect and enforceable.
 
 17. CONTACT INFORMATION
-If you have any questions about these Terms, please contact us at legal@rideclub.in.`;
+If you have any questions about these Terms, please contact us at rideclubindia@gmail.com.`;

@@ -31,7 +31,7 @@ export const Footer: React.FC = () => {
             <p className="rc-footer-pitch">Live group rides, crash detection and route planning — built for two wheels.</p>
             <div className="rc-footer-actions">
               <Link to="/login" className="rc-btn rc-btn-primary"><span>Launch the app</span><ArrowRight size={15} /></Link>
-              <a href="mailto:support@rideclub.in" className="rc-footer-mail"><Mail size={15} /> support@rideclub.in</a>
+              <a href="mailto:rideclubindia@gmail.com" className="rc-footer-mail"><Mail size={15} /> rideclubindia@gmail.com</a>
             </div>
           </div>
 

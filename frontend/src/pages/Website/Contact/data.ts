@@ -6,8 +6,8 @@ export const contactMethods = [
     id: 'email',
     title: 'Priority Email Support',
     description: 'Our rider support team operates 24/7. Whether you found a bug in the routing engine or have a billing question, we aim to respond within 2 hours.',
-    action: 'support@rideclub.in',
-    link: 'mailto:support@rideclub.in',
+    action: 'rideclubindia@gmail.com',
+    link: 'mailto:rideclubindia@gmail.com',
     icon: Mail
   },
   {
