@@ -2023,7 +2023,7 @@ const LiveRide = () => {
                                 <p className="text-[11px] text-gray-500 mt-1">{st.isStart ? 'Starting point' : `ETA ${st.eta}`}</p>
                               </div>
                               {isAdmin && !st.isStart && !st.isDest && st.id && (
-                                <button onClick={() => deleteStop(st.id, st.name)} aria-label={`Remove ${st.name}`} className="w-10 h-10 -my-1 rounded-xl flex items-center justify-center text-gray-500 hover:text-red-600 hover:bg-red-50 active:scale-95 transition-colors shrink-0">
+                                <button onClick={() => deleteStop(st.id, st.name)} aria-label={`Remove ${st.name}`} className="w-10 h-10 -my-1 rounded-xl flex items-center justify-center text-gray-500 hover:text-red-600 hover:bg-gray-100 active:scale-95 transition-colors shrink-0">
                                   <Trash2 className="w-[18px] h-[18px]" />
                                 </button>
                               )}
