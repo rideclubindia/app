@@ -42,7 +42,7 @@ const AdminGroups = () => {
   const fetchGroups = useCallback(async () => {
     const { data, error } = await supabase
       .from('groups')
-      .select('*, group_members(count)')
+      .select('id, name, admin_id, radius, is_private, pinned_message_id, created_at, group_members(count)')
       .order('created_at', { ascending: false });
     if (error) { console.error('Failed to load groups:', error); return; }
     if (data) {

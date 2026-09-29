@@ -1,8 +1,14 @@
 import hashlib
 import logging
+import time
+
+import jwt
 
 from fastapi import APIRouter, Depends, HTTPException, Request
+from sqlalchemy import text
 from sqlalchemy.orm import Session
+from api.deps import get_current_user, oauth2_scheme
+from api.routers.profiles import is_admin
 from sqlalchemy.exc import IntegrityError
 from core.database import get_db
 from core.security import get_password_hash, create_access_token
@@ -98,3 +104,25 @@ def verify_otp_and_login(request: Request, data: VerifyOtpData, db: Session = De
         expires_delta=access_token_expires,
     )
     return {"access_token": access_token, "token_type": "bearer", "uid": get_deterministic_uuid(dummy_uid)}
+
+
+SUPABASE_TOKEN_MINUTES = 60
+
+
+@router.post("/supabase-token")
+@limiter.limit("30/minute")
+def supabase_token(request: Request, db: Session = Depends(get_db), token: str = Depends(oauth2_scheme)):
+    # Short-lived database token so Supabase RLS knows who the rider is; identity comes only from the verified session
+    user = get_current_user(db=db, token=token)
+    if not settings.SUPABASE_JWT_SECRET:
+        raise HTTPException(status_code=503, detail="Database sessions are not configured")
+    uid = jwt.decode(token, settings.JWT_SECRET, algorithms=[settings.ALGORITHM]).get("uid") or ""
+    status = db.execute(text("SELECT status, deleted_at FROM profiles WHERE id = :id"), {"id": str(user.id)}).first()
+    if status and (status[0] in ("banned", "suspended") or status[1] is not None):
+        raise HTTPException(status_code=403, detail="Account restricted")
+    now = int(time.time())
+    claims = {
+        "sub": str(user.id), "uid": uid, "email": user.email, "role": "authenticated", "aud": "authenticated",
+        "app_role": "admin" if is_admin(user) else "rider", "iat": now, "exp": now + SUPABASE_TOKEN_MINUTES * 60,
+    }
+    return {"access_token": jwt.encode(claims, settings.SUPABASE_JWT_SECRET, algorithm="HS256"), "expires_in": SUPABASE_TOKEN_MINUTES * 60}

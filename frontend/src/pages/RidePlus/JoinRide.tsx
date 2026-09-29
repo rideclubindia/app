@@ -5,7 +5,7 @@ import { supabase } from '../../lib/supabase';
 import { auth } from '../../lib/firebase';
 import { useToast } from '../../components/ToastContext';
 import { useRideStartGate } from '../../components/RideStartGate';
-import { getDeterministicUuid } from '../../lib/user';
+import { getAppUser } from '../../lib/user';
 
 const JoinRide = () => {
   const navigate = useNavigate();
@@ -26,11 +26,9 @@ const JoinRide = () => {
       const timer = setTimeout(async () => {
         setSearchingRide(true);
         try {
-          const { data, error } = await supabase
-            .from('rides')
-            .select('id, name, ride_code, status, ride_date, start_location, end_location, max_riders, vehicle_type, creator_id')
-            .eq('ride_code', cleanCode)
-            .maybeSingle();
+          // Works for private rides too: the share code is the invitation, and only card fields come back
+          const { data: found, error } = await supabase.rpc('rc_find_ride_by_code', { p_code: cleanCode });
+          const data = (found as any[] | null)?.[0] || null;
 
           if (!error && data) {
             setPreviewRide(data);
@@ -55,7 +53,8 @@ const JoinRide = () => {
       try {
         const { data, error } = await supabase
           .from('rides')
-          .select('id, name, ride_code, status, ride_date, start_location, end_location, max_riders, vehicle_type')
+          .select('id, name, ride_code, status, ride_date, start_location, destination, max_riders, vehicle_type')
+          .eq('visibility', 'public')
           .in('status', ['live', 'scheduled'])
           .order('ride_date', { ascending: true })
           .limit(4);
@@ -81,37 +80,27 @@ const JoinRide = () => {
 
     setLoading(true);
     try {
-      const user = auth.currentUser;
+      const user = getAppUser(auth.currentUser);
       if (!user) {
         showToast('Not authenticated. Please log in.', 'error');
         setLoading(false);
         return;
       }
 
-      // Find ride by code
-      const { data: ride, error: findErr } = await supabase
-        .from('rides')
-        .select('id, name, status')
-        .eq('ride_code', codeToJoin)
-        .single();
-        
-      if (findErr || !ride) {
+      const { data: found } = await supabase.rpc('rc_find_ride_by_code', { p_code: codeToJoin });
+      const ride = (found as any[] | null)?.[0];
+      if (!ride) {
         throw new Error('Ride not found. Please verify the 6-character code.');
       }
 
-      // Join the ride member list
-      const { error: joinErr } = await supabase.from('ride_members').insert({
-        ride_id: ride.id,
-        user_id: user.uid.length === 36 ? user.uid : getDeterministicUuid(user.uid),
-        role: 'rider',
-        status: 'accepted',
-        display_name: user.displayName || user.email?.split('@')[0] || 'Rider',
-        avatar_url: user.photoURL || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.displayName || user.email?.split('@')[0] || 'Rider')}`
+      // Joining happens in the database as the signed-in rider; the client can't join on someone else's behalf
+      const { error: joinErr } = await supabase.rpc('rc_join_ride_by_code', {
+        p_code: codeToJoin,
+        p_display_name: user.displayName || user.email?.split('@')[0] || 'Rider',
+        p_avatar: user.photoURL || null,
       });
-
-      // Ignore duplicate error if already joined
-      if (joinErr && joinErr.code !== '23505') {
-        throw joinErr;
+      if (joinErr) {
+        throw new Error(joinErr.message.includes('RIDE_CLOSED') ? 'This ride has already ended.' : 'Could not join this ride. Try again.');
       }
 
       showToast(`Joined ride: ${ride.name}`, 'success');

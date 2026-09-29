@@ -124,7 +124,7 @@ const GroupsHMI = () => {
   const fetchGroups = async (currentUser?: any) => {
     const activeUser = currentUser || auth.currentUser || user;
     try {
-      let query = supabase.from('groups').select('*, group_members(count)').order('created_at', { ascending: false });
+      let query = supabase.from('groups').select('id, name, admin_id, radius, is_private, pinned_message_id, created_at, group_members(count)').order('created_at', { ascending: false });
       
       if (activeUser) {
         const { data: memberData } = await supabase
@@ -167,14 +167,19 @@ const GroupsHMI = () => {
     setSearchQuery(query);
     const exact = query.trim();
     if (/^[0-9a-f-]{36}$/i.test(exact)) {
-      const { data } = await supabase.from('groups').select('*, group_members(count)').eq('id', exact).limit(1);
-      if (data?.length) setGroups(prev => (prev.some(g => g.id === data[0].id) ? prev : [...prev, data[0]]));
+      // Private groups are only findable by exact id, through a function that never returns the passcode
+      const { data } = await supabase.rpc('rc_find_group', { p_group: exact });
+      const g = (data as any[] | null)?.[0];
+      if (g) {
+        const found = { ...g, group_members: [{ count: Number(g.member_count) || 0 }] };
+        setGroups(prev => (prev.some(x => x.id === found.id) ? prev : [...prev, found]));
+      }
       return;
     }
     if (query.trim().length === 5) {
       try {
         const { data, error } = await supabase.from('groups')
-          .select('*, group_members(count)')
+          .select('id, name, admin_id, radius, is_private, pinned_message_id, created_at, group_members(count)')
           .eq('is_private', false)
           .ilike('id', `${query.trim()}%`);
         
@@ -335,9 +340,10 @@ const GroupsHMI = () => {
     }
   };
 
-  const copyGroupInvite = () => {
+  const copyGroupInvite = async () => {
     if (!activeGroup) return;
-    const inviteText = `Join my group on Ride Club!\nGroup Name: ${activeGroup.name}\nGroup ID: ${activeGroup.id}${activeGroup.is_private ? `\nPasscode: ${activeGroup.passcode}` : ''}`;
+    const passcode = activeGroup.is_private ? (await supabase.rpc('rc_group_passcode', { p_group: activeGroup.id })).data : null;
+    const inviteText = `Join my group on Ride Club!\nGroup Name: ${activeGroup.name}\nGroup ID: ${activeGroup.id}${passcode ? `\nPasscode: ${passcode}` : ''}`;
     navigator.clipboard.writeText(inviteText);
     showToast('Invite details copied to clipboard!', 'success');
   };
@@ -385,7 +391,7 @@ const GroupsHMI = () => {
         radius: newGroupParams.radius,
         is_private: newGroupParams.isPrivate,
         passcode: newGroupParams.isPrivate ? newGroupParams.passcode : null
-      }).select().single();
+      }).select('id, name, admin_id, radius, is_private, pinned_message_id, created_at').single();
       
       if (error) throw error;
       
@@ -408,17 +414,21 @@ const GroupsHMI = () => {
   const joinGroup = async () => {
     if (!activeGroup || !user) return;
     
-    if (activeGroup.is_private) {
-      const code = prompt("This is a private group. Enter Passcode:");
-      if (code !== activeGroup.passcode) {
-        showToast("Incorrect passcode!", 'error');
-        return;
-      }
-    }
+    const code = activeGroup.is_private ? prompt("This is a private group. Enter Passcode:") : null;
+    if (activeGroup.is_private && code === null) return;
     
     setIsJoining(true);
     try {
       const uName = user.displayName || user.email?.split('@')[0] || 'Unknown';
+      if (activeGroup.is_private) {
+        // The passcode is checked in the database; it is never sent to the phone
+        const { data: ok, error } = await supabase.rpc('rc_join_group', { p_group: activeGroup.id, p_passcode: code, p_username: uName });
+        if (error) throw error;
+        if (!ok) { showToast("Incorrect passcode!", 'error'); return; }
+        checkMembership();
+        showToast('Joined group', 'success');
+        return;
+      }
       const { error } = await supabase.from('group_members').insert({ group_id: activeGroup.id, user_id: user.uid, username: uName, status: 'pending' });
       if (error) throw error;
       checkMembership();

@@ -150,10 +150,10 @@ const ProfileHMI = () => {
         const { data: memberRows } = await supabase.from('group_members').select('group_id').eq('user_id', uid);
         const groupIds = (memberRows || []).map(r => r.group_id);
         if (groupIds.length > 0) {
-          const { data: groupsData } = await supabase.from('groups').select('*, group_members(count)').in('id', groupIds);
+          const { data: groupsData } = await supabase.from('groups').select('id, name, admin_id, radius, is_private, pinned_message_id, created_at, group_members(count)').in('id', groupIds);
           setMyGroups(groupsData || []);
         }
-        const { count: ledCount } = await supabase.from('groups').select('*', { count: 'exact', head: true }).eq('admin_id', uid);
+        const { count: ledCount } = await supabase.from('groups').select('id', { count: 'exact', head: true }).eq('admin_id', uid);
         setGroupsLedCount(ledCount || 0);
 
       } catch (e) {

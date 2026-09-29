@@ -45,7 +45,7 @@ _MEMBERSHIP_SQL = text("""
     SELECT rm.role AS member_role, rm.status AS member_status, r.owner_id AS owner_id, r.status AS ride_status
     FROM rides r
     LEFT JOIN ride_members rm
-      ON rm.ride_id = r.id AND rm.user_id IN (:uid, :duid)
+      ON rm.ride_id = r.id AND rm.user_id::text IN (:uid, :duid)
     WHERE r.id = CAST(:ride_id AS uuid)
     LIMIT 1
 """)

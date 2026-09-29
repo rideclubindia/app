@@ -27,6 +27,12 @@ export const getAppUser = (firebaseUser: AppUser | null): AppUser | null => {
 // Ends both session types (Firebase and the email-code rie_token) so logout is complete for every user
 export const signOutApp = async (signOutFirebase: () => Promise<void>) => {
   try { localStorage.removeItem('rie_token'); } catch { /* ignore */ }
+  // Cached rides, SOS history, last GPS fix and drafts belong to this rider, not the next one on this device
+  try {
+    Object.keys(localStorage)
+      .filter((k) => /^(rc_|rideclub_|rtc_|waypoint-draft|policy_accepted_)/.test(k) && k !== 'rc-theme')
+      .forEach((k) => localStorage.removeItem(k));
+  } catch { /* ignore */ }
   try { sessionStorage.clear(); } catch { /* ignore */ }
   try { await signOutFirebase(); } catch { /* not signed in with Firebase */ }
 };

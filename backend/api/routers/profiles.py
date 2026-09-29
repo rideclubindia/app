@@ -1,4 +1,5 @@
 import json
+import logging
 from typing import Any, Dict, Optional
 
 from fastapi import APIRouter, Body, Depends, HTTPException, Request
@@ -11,6 +12,7 @@ from core.limiter import limiter
 from models.models import User
 
 # Profiles are no longer readable/writable with the public Supabase key; private fields go through here
+logger = logging.getLogger(__name__)
 router = APIRouter(tags=["profiles"])
 
 ADMIN_EMAILS = {"iharsharoyal@gmail.com"}
@@ -26,12 +28,12 @@ SELF_EDITABLE = {
 ADMIN_EDITABLE = SELF_EDITABLE | {"role", "status", "deleted_at", "email"}
 
 
-def _is_admin(user: User) -> bool:
+def is_admin(user: User) -> bool:
     return (user.email or "").lower() in ADMIN_EMAILS or str(user.role or "").lower() == "admin"
 
 
 def require_admin(user: User = Depends(get_current_user)) -> User:
-    if not _is_admin(user):
+    if not is_admin(user):
         raise HTTPException(status_code=403, detail="Admin only")
     return user
 
@@ -49,8 +51,8 @@ def _update(db: Session, profile_id: str, patch: Dict[str, Any], allowed: set) -
         db.commit()
     except Exception as e:
         db.rollback()
-        msg = str(getattr(e, "orig", e)).split("\n")[0]
-        raise HTTPException(status_code=400, detail=msg)
+        logger.warning("Profile update rejected: %s", type(e).__name__)
+        raise HTTPException(status_code=400, detail="Could not save these changes")
     if res.rowcount == 0:
         raise HTTPException(status_code=404, detail="Profile not found")
 
@@ -61,7 +63,7 @@ def my_profile(request: Request, db: Session = Depends(get_db), user: User = Dep
     row = db.execute(text(f"SELECT {PRIVATE_COLS} FROM profiles WHERE id = :id"), {"id": str(user.id)}).mappings().first()
     if not row:
         raise HTTPException(status_code=404, detail="Profile not found")
-    return {**dict(row), "is_admin": _is_admin(user)}
+    return {**dict(row), "is_admin": is_admin(user)}
 
 
 @router.patch("/me/profile")
@@ -125,5 +127,6 @@ def admin_delete_profile(request: Request, profile_id: str, db: Session = Depend
         db.commit()
     except Exception as e:
         db.rollback()
-        raise HTTPException(status_code=400, detail=str(getattr(e, "orig", e)).split("\n")[0])
+        logger.warning("Profile delete rejected: %s", type(e).__name__)
+        raise HTTPException(status_code=400, detail="Could not delete this account")
     return {"ok": True}

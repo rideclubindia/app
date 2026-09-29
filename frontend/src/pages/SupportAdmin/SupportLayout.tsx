@@ -70,7 +70,7 @@ const SupportLayout = () => {
       const twoHoursAgo = new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString();
       const [{ count: incidentsCount }, { count: groupsCount }, { count: navigationsCount }] = await Promise.all([
         supabase.from('pins').select('*', { count: 'exact', head: true }).eq('status', 'active').gte('created_at', twoHoursAgo),
-        supabase.from('groups').select('*', { count: 'exact', head: true }),
+        supabase.from('groups').select('id', { count: 'exact', head: true }),
         supabase.from('navigation_sessions').select('*', { count: 'exact', head: true }).eq('status', 'active')
       ]);
       setCounts({

@@ -1,3 +1,4 @@
+import asyncio
 from fastapi import FastAPI, Response
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
@@ -17,11 +18,29 @@ logging.basicConfig(
 )
 
 
+async def _purge_stale_locations():
+    # Live positions are only needed during a ride; drop them after it ends (or after 2 days)
+    from core.database import engine
+    from sqlalchemy import text
+    while True:
+        try:
+            with engine.begin() as conn:
+                conn.execute(text("SELECT public.rc_purge_stale_locations()"))
+        except Exception as e:
+            logging.getLogger(__name__).warning("Location purge skipped: %s", type(e).__name__)
+        await asyncio.sleep(6 * 3600)
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    # A known or short signing secret would let anyone forge a session for any rider
+    if len(settings.JWT_SECRET) < 24 or settings.JWT_SECRET.startswith("supersecret"):
+        raise RuntimeError("JWT_SECRET must be set to a random value of at least 24 characters")
     # Start the real-time platform (Redis store, location pipeline, sweeper)
     await gateway.start()
+    purge = asyncio.create_task(_purge_stale_locations())
     yield
+    purge.cancel()
     # Graceful shutdown: notify clients, drain connections, flush batches
     await gateway.stop()
 

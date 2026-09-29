@@ -7,6 +7,7 @@ import { useIncidentCategories, incidentIconMap } from '../../hooks/useIncidentC
 import { SearchInput } from '../../components/ui/SearchInput';
 import { renderToString } from 'react-dom/server';
 import { useToast } from '../../components/ToastContext';
+import { getMyProfile } from '../../lib/myProfile';
 
 const AdminIncidents = () => {
     const { showToast } = useToast();
@@ -102,8 +103,7 @@ const AdminIncidents = () => {
 
   const handleSave = async () => {
     setIsSubmitting(true);
-    const { data: sessionData } = await supabase.auth.getSession();
-    const userId = sessionData?.session?.user?.id;
+    const userId = (await getMyProfile())?.id;
 
     try {
       if (isAdding) {

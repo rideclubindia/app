@@ -1,4 +1,7 @@
+import hashlib
+
 from fastapi import Depends, HTTPException, status
+from sqlalchemy import Text, cast, func
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.orm import Session
 from core.database import get_db
@@ -39,12 +42,15 @@ def require_ride_access(db: Session, ride_id: str, user: User) -> None:
     if not ride:
         raise HTTPException(status_code=404, detail="Ride not found")
 
-    if ride.group_id == user.id:
+    # Rows store either the profile uuid or the login uid, which is derived from the verified email
+    my_ids = {str(user.id), hashlib.sha256((user.email or "").lower().encode()).hexdigest()[:28]}
+    if str(ride.group_id) in my_ids:
         return
 
     is_participant = db.query(RideParticipant).filter(
         RideParticipant.ride_id == ride_id,
-        RideParticipant.user_id == user.id,
+        cast(RideParticipant.user_id, Text).in_(list(my_ids)),
+        func.coalesce(RideParticipant.status, "approved").notin_(["pending", "rejected", "removed", "left"]),
     ).first()
     if not is_participant:
         raise HTTPException(status_code=403, detail="You do not have access to this ride")

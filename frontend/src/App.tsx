@@ -11,7 +11,7 @@ import { getDeterministicUuid, getAppUser } from './lib/user';
 import { auth } from './lib/firebase';
 import { getMyProfile } from './lib/myProfile';
 import { onAuthStateChanged } from 'firebase/auth';
-import { supabase, setSupabaseToken } from './lib/supabase';
+import { supabase, getDbToken } from './lib/supabase';
 import BannedScreen from './pages/BannedScreen';
 import { CookieConsent } from './components/CookieConsent';
 import { Capacitor } from '@capacitor/core';
@@ -190,30 +190,8 @@ const RequireAuth = ({ children }: { children: React.ReactNode }) => {
       setUser(effectiveUser);
       const userId = getDeterministicUuid(effectiveUser.uid);
       
-      // If logged in via Firebase, fetch Supabase token.
-      if (currentUser) {
-        try {
-          const idToken = await currentUser.getIdToken();
-          const apiBase = import.meta.env.VITE_API_URL || 'http://localhost:8000';
-          const res = await fetch(`${apiBase}/api/v1/auth/supabase-token`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ id_token: idToken })
-          });
-          if (res.ok) {
-            const { access_token } = await res.json();
-            setSupabaseToken(access_token);
-          } else {
-            console.error('Failed to exchange Firebase token for Supabase token');
-          }
-        } catch (err) {
-          console.error('Error fetching Supabase token', err);
-        }
-      } else if (rieToken) {
-        // Clear Supabase token to fallback to Anon key. Supabase will reject the local RIE token with a 401
-        // because it's not signed by Supabase's JWT secret.
-        setSupabaseToken('');
-      }
+      // Per-rider database token; the Supabase client refreshes it on demand
+      await getDbToken();
 
       try {
         // The backend creates the profile row at sign-in

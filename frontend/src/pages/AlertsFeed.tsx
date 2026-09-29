@@ -6,6 +6,7 @@ import { supabase } from '../lib/supabase';
 import { useToast } from '../components/ToastContext';
 import { useIncidentCategories, resolvePinIcon } from '../hooks/useIncidentCategories';
 import { filterActiveIncidents } from '../lib/incidentExpiry';
+import { getMyProfile, updateMyProfile } from '../lib/myProfile';
 
 const filters = ['All', 'Traffic Jam', 'Accidents', 'Road Closed', 'Vibe Check', 'Hazard'];
 
@@ -30,9 +31,9 @@ const AlertsFeed = () => {
         if (error) throw error;
         if (data) setAlerts(await filterActiveIncidents(data));
 
-        const { data: { user } } = await supabase.auth.getUser();
+        const user = await getMyProfile();
         if (user) {
-          await supabase.from('profiles').update({ alerts_last_viewed: Date.now() }).eq('id', user.id);
+          updateMyProfile({ alerts_last_viewed: Date.now() }).catch(() => {});
           const { data: views } = await supabase.from('alert_views').select('*').eq('user_id', user.id);
           if (views) {
              const map = new Map<string, number>();

@@ -64,7 +64,15 @@ async def upload_incident_photo(
     if len(content) > MAX_PHOTO_BYTES:
         raise HTTPException(status_code=400, detail="Image exceeds the 10MB size limit")
 
-    ext = (file.filename or "").rsplit(".", 1)[-1].lower() if file.filename and "." in file.filename else "jpg"
+    # Trust the file's bytes, not the client's filename or declared type
+    if content[:3] == b"\xff\xd8\xff":
+        ext, content_type = "jpg", "image/jpeg"
+    elif content[:8] == b"\x89PNG\r\n\x1a\n":
+        ext, content_type = "png", "image/png"
+    elif content[:4] == b"RIFF" and content[8:12] == b"WEBP":
+        ext, content_type = "webp", "image/webp"
+    else:
+        raise HTTPException(status_code=400, detail="Only JPEG, PNG, or WebP images are allowed")
     # One bucket and service-role path for incident, ride-cover and avatar photos, separated by folder
     folder = {"avatar": "avatars/", "ride": "rides/"}.get(kind, "")
     object_name = f"{folder}{int(time.time() * 1000)}-{secrets_lib.token_hex(6)}.{ext}"
