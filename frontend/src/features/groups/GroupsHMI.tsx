@@ -927,7 +927,7 @@ const GroupsHMI = () => {
                 <span className="text-[12px] font-semibold text-gray-400 uppercase tracking-wider">Members</span>
                 <div className="mt-2 card-app flex flex-col overflow-hidden divide-y divide-gray-100">
                   {groupMembers.map(member => (
-                    <div key={member.id} className="p-3 flex items-center justify-between">
+                    <div key={member.id} role="button" tabIndex={0} onClick={() => navigate(`/rider/${member.user_id}`)} className="p-3 flex items-center justify-between cursor-pointer hover:bg-gray-50">
                       <div className="flex items-center gap-3">
                         <div className="relative w-9 h-9 bg-gray-100 rounded-full flex items-center justify-center shrink-0">
                           <span className="text-gray-500 font-semibold text-[13px]">{member.username.substring(0,2).toUpperCase()}</span>
@@ -1117,7 +1117,7 @@ const GroupsHMI = () => {
               <div className="flex-1 overflow-y-auto hide-scrollbar px-4 py-4">
                 <div className="card-app flex flex-col overflow-hidden divide-y divide-gray-100">
                   {groupMembers.map(member => (
-                    <div key={member.id} className="p-3 flex items-center gap-3">
+                    <div key={member.id} role="button" tabIndex={0} onClick={() => navigate(`/rider/${member.user_id}`)} className="p-3 flex items-center gap-3 cursor-pointer hover:bg-gray-50">
                       <div className="relative w-9 h-9 bg-gray-100 rounded-full flex items-center justify-center shrink-0">
                         <span className="text-gray-500 font-semibold text-[13px]">{member.username.substring(0,2).toUpperCase()}</span>
                         {member.user_id === activeGroup.admin_id && (
@@ -1164,12 +1164,12 @@ const GroupsHMI = () => {
                     return (
                       <div key={msg.id} className={`flex w-full group ${isMe ? 'justify-end' : 'justify-start'}`}>
                         {!isMe && (
-                          <div className="w-7 h-7 bg-gray-200/70 rounded-full flex items-center justify-center mr-2 shrink-0 self-end mb-4">
+                          <div role="button" tabIndex={0} aria-label={`View ${msg.username}`} onClick={() => navigate(`/rider/${msg.user_id}`)} className="w-7 h-7 bg-gray-200/70 rounded-full flex items-center justify-center mr-2 shrink-0 self-end mb-4 cursor-pointer">
                             <span className="text-[11px] font-semibold text-gray-500">{msg.username.substring(0,1).toUpperCase()}</span>
                           </div>
                         )}
                         <div className={`flex flex-col max-w-[70%] ${isMe ? 'items-end' : 'items-start'}`}>
-                          {!isMe && <span className="text-[11px] font-semibold text-gray-400 mb-1 ml-1">{msg.username}</span>}
+                          {!isMe && <button type="button" onClick={() => navigate(`/rider/${msg.user_id}`)} className="text-[11px] font-semibold text-gray-500 mb-1 ml-1 hover:underline">{msg.username}</button>}
                           {msg.message_type === 'image' && msg.image_url ? (
                             <img src={msg.image_url} alt="" className="w-[180px] h-[180px] object-cover rounded-2xl" />
                           ) : msg.message_type === 'location' && msg.location_lat ? (

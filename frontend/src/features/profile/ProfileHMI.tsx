@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Settings, Bell, ShieldCheck, Check, Bike, LogOut, Heart, ChevronRight, History, UsersRound, LifeBuoy, MapPin, Target, Sunrise, Mountain, Route as RouteIcon } from 'lucide-react';
+import { Settings, Bell, ShieldCheck, Check, Camera, Bike, LogOut, Heart, ChevronRight, History, UsersRound, LifeBuoy, MapPin, Target, Sunrise, Mountain, Route as RouteIcon } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { auth } from '../../lib/firebase';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
@@ -277,14 +277,12 @@ const ProfileHMI = () => {
           <div className="absolute -top-16 -right-16 w-48 h-48 rounded-full bg-[#FF6B22]/25 blur-3xl pointer-events-none" />
           <div className="relative p-5">
             <div className="flex items-center gap-4">
-              <div className="relative shrink-0">
+              <button type="button" onClick={() => navigate('/edit-profile')} aria-label="Change profile photo" className="relative shrink-0 cursor-pointer">
                 <img src={avatarUrl} alt="" referrerPolicy="no-referrer" onError={(e) => { const f = initialsImage(fullName); if (e.currentTarget.src !== f) e.currentTarget.src = f; }} className="w-[72px] h-[72px] rounded-full object-cover ring-2 ring-white/20 bg-white/10" />
-                {stats.trust >= 80 && (
-                  <span className="absolute -bottom-0.5 -right-0.5 w-6 h-6 rounded-full bg-[#FF6B22] ring-2 ring-[#14161B] flex items-center justify-center" title="Verified rider">
-                    <Check className="w-3.5 h-3.5 text-white" strokeWidth={3} />
-                  </span>
-                )}
-              </div>
+                <span className="absolute -bottom-0.5 -right-0.5 w-7 h-7 rounded-full bg-white ring-2 ring-[#14161B] flex items-center justify-center" title="Change photo">
+                  <Camera className="w-3.5 h-3.5 text-gray-900" strokeWidth={2.5} />
+                </span>
+              </button>
               <div className="flex-1 min-w-0">
                 <h2 className="text-[20px] font-bold leading-tight truncate">{fullName}</h2>
                 <p className="text-[13px] text-white/60 truncate">{profileData?.email || user?.email}</p>
@@ -311,18 +309,7 @@ const ProfileHMI = () => {
               ))}
             </div>
 
-            <div className="grid grid-cols-2 gap-2 mt-5">
-              <button onClick={() => navigate('/edit-profile')} className="h-11 rounded-xl bg-white text-gray-950 text-[14px] font-semibold active:scale-[0.99] cursor-pointer">Edit profile</button>
-              <button
-                onClick={async () => {
-                  const text = `${fullName} rides with Ride Club`;
-                  try { if (navigator.share) await navigator.share({ title: 'Ride Club', text, url: 'https://rideclub.in' }); else { await navigator.clipboard.writeText(`${text} https://rideclub.in`); showToast('Link copied', 'success'); } } catch { /* share dismissed */ }
-                }}
-                className="h-11 rounded-xl bg-white/10 text-white text-[14px] font-semibold active:scale-[0.99] cursor-pointer"
-              >
-                Share profile
-              </button>
-            </div>
+            <button onClick={() => navigate('/edit-profile')} className="w-full h-11 mt-5 rounded-xl bg-white text-gray-950 text-[14px] font-semibold active:scale-[0.99] cursor-pointer">Edit profile</button>
           </div>
         </section>
 

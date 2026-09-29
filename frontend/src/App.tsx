@@ -65,6 +65,7 @@ const SavedLocationsList = lazy(() => import('./pages/SavedLocationsList'));
 const MyIncidents = lazy(() => import('./pages/MyIncidents'));
 const ReportIncident = lazy(() => import('./pages/ReportIncident'));
 const EditProfile = lazy(() => import('./pages/EditProfile'));
+const RiderProfile = lazy(() => import('./pages/RiderProfile'));
 const GroupsHMI = lazy(() => import('./features/groups/GroupsHMI'));
 const RidePlusHMI = lazy(() => import('./features/rides/RidePlusHMI'));
 const RideHistory = lazy(() => import('./pages/RideHistory'));
@@ -778,6 +779,7 @@ function App() {
                 <Route path="/incident/:id" element={<RequireAuth><IncidentDetail /></RequireAuth>} />
                 <Route path="/route-planner" element={<RequireAuth><RoutesScreen /></RequireAuth>} />
                 <Route path="/navigation" element={<RequireAuth><Navigation /></RequireAuth>} />
+                <Route path="/rider/:riderId" element={<RequireAuth><RiderProfile /></RequireAuth>} />
                 <Route path="/solo-ride" element={<RequireAuth><SoloRide /></RequireAuth>} />
                 <Route path="/saved-locations" element={<RequireAuth><SavedLocationsList /></RequireAuth>} />
                 <Route path="/edit-profile" element={<RequireAuth><EditProfile /></RequireAuth>} />

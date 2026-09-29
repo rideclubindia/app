@@ -19,6 +19,8 @@ class Settings(BaseSettings):
     # get_current_user has verified the caller's own token.
     SUPABASE_URL: str = Field("", env="SUPABASE_URL")
     SUPABASE_SERVICE_ROLE_KEY: str = Field("", env="SUPABASE_SERVICE_ROLE_KEY")
+    # Newer Supabase projects issue an sb_secret_ key instead; either name works
+    SUPABASE_SECRET_KEY: str = Field("", env="SUPABASE_SECRET_KEY")
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 7 # 7 days
     
     # Database (Set this to your Supabase PostgreSQL connection string)
@@ -71,3 +73,5 @@ class Settings(BaseSettings):
         env_file_encoding = 'utf-8'
 
 settings = Settings()
+if settings.SUPABASE_SECRET_KEY:
+    settings.SUPABASE_SERVICE_ROLE_KEY = settings.SUPABASE_SECRET_KEY

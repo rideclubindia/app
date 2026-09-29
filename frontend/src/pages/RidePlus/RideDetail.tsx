@@ -678,7 +678,7 @@ const RideDetail = () => {
                 {leader && (
                   <section>
                     <h2 className="text-[16px] font-black text-gray-950 mb-2.5">Ride leader</h2>
-                    <div className="card-app p-3.5 flex items-center gap-3">
+                    <div role="button" tabIndex={0} onClick={() => navigate(`/rider/${leader.user_id}`)} className="card-app p-3.5 flex items-center gap-3 cursor-pointer">
                       <img src={leader.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(leader.display_name || 'Leader')}`} alt={leader.display_name || 'Leader'} onError={(e) => { const n = encodeURIComponent((e.currentTarget.alt || 'Rider')); if (!e.currentTarget.src.includes('ui-avatars')) e.currentTarget.src = 'https://ui-avatars.com/api/?background=ff6b22&color=fff&name=' + n; }} className="w-12 h-12 rounded-full object-cover shrink-0" />
                       <div className="min-w-0 flex-1">
                         <p className="text-[15px] font-bold text-gray-950 truncate">{leader.display_name || 'Ride leader'}{leader.user_id === myUuid ? ' (you)' : ''}</p>
@@ -707,7 +707,7 @@ const RideDetail = () => {
                     ) : (
                       <ul className="divide-y divide-gray-100">
                         {shownRiders.map((m) => (
-                          <li key={m.id || m.user_id} className="flex items-center gap-3 px-3.5 py-2.5 min-h-[56px]">
+                          <li key={m.id || m.user_id} role="button" tabIndex={0} onClick={() => navigate(`/rider/${m.user_id}`)} className="flex items-center gap-3 px-3.5 py-2.5 min-h-[56px] cursor-pointer hover:bg-gray-50">
                             <img src={m.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(m.display_name || 'Rider')}`} alt={m.display_name || 'Rider'} onError={(e) => { const n = encodeURIComponent((e.currentTarget.alt || 'Rider')); if (!e.currentTarget.src.includes('ui-avatars')) e.currentTarget.src = 'https://ui-avatars.com/api/?background=ff6b22&color=fff&name=' + n; }} className="w-10 h-10 rounded-full object-cover shrink-0" />
                             <span className="flex-1 min-w-0 text-[14px] font-semibold text-gray-900 truncate">{m.display_name || 'Rider'}{m.user_id === myUuid ? ' (you)' : ''}</span>
                             <span className={`shrink-0 text-[11.5px] font-bold px-2.5 py-1 rounded-full ${m.role === 'admin' ? 'text-amber-700 bg-amber-50' : m.status === 'pending' ? 'text-gray-600 bg-gray-100' : 'text-emerald-700 bg-emerald-50'}`}>

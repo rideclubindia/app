@@ -2425,6 +2425,7 @@ const LiveRide = () => {
                   {typeof tappedRider.speed === 'number' ? ` · ${tappedRider.speed > 0 ? `${Math.round(tappedRider.speed)} km/h` : 'Stopped'}` : ''}
                 </p>
               </div>
+              <button onClick={() => navigate(`/rider/${tappedRider.user_id}`)} className="h-11 px-4 rounded-full border border-gray-200 text-[13px] font-semibold text-gray-900 shrink-0">Profile</button>
               <button onClick={() => setTappedRiderId(null)} aria-label="Close rider card" className="w-11 h-11 rounded-full bg-gray-100 flex items-center justify-center text-gray-600 shrink-0">
                 <X className="w-5 h-5" />
               </button>

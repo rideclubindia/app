@@ -13,6 +13,8 @@ import { useToast } from '../../components/ToastContext';
 import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { getDeterministicUuid, getAppUser } from '../../lib/user';
+import { uploadImage, UploadError } from '../../lib/mediaUpload';
+import { useConfirm } from '../../components/ConfirmDialog';
 import img16 from '../../assets/WebsiteImages/img16.jpg';
 const imgSoloRide = img16;
 
@@ -32,6 +34,7 @@ const STEPS = ['Basics', 'Route', 'Details', 'Review'] as const;
 const CreateRide = () => {
   const navigate = useNavigate();
   const { showToast } = useToast();
+  const confirm = useConfirm();
 
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
@@ -563,27 +566,15 @@ const CreateRide = () => {
         ? new Date().toISOString()
         : new Date(`${formData.ride_date}T${formData.ride_time}`).toISOString();
 
-      let finalImageUrl = coverPreview;
+      // Only a real uploaded URL is saved; a local preview (blob:) or bundled asset path is never stored on the ride
+      let finalImageUrl: string | null = coverPreview && /^https?:\/\//.test(coverPreview) ? coverPreview : null;
       if (coverFile) {
-        const MAX_FILE_SIZE = 10 * 1024 * 1024;
-        if (!coverFile.type.startsWith('image/')) {
-          showToast('Cover file must be an image.', 'error');
-          setLoading(false);
-          return;
-        }
-        if (coverFile.size > MAX_FILE_SIZE) {
-          showToast('Cover image exceeds the 10MB size limit.', 'error');
-          setLoading(false);
-          return;
-        }
-        const fileExt = coverFile.name.split('.').pop();
-        const fileName = `${Date.now()}-cover.${fileExt}`;
-        const { error: uploadErr } = await supabase.storage.from('incident-photos').upload(fileName, coverFile);
-        if (!uploadErr) {
-          finalImageUrl = supabase.storage.from('incident-photos').getPublicUrl(fileName).data.publicUrl;
-        } else {
-          console.error("Failed to upload cover image, using default", uploadErr);
-          showToast('Failed to upload cover image — using a default image instead.', 'info');
+        try {
+          finalImageUrl = await uploadImage(coverFile, 'ride');
+        } catch (e: any) {
+          const msg = e instanceof UploadError ? e.message : 'Photo upload failed.';
+          const keep = await confirm({ title: 'Ride photo not uploaded', message: `${msg} Create the ride without this photo?`, confirmLabel: 'Continue without photo', cancelLabel: 'Go back', variant: 'warning' }).catch(() => false);
+          if (!keep) { setLoading(false); return; }
         }
       }
 

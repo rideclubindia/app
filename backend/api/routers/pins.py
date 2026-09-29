@@ -24,11 +24,24 @@ ALLOWED_PHOTO_MIME_TYPES = {"image/jpeg", "image/png", "image/webp"}
 MAX_PHOTO_BYTES = 10 * 1024 * 1024  # matches the bucket's own 10MB limit
 
 
+def _storage_admin_headers() -> dict:
+    """Admin headers for Supabase Storage. New sb_secret_ keys are not JWTs, so pair them with a short-lived
+    service_role token signed with the project JWT secret; legacy service_role JWT keys are used as-is."""
+    key = settings.SUPABASE_SERVICE_ROLE_KEY
+    if key.startswith("sb_secret_") and settings.SUPABASE_JWT_SECRET:
+        import jwt as pyjwt
+        now = int(time.time())
+        token = pyjwt.encode({"role": "service_role", "iss": "supabase", "iat": now, "exp": now + 300}, settings.SUPABASE_JWT_SECRET, algorithm="HS256")
+        return {"apikey": key, "Authorization": f"Bearer {token}"}
+    return {"apikey": key, "Authorization": f"Bearer {key}"}
+
+
 @router.post("/photo-upload")
 @limiter.limit("30/minute")
 async def upload_incident_photo(
     request: Request,
     file: UploadFile = File(...),
+    kind: str = "incident",
     user: User = Depends(get_current_user),
 ):
     """Proxies an incident-photo upload through the service-role key.
@@ -52,7 +65,9 @@ async def upload_incident_photo(
         raise HTTPException(status_code=400, detail="Image exceeds the 10MB size limit")
 
     ext = (file.filename or "").rsplit(".", 1)[-1].lower() if file.filename and "." in file.filename else "jpg"
-    object_name = f"{int(time.time() * 1000)}-{secrets_lib.token_hex(6)}.{ext}"
+    # One bucket and service-role path for incident, ride-cover and avatar photos, separated by folder
+    folder = {"avatar": "avatars/", "ride": "rides/"}.get(kind, "")
+    object_name = f"{folder}{int(time.time() * 1000)}-{secrets_lib.token_hex(6)}.{ext}"
 
     upload_url = f"{settings.SUPABASE_URL}/storage/v1/object/{INCIDENT_PHOTO_BUCKET}/{object_name}"
     try:
@@ -60,11 +75,7 @@ async def upload_incident_photo(
             resp = await client.post(
                 upload_url,
                 content=content,
-                headers={
-                    "Authorization": f"Bearer {settings.SUPABASE_SERVICE_ROLE_KEY}",
-                    "apikey": settings.SUPABASE_SERVICE_ROLE_KEY,
-                    "Content-Type": content_type,
-                },
+                headers={**_storage_admin_headers(), "Content-Type": content_type},
             )
     except httpx.HTTPError as e:
         logger.exception(f"Photo upload request failed: {e}")

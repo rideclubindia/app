@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, Save, Loader2, User, Phone, Droplet, ShieldAlert, Bike, Hash } from 'lucide-react';
+import { ArrowLeft, Save, Loader2, User, Phone, Droplet, ShieldAlert, Bike, Hash, Camera, Trash2 } from 'lucide-react';
+import { uploadImage, UploadError } from '../lib/mediaUpload';
+import { initialsImage } from '../hooks/useAvatar';
 import { useNavigate } from 'react-router-dom';
 import { auth } from '../lib/firebase';
 import { supabase } from '../lib/supabase';
@@ -13,6 +15,9 @@ const EditProfile = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [profileId, setProfileId] = useState<string | null>(null);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [photoBusy, setPhotoBusy] = useState<'uploading' | 'removing' | null>(null);
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   const [formData, setFormData] = useState({
     full_name: '',
@@ -79,6 +84,7 @@ const EditProfile = () => {
             }
           }
 
+          setAvatarUrl(data.avatar_url || null);
           setFormData({
             full_name: data.full_name || '',
             phone_number: data.phone_number || '',
@@ -98,6 +104,39 @@ const EditProfile = () => {
 
     fetchProfile();
   }, [navigate, showToast]);
+
+  // Photo changes save immediately to profiles.avatar_url, the single source every screen reads
+  const changePhoto = async (file: File | undefined) => {
+    if (!file || !profileId) return;
+    setPhotoBusy('uploading');
+    try {
+      const url = await uploadImage(file, 'avatar');
+      const { error } = await supabase.from('profiles').update({ avatar_url: url }).eq('id', profileId);
+      if (error) throw error;
+      setAvatarUrl(url);
+      showToast('Profile photo updated', 'success');
+    } catch (e: any) {
+      showToast(e instanceof UploadError ? e.message : 'Could not save your photo. Try again.', 'error');
+    } finally {
+      setPhotoBusy(null);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
+  const removePhoto = async () => {
+    if (!profileId || !avatarUrl) return;
+    setPhotoBusy('removing');
+    try {
+      const { error } = await supabase.from('profiles').update({ avatar_url: null }).eq('id', profileId);
+      if (error) throw error;
+      setAvatarUrl(null);
+      showToast('Profile photo removed', 'success');
+    } catch {
+      showToast('Could not remove your photo. Try again.', 'error');
+    } finally {
+      setPhotoBusy(null);
+    }
+  };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -176,6 +215,37 @@ const EditProfile = () => {
             </div>
           ) : (
             <div className="grid grid-cols-1 landscape:grid-cols-3 gap-4 max-w-[1200px]">
+
+              {/* Profile photo */}
+              <div className="bg-white border border-gray-100 rounded-[8px] p-4 shadow-sm flex items-center gap-4 landscape:col-span-3">
+                <div className="relative shrink-0">
+                  <img
+                    src={avatarUrl || initialsImage(formData.full_name || 'Rider')}
+                    alt=""
+                    referrerPolicy="no-referrer"
+                    onError={(e) => { const f = initialsImage(formData.full_name || 'Rider'); if (e.currentTarget.src !== f) e.currentTarget.src = f; }}
+                    className="w-20 h-20 rounded-full object-cover bg-gray-100"
+                  />
+                  {photoBusy && (
+                    <div className="absolute inset-0 rounded-full bg-black/45 flex items-center justify-center"><Loader2 className="w-6 h-6 text-white animate-spin" /></div>
+                  )}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-[14px] font-semibold text-[#111111]">Profile photo</p>
+                  <p className="text-[12px] text-gray-500 mt-0.5">Shown to riders in rides, groups and messages.</p>
+                  <div className="flex gap-2 mt-3">
+                    <button type="button" onClick={() => fileInputRef.current?.click()} disabled={!!photoBusy} className="h-10 px-3.5 rounded-xl bg-[#FF5A00] text-white text-[13px] font-semibold flex items-center gap-1.5 whitespace-nowrap disabled:opacity-50">
+                      <Camera className="w-4 h-4" /> {photoBusy === 'uploading' ? 'Uploading…' : avatarUrl ? 'Change photo' : 'Add photo'}
+                    </button>
+                    {avatarUrl && (
+                      <button type="button" onClick={removePhoto} disabled={!!photoBusy} className="h-10 px-3.5 rounded-xl border border-gray-200 text-[13px] font-semibold text-gray-700 flex items-center gap-1.5 disabled:opacity-50">
+                        <Trash2 className="w-4 h-4" /> Remove
+                      </button>
+                    )}
+                  </div>
+                  <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={(e) => changePhoto(e.target.files?.[0])} />
+                </div>
+              </div>
 
               {/* Personal Details */}
               <div className="bg-white border border-gray-100 rounded-[8px] p-4 shadow-sm flex flex-col gap-3">
