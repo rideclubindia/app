@@ -9,6 +9,7 @@ import { Helmet } from 'react-helmet-async';
 import { getDeterministicUuid, getAppUser, signOutApp } from '../../lib/user';
 import { useAvatar, initialsImage } from '../../hooks/useAvatar';
 import { useLocationStore } from '../../store/useLocationStore';
+import SafetyStatus from '../../components/SafetyStatus';
 
 const getDistanceKm = (lat1: number, lon1: number, lat2: number, lon2: number) => {
   const R = 6371;
@@ -333,6 +334,10 @@ const ProfileHMI = () => {
 
         {tab === 'overview' && (
         <>
+        <section>
+          <h3 className="text-[13px] font-semibold text-gray-500 uppercase tracking-wide mb-2 px-1">Safety & permissions</h3>
+          <SafetyStatus />
+        </section>
         {/* Personal and safety details saved in Edit Profile */}
         <section>
           <div className="flex items-center justify-between mb-2 px-1">

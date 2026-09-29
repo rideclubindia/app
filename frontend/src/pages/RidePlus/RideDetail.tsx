@@ -14,6 +14,7 @@ import { useToast } from '../../components/ToastContext';
 import { useLocationStore } from '../../store/useLocationStore';
 import { useIncidentCategories, incidentIconMap } from '../../hooks/useIncidentCategories';
 import { getDeterministicUuid, getAppUser } from '../../lib/user';
+import { useRideStartGate } from '../../components/RideStartGate';
 import { downloadRoute } from '../../lib/offlineDownload';
 
 type ReportStage = null | 'category' | 'details' | 'location' | 'success';
@@ -32,6 +33,8 @@ const CATEGORY_SUBTITLES: Record<string, string> = {
 const RideDetail = () => {
   const { id: rideId } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { ensureReady, gate } = useRideStartGate();
+  const [starting, setStarting] = useState(false);
   const { showToast } = useToast();
   const { categories } = useIncidentCategories();
 
@@ -344,6 +347,26 @@ const RideDetail = () => {
     } catch (e) {
       console.error('Offline route download failed', e);
       setOffline({ state: 'error', done: 0, total: 0 });
+    }
+  };
+
+  // Starting a scheduled ride: emergency contact first, one live ride at a time, then mark it live (the database enforces both too)
+  const startRide = async () => {
+    if (isLive) { if (await ensureReady()) navigate(`/ride-plus/live/${ride.id}`); return; }
+    if (!(await ensureReady())) return;
+    setStarting(true);
+    try {
+      const { data: other } = await supabase.from('rides').select('id, name').eq('owner_id', ride.owner_id).eq('status', 'live').neq('id', ride.id).limit(1);
+      if (other?.length) { showToast(`End your live ride "${other[0].name || 'current ride'}" before starting this one.`, 'error'); return; }
+      const { error } = await supabase.from('rides').update({ status: 'live' }).eq('id', ride.id);
+      if (error) {
+        const m = String(error.message || '');
+        showToast(m.includes('EMERGENCY_CONTACT_REQUIRED') ? 'Add an emergency contact before starting a ride.' : m.includes('ALREADY_IN_LIVE_RIDE') ? 'You already have a live ride. End it first.' : 'Could not start the ride. Try again.', 'error');
+        return;
+      }
+      navigate(`/ride-plus/live/${ride.id}`);
+    } finally {
+      setStarting(false);
     }
   };
 
@@ -767,18 +790,19 @@ const RideDetail = () => {
           </div>
         </div>
 
+        {gate}
         <div className="shrink-0 px-4 pt-3 pb-[104px] max-w-[560px] w-full mx-auto flex gap-2.5">
           {isOwner ? (
             <>
               <button onClick={() => navigate('/ride-plus/create', { state: { editRideId: ride.id } })} className="min-h-[56px] px-5 card-app text-gray-900 font-bold text-[15px] rounded-full cursor-pointer flex items-center gap-2">
                 <Pencil className="w-4 h-4" /> Edit
               </button>
-              <button onClick={() => navigate(`/ride-plus/live/${ride.id}`)} className="flex-1 min-h-[56px] btn-app-primary text-white font-bold text-[16px] rounded-full cursor-pointer">
-                {isLive ? 'Open live ride' : 'Manage & start ride'}
+              <button onClick={startRide} disabled={starting} className="flex-1 min-h-[56px] btn-app-primary text-white font-bold text-[16px] rounded-full cursor-pointer disabled:opacity-60 flex items-center justify-center gap-2">
+                {starting && <Loader2 className="w-5 h-5 animate-spin" />}{isLive ? 'Open live ride' : 'Start ride'}
               </button>
             </>
           ) : isMember ? (
-            <button onClick={() => navigate(`/ride-plus/live/${ride.id}`)} className="w-full min-h-[56px] btn-app-primary text-white font-bold text-[16px] rounded-full cursor-pointer">
+            <button onClick={async () => { if (isLive && !(await ensureReady())) return; navigate(`/ride-plus/live/${ride.id}`); }} className="w-full min-h-[56px] btn-app-primary text-white font-bold text-[16px] rounded-full cursor-pointer">
               {isLive ? 'Join live ride' : "You're going · Open ride"}
             </button>
           ) : (

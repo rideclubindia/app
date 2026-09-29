@@ -9,6 +9,7 @@ import { useLocationStore } from '../store/useLocationStore';
 import { useOrientationLock } from '../hooks/useOrientationLock';
 import { getRouteOrigin } from '../lib/routeOrigin';
 import { requestLocation, openLocationSettings, canOpenSettings } from '../lib/locationPermission';
+import { notify } from '../lib/notify';
 
 // Standalone navigation: current location, traffic, route options and search (with stops). Nothing else.
 
@@ -105,6 +106,18 @@ export default function Navigation() {
       m.removeLayer('traffic');
     }
   }, [traffic, mapReady]);
+
+  // Notify once on arrival; re-arms only after moving 200m away or picking a new destination
+  const arrivedRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!navigating || !me || !dest) return;
+    const key = `${dest.lat},${dest.lng}`;
+    const m = turf.distance([me.lng, me.lat], [dest.lng, dest.lat], { units: 'meters' });
+    if (m <= 60 && arrivedRef.current !== key) {
+      arrivedRef.current = key;
+      notify({ title: 'You have arrived', body: `You reached ${dest.name}.`, route: '/navigation', tag: 'nav-arrival' });
+    } else if (m > 200 && arrivedRef.current === key) arrivedRef.current = null;
+  }, [navigating, me, dest]);
 
   // Routes: current location → stops → destination
   const hasFix = me != null;

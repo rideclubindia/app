@@ -4,10 +4,12 @@ import { ChevronLeft, Key, ArrowRight, ShieldCheck, Radio, Users, MapPin, Calend
 import { supabase } from '../../lib/supabase';
 import { auth } from '../../lib/firebase';
 import { useToast } from '../../components/ToastContext';
+import { useRideStartGate } from '../../components/RideStartGate';
 import { getDeterministicUuid } from '../../lib/user';
 
 const JoinRide = () => {
   const navigate = useNavigate();
+  const { ensureReady, gate } = useRideStartGate();
   const { showToast } = useToast();
   
   const [code, setCode] = useState('');
@@ -113,7 +115,9 @@ const JoinRide = () => {
       }
 
       showToast(`Joined ride: ${ride.name}`, 'success');
-      navigate(`/ride-plus/live/${ride.id}`);
+      // Live rides need an emergency contact first; scheduled rides open their details
+      if (ride.status === 'live') navigate((await ensureReady()) ? `/ride-plus/live/${ride.id}` : `/ride-plus/view/${ride.id}`);
+      else navigate(`/ride-plus/view/${ride.id}`);
 
     } catch (err: any) {
       showToast(err.message || 'Failed to request joining ride', 'error');
@@ -124,6 +128,7 @@ const JoinRide = () => {
 
   return (
     <div className="w-full h-full bg-[#F3F4F6] flex flex-col font-sans overflow-hidden">
+      {gate}
       {/* Top App Header */}
       <div className="bg-white px-5 py-3 border-b border-gray-200/80 shadow-2xs flex items-center justify-between shrink-0 z-10">
         <div className="flex items-center gap-3">

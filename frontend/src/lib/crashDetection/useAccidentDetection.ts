@@ -1,6 +1,7 @@
 import { Capacitor, type PluginListenerHandle } from '@capacitor/core';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { apiClient } from '../apiClient';
+import { notify } from '../notify';
 import { enqueueSyncEvent, getPendingSyncEvents } from '../offlineSyncDB';
 import { flushQueuedEmergencyEvents } from './emergencyManager';
 import { CrashDetectionEngine, type EngineDebugSnapshot } from './engine';
@@ -132,6 +133,7 @@ export function useAccidentDetection({ rideId, enabled, speedKph, getLocation, o
     };
     recordRef.current = rec;
     writeLog(rec);
+    notify({ title: 'Possible accident detected', body: 'Are you OK? Open RideClub to cancel before your emergency contact is alerted.', route: `/ride-plus/live/${rideId}`, tag: 'accident' });
     try { localStorage.setItem(PENDING_KEY, JSON.stringify({ candidate, rideId, expiresAt: expiresAtRef.current, rec })); } catch { /* ignore */ }
     setSecondsLeft(Math.max(0, Math.ceil((expiresAtRef.current - Date.now()) / 1000)));
     setLevel('POSSIBLE_ACCIDENT');

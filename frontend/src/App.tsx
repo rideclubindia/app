@@ -66,6 +66,7 @@ const MyIncidents = lazy(() => import('./pages/MyIncidents'));
 const ReportIncident = lazy(() => import('./pages/ReportIncident'));
 const EditProfile = lazy(() => import('./pages/EditProfile'));
 const RiderProfile = lazy(() => import('./pages/RiderProfile'));
+const AppNotifier = lazy(() => import('./components/AppNotifier'));
 const GroupsHMI = lazy(() => import('./features/groups/GroupsHMI'));
 const RidePlusHMI = lazy(() => import('./features/rides/RidePlusHMI'));
 const RideHistory = lazy(() => import('./pages/RideHistory'));
@@ -282,6 +283,7 @@ const RequireAuth = ({ children }: { children: React.ReactNode }) => {
   return (
     <>
       {children}
+      <AppNotifier />
       {needsPolicyAcceptance && <PolicyAcceptance onAccept={() => setNeedsPolicyAcceptance(false)} />}
     </>
   );

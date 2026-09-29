@@ -15,6 +15,7 @@ import 'maplibre-gl/dist/maplibre-gl.css';
 import { getDeterministicUuid, getAppUser } from '../../lib/user';
 import { uploadImage, UploadError } from '../../lib/mediaUpload';
 import { useConfirm } from '../../components/ConfirmDialog';
+import { useRideStartGate } from '../../components/RideStartGate';
 import img16 from '../../assets/WebsiteImages/img16.jpg';
 const imgSoloRide = img16;
 
@@ -35,6 +36,30 @@ const CreateRide = () => {
   const navigate = useNavigate();
   const { showToast } = useToast();
   const confirm = useConfirm();
+  const { ensureReady, gate } = useRideStartGate();
+  // One live ride at a time: if the rider is already in one, only scheduled rides can be created
+  const [activeRideId, setActiveRideId] = useState<string | null>(null);
+  useEffect(() => {
+    const u = getAppUser(auth.currentUser);
+    if (!u) return;
+    const memberId = u.uid.length === 36 ? u.uid : getDeterministicUuid(u.uid);
+    (async () => {
+      const [{ data: owned }, { data: memberOf }] = await Promise.all([
+        supabase.from('rides').select('id').eq('owner_id', u.uid).eq('status', 'live').limit(5),
+        supabase.from('ride_members').select('ride_id').in('user_id', [u.uid, memberId]).limit(50),
+      ]);
+      let live = (owned || []).map((r: any) => r.id);
+      const ids = (memberOf || []).map((m: any) => m.ride_id);
+      if (ids.length) {
+        const { data } = await supabase.from('rides').select('id').in('id', ids).eq('status', 'live');
+        live = live.concat((data || []).map((r: any) => r.id));
+      }
+      const other = live.find((rid: string) => rid !== editRideId) || null;
+      setActiveRideId(other);
+      if (other && !editRideId) setIsInstant(false);
+    })().catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
@@ -551,6 +576,13 @@ const CreateRide = () => {
       showToast('Please select at least a START and END point on the map.', 'error');
       return;
     }
+    if (isInstant && !isEditMode) {
+      if (activeRideId) {
+        showToast('You are already in a live ride. Schedule this ride instead, or end your current ride first.', 'error');
+        return;
+      }
+      if (!(await ensureReady())) return;
+    }
 
     setLoading(true);
     try {
@@ -657,10 +689,12 @@ const CreateRide = () => {
       } else {
         showToast(`Ride created! Code: ${rideCode}`, 'success');
       }
-      navigate(`/ride-plus/live/${rideId}`);
+      // Only a ride that starts now opens the live screen; a scheduled ride opens its details
+      navigate(isInstant && !isEditMode ? `/ride-plus/live/${rideId}` : `/ride-plus/view/${rideId}`);
 
     } catch (err: any) {
-      showToast(err.message || (isEditMode ? 'Failed to update ride' : 'Failed to create ride'), 'error');
+      const msg = String(err?.message || '');
+      showToast(msg.includes('EMERGENCY_CONTACT_REQUIRED') ? 'Add an emergency contact before starting a ride.' : msg.includes('ALREADY_IN_LIVE_RIDE') ? 'You are already in a live ride. End it first, or schedule this ride.' : msg || (isEditMode ? 'Failed to update ride' : 'Failed to create ride'), 'error');
     } finally {
       setLoading(false);
     }
@@ -1130,14 +1164,14 @@ const CreateRide = () => {
             <div className="grid grid-cols-2 gap-2">
               <button
                 onClick={() => {
-                  if (restrictInstant && !isEditMode) { showToast('You already have an active ride. Leave or end it to create an instant ride.', 'error'); return; }
+                  if ((restrictInstant || activeRideId) && !isEditMode) { showToast('You already have an active ride. Leave or end it to create an instant ride.', 'error'); return; }
                   setIsInstant(true);
                 }}
                 className={`rounded-2xl p-3.5 text-left ${chip(isInstant)}`}
               >
                 <Zap className="w-5 h-5" />
                 <p className="text-[15px] font-bold mt-2">Ride now</p>
-                <p className="text-[12px] text-gray-500 mt-0.5">Starts as soon as you publish</p>
+                <p className="text-[12px] text-gray-500 mt-0.5">{activeRideId && !isEditMode ? 'Unavailable: you are already in a live ride' : 'Starts as soon as you publish'}</p>
               </button>
               <button onClick={() => setIsInstant(false)} className={`rounded-2xl p-3.5 text-left ${chip(!isInstant)}`}>
                 <Calendar className="w-5 h-5" />
@@ -1280,6 +1314,7 @@ const CreateRide = () => {
       )}
 
       {footer}
+      {gate}
       <input ref={coverInputRef} type="file" accept="image/*" className="hidden" onChange={handleCoverSelect} />
     </div>
   );
