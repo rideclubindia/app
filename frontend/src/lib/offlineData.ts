@@ -14,11 +14,3 @@ export const readOfflineCopy = <T>(key: string): T | null => {
   }
 };
 
-/** Use fresh data when the query succeeded; otherwise fall back to the saved copy. */
-export const withOfflineCopy = <T>(key: string, fresh: T | null | undefined, error: unknown): T | null => {
-  if (!error && fresh != null) {
-    saveOfflineCopy(key, fresh);
-    return fresh;
-  }
-  return readOfflineCopy<T>(key) ?? fresh ?? null;
-};

@@ -2,8 +2,6 @@ import React from 'react';
 
 export type VibeIconName = 'vibe' | 'fire' | 'music' | 'coffee' | 'car' | 'camera';
 
-export const VIBE_ICONS: VibeIconName[] = ['vibe', 'fire', 'music', 'coffee', 'car', 'camera'];
-
 interface VibeCheckIconProps {
   icon?: VibeIconName;
   size?: number; // px

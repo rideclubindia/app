@@ -49,12 +49,3 @@ export const getCachedTile = async (url: string): Promise<ArrayBuffer | null> =>
     return null;
   }
 };
-
-export const clearTileCache = async () => {
-  try {
-    const db = await initDB();
-    await db.clear('tiles');
-  } catch (error) {
-    console.error('Failed to clear tile cache:', error);
-  }
-};

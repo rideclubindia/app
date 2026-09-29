@@ -32,6 +32,7 @@ import java.util.List;
 public class CrashSensorPlugin extends Plugin implements SensorEventListener {
 
   private static final long FLUSH_INTERVAL_MS = 50; // batches, not per-sample bridge calls
+  private static final int SAMPLING_PERIOD_US = 10_000;
 
   private SensorManager sensorManager;
   private Sensor accelerometer;
@@ -75,10 +76,9 @@ public class CrashSensorPlugin extends Plugin implements SensorEventListener {
     }
     if (!running) {
       running = true;
-      // SENSOR_DELAY_FASTEST — "up to 120Hz where supported" per the
-      // architecture doc; the OS/driver decides the real delivered rate.
-      sensorManager.registerListener(this, accelerometer, SensorManager.SENSOR_DELAY_FASTEST);
-      sensorManager.registerListener(this, gyroscope, SensorManager.SENSOR_DELAY_FASTEST);
+      // 100Hz (10ms) is enough for impact detection and avoids the 200Hz+ FASTEST rate's battery cost on long rides
+      sensorManager.registerListener(this, accelerometer, SAMPLING_PERIOD_US);
+      sensorManager.registerListener(this, gyroscope, SAMPLING_PERIOD_US);
       flushHandler.postDelayed(flushRunnable, FLUSH_INTERVAL_MS);
     }
     call.resolve();

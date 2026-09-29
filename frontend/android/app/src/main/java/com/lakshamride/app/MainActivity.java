@@ -7,6 +7,7 @@ public class MainActivity extends BridgeActivity {
   @Override
   public void onCreate(Bundle savedInstanceState) {
     registerPlugin(CrashSensorPlugin.class);
+    registerPlugin(SosSmsPlugin.class);
     super.onCreate(savedInstanceState);
   }
 }

@@ -40,10 +40,13 @@ export class EmergencyManager {
   };
   private tickHandle: ReturnType<typeof setInterval> | null = null;
 
-  constructor(
-    private readonly rideId: string,
-    private readonly onChange: (state: EmergencyManagerState) => void
-  ) {}
+  private readonly rideId: string;
+  private readonly onChange: (state: EmergencyManagerState) => void;
+
+  constructor(rideId: string, onChange: (state: EmergencyManagerState) => void) {
+    this.rideId = rideId;
+    this.onChange = onChange;
+  }
 
   getState(): EmergencyManagerState {
     return this.state;
@@ -52,7 +55,7 @@ export class EmergencyManager {
   async startFromCrashCandidate(candidate: CrashCandidateEvent, location: EmergencyLocation): Promise<void> {
     this.beginProvisionalCountdown('automatic_crash_sos');
     try {
-      const res = await apiClient.post('/crash-events', {
+      const res = await apiClient.post('/api/crash-events', {
         ride_id: this.rideId,
         location: this.toLocationPayload(location),
         confidence: candidate.confidence,
@@ -76,7 +79,7 @@ export class EmergencyManager {
   async startManual(location: EmergencyLocation): Promise<void> {
     this.beginProvisionalCountdown('manual_sos');
     try {
-      const res = await apiClient.post('/sos', {
+      const res = await apiClient.post('/api/sos', {
         ride_id: this.rideId,
         location: this.toLocationPayload(location),
       });
@@ -101,7 +104,7 @@ export class EmergencyManager {
       return;
     }
     try {
-      await apiClient.patch(`/sos/${this.state.sosId}`, { status: 'user_cancelled', method: 'i_am_ok' });
+      await apiClient.patch(`/api/sos/${this.state.sosId}`, { status: 'user_cancelled', method: 'i_am_ok' });
     } catch {
       // best-effort — the countdown display has already resolved locally;
       // a failed cancel PATCH here just means the backend's own expiry
@@ -179,7 +182,7 @@ export async function flushQueuedEmergencyEvents(): Promise<void> {
   const flushed: number[] = [];
   for (const item of relevant) {
     try {
-      const path = item.type === 'crash_event' ? '/crash-events' : '/sos';
+      const path = item.type === 'crash_event' ? '/api/crash-events' : '/api/sos';
       await apiClient.post(path, item.data);
       if (item.id != null) flushed.push(item.id);
     } catch {

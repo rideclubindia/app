@@ -122,8 +122,8 @@ export const SpeedometerCluster = ({
   const leanDir = leanAngle < -1 ? 'L' : leanAngle > 1 ? 'R' : '';
 
   return (
-    <div className="w-full px-2 @container">
-      <div className="relative w-full rounded-2xl bg-white border border-gray-100 shadow-sm px-3 pt-2 pb-3 text-gray-950 overflow-hidden">
+    <div className={`w-full px-2 @container ${hideSpeedInPortrait ? 'portrait:px-4' : ''}`}>
+      <div className={`relative w-full rounded-2xl bg-white border border-gray-100 shadow-sm px-3 pt-2 pb-3 text-gray-950 overflow-hidden ${hideSpeedInPortrait ? 'portrait:border-gray-200/80 portrait:shadow-none portrait:px-4 portrait:py-4' : ''}`}>
         <div className="flex flex-col @min-[520px]:flex-row gap-2">
           <div className={`flex-1 min-w-0 ${hideSpeedInPortrait ? 'portrait:hidden' : ''}`}>
             <svg viewBox="8 16 384 110" className="w-full h-auto block" aria-hidden="true">
@@ -158,7 +158,7 @@ export const SpeedometerCluster = ({
           </div>
         </div>
 
-        <div className="mt-2.5 grid grid-cols-3 rounded-xl bg-gray-50 border border-gray-100 divide-x divide-gray-100">
+        <div className={`mt-2.5 grid grid-cols-3 rounded-xl bg-gray-50 border border-gray-100 divide-x divide-gray-100 ${hideSpeedInPortrait ? 'portrait:mt-4 portrait:bg-transparent portrait:border-0 portrait:border-t portrait:border-gray-100 portrait:rounded-none portrait:pt-3' : ''}`}>
           <div className="py-1.5 flex flex-col items-center">
             <span className="text-[9px] font-bold tracking-wider text-gray-500 uppercase">Lean</span>
             <span className="text-[14px] font-black tabular-nums">

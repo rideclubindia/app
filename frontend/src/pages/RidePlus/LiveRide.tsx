@@ -6,7 +6,7 @@ import {
   Shield, Hammer, MoreHorizontal, Navigation2, Compass, X, Users, LogOut, MessageCircle,
   Crosshair, Layers, StopCircle, Coffee, Fuel, Utensils, BedDouble, Droplets, Camera, MapPin, RefreshCw, ArrowUp, ArrowLeft, ArrowRight, CornerUpLeft, CornerUpRight,
   Edit2, History
-, ChevronUp, Route as RouteIcon } from 'lucide-react';
+, ChevronUp, Route as RouteIcon, Search, Hospital, SquareParking, Landmark, Plus, Check, Loader2, Flag, Trash2 } from 'lucide-react';
 
 import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
@@ -18,7 +18,8 @@ import { auth } from '../../lib/firebase';
 import { useToast } from '../../components/ToastContext';
 import { IncidentDrawer } from '../../components/IncidentDrawer';
 import { SOSModal } from '../../components/SOSModal';
-import { useCrashDetection } from '../../hooks/useCrashDetection';
+import { useAccidentDetection, getAccidentPreference, setAccidentPreference, requestMotionPermission } from '../../lib/crashDetection/useAccidentDetection';
+import { AccidentCountdownOverlay, AccidentSetupPrompt, AccidentDebugPanel, accidentStatusText } from '../../components/AccidentDetection';
 import { EmergencySetupModal } from '../../components/EmergencySetupModal';
 import LogoDark from '../../assets/Logos/Logo for Dark Backgrounds 2.svg';
 import { useLocationStore } from '../../store/useLocationStore';
@@ -33,6 +34,12 @@ import { SpeedometerCluster } from '../../hmi/components/Speedometer';
 import { getRealtime, EV_LOC, EV_RIDE_EVENT, EV_RIDE_SNAPSHOT, type LocationTuple } from '../../realtime';
 import { OfflineMapDownloader } from '../../components/map/OfflineMapDownloader';
 import { useOrientationLock } from '../../hooks/useOrientationLock';
+import { Capacitor, registerPlugin } from '@capacitor/core';
+import type { BackgroundGeolocationPlugin } from '@capacitor-community/background-geolocation';
+
+import { triggerSos, resumePendingSos, resolveSos, resolveSosLocation, reportLocationFix } from '../../lib/sos/sosOrchestrator';
+
+const BackgroundGeolocation = registerPlugin<BackgroundGeolocationPlugin>('BackgroundGeolocation');
 
 const ORS_API_KEY = 'eyJvcmciOiI1YjNjZTM1OTc4NTExMTAwMDFjZjYyNDgiLCJpZCI6IjZlZTI0N2U2NGIwNjQwYTY5N2E0ZGJkMzVlZmYyMDI5IiwiaCI6Im11cm11cjY0In0=';
 
@@ -58,6 +65,13 @@ const LiveRide = () => {
   const locateBtnRef = useRef<HTMLButtonElement>(null);
   const [moreOpen, setMoreOpen] = useState(false);
   const [tappedRiderId, setTappedRiderId] = useState<string | null>(null);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [searchQ, setSearchQ] = useState('');
+  const [searchCat, setSearchCat] = useState<string | null>(null);
+  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [searching, setSearching] = useState(false);
+  const [addingPlaceId, setAddingPlaceId] = useState<string | null>(null);
+  const previewMarkerRef = useRef<maplibregl.Marker | null>(null);
   const ridersRef = useRef<Record<string, any>>({});
   const PEEK_H = 112;
   const globalLocation = useLocationStore((state) => state.coordinates);
@@ -92,11 +106,14 @@ const LiveRide = () => {
 
   const [showEmergencySetup, setShowEmergencySetup] = useState(false);
   const [showSOSModal, setShowSOSModal] = useState(false);
-  const [isCrashDetectionActive, setIsCrashDetectionActive] = useState(true);
+  const [accidentPref, setAccidentPref] = useState(getAccidentPreference);
+  const [isCrashDetectionActive, setIsCrashDetectionActive] = useState(() => getAccidentPreference() === 'on');
   const [sosData, setSosData] = useState<any>(null);
   const [isReceivingSOS, setIsReceivingSOS] = useState(false);
   const [currentUserProfile, setCurrentUserProfile] = useState<any>(null);
   const telemetryFailCountRef = useRef(0);
+  const lastLocSaveRef = useRef(0);
+  const [activeSosId, setActiveSosId] = useState<string | null>(null);
   const [telemetryDegraded, setTelemetryDegraded] = useState(false);
 
   const handleTriggerSOSRef = useRef<() => void>(() => {});
@@ -674,6 +691,7 @@ const LiveRide = () => {
         const { latitude: lat, longitude: lng, heading, speed } = pos.coords;
         const speedKph = speed != null ? Math.round(speed * 3.6) : 0;
         setUserLocation({ lat, lng });
+        reportLocationFix(lat, lng, pos.coords.accuracy);
         setCurrentSpeedKph(speedKph);
         setMaxSpeed(prev => Math.max(prev, speedKph));
         if (speedKph > 0) {
@@ -685,13 +703,24 @@ const LiveRide = () => {
         // Place / update own marker
         if (map.current) {
           placeRiderMarker(auth.currentUser?.uid || 'me', lng, lat);
-          if (heading !== null && !isNaN(heading)) {
-             riderMarkersRef.current[auth.currentUser?.uid || 'me']?.setRotation(heading);
+          // GPS heading is null/noisy when slow or stopped — follow the route direction instead
+          let arrowBearing: number | null = heading != null && !isNaN(heading) && (speed ?? 0) > 2 ? heading : null;
+          if (arrowBearing === null && routeFeatureRef.current) {
+            try {
+              const line = turf.lineString(routeFeatureRef.current.geometry.coordinates);
+              const near = turf.nearestPointOnLine(line, turf.point([lng, lat]));
+              const along = (near.properties as any).location as number;
+              const ahead = turf.along(line, Math.min(along + 0.03, turf.length(line)));
+              if (along < turf.length(line)) arrowBearing = turf.bearing(near, ahead);
+            } catch { /* keep last rotation */ }
+          }
+          if (arrowBearing !== null) {
+            riderMarkersRef.current[auth.currentUser?.uid || 'me']?.setRotation(arrowBearing);
           }
         }
 
         // Add self to riders panel on first fix
-        const user = auth.currentUser;
+        const user = getAppUser(auth.currentUser);
         if (user && !selfAddedRef.current) {
           selfAddedRef.current = true;
           setRiders(prev => ({
@@ -799,6 +828,15 @@ const LiveRide = () => {
           const wsUp = rt.connected;
           setTelemetryDegraded(!wsUp);
           if (wsUp) telemetryFailCountRef.current = 0;
+          // persist to ride_locations too so other riders' maps always see this rider
+          if (Date.now() - lastLocSaveRef.current > 5000) {
+            lastLocSaveRef.current = Date.now();
+            const memberId = user.uid.length === 36 ? user.uid : getDeterministicUuid(user.uid);
+            supabase.from('ride_locations').upsert(
+              { ride_id: id, user_id: memberId, latitude: lat, longitude: lng, speed: speedKph, updated_at: new Date().toISOString() },
+              { onConflict: 'ride_id,user_id' },
+            ).then(({ error }) => { if (error) console.warn('ride_locations upsert failed', error.message); });
+          }
         }
       },
       err => {
@@ -837,6 +875,49 @@ const LiveRide = () => {
     );
     return () => navigator.geolocation.clearWatch(wid);
   }, [mapLoaded, is3D, id, isFollowingUser, routeFeature]);
+
+  // Android foreground service keeps sharing location while the screen is off or the app is in the background
+  useEffect(() => {
+    if (!id || !Capacitor.isNativePlatform()) return;
+    let watcherId: string | null = null;
+    let cancelled = false;
+    BackgroundGeolocation.addWatcher(
+      {
+        backgroundTitle: 'RideClub is tracking your ride',
+        backgroundMessage: 'Sharing your live location with your group',
+        requestPermissions: true,
+        stale: false,
+        distanceFilter: 10,
+      },
+      (loc, err) => {
+        if (err) {
+          if (err.code === 'NOT_AUTHORIZED') showToast('Allow location access so your group can see you when the screen is off', 'error');
+          return;
+        }
+        const user = getAppUser(auth.currentUser);
+        if (!loc) return;
+        reportLocationFix(loc.latitude, loc.longitude, loc.accuracy);
+        if (!user) return;
+        const speedKph = loc.speed != null ? loc.speed * 3.6 : 0;
+        getRealtime().sendLocation(id, { lat: loc.latitude, lng: loc.longitude, speed: speedKph, heading: loc.bearing ?? 0 });
+        if (Date.now() - lastLocSaveRef.current > 5000) {
+          lastLocSaveRef.current = Date.now();
+          const memberId = user.uid.length === 36 ? user.uid : getDeterministicUuid(user.uid);
+          supabase.from('ride_locations').upsert(
+            { ride_id: id, user_id: memberId, latitude: loc.latitude, longitude: loc.longitude, speed: speedKph, updated_at: new Date().toISOString() },
+            { onConflict: 'ride_id,user_id' },
+          ).then(({ error }) => { if (error) console.warn('ride_locations upsert failed', error.message); });
+        }
+      },
+    ).then((wid) => {
+      if (cancelled) BackgroundGeolocation.removeWatcher({ id: wid });
+      else watcherId = wid;
+    }).catch((e) => console.warn('Background location unavailable', e));
+    return () => {
+      cancelled = true;
+      if (watcherId) BackgroundGeolocation.removeWatcher({ id: watcherId });
+    };
+  }, [id]);
 
   // ─── Hazard & Stop proximity (Turf) ────────────────────
   useEffect(() => {
@@ -1111,127 +1192,48 @@ const LiveRide = () => {
     return () => clearInterval(interval);
   }, [isDataLoaded, id]);
 
+  // SOS must never be blocked on GPS or profile loading; missing data is shown as unavailable
   const handleSOS = () => {
-    if (userLocation && currentUserProfile) {
-      setSosData({
-        coordinates: `${userLocation.lat.toFixed(4)}, ${userLocation.lng.toFixed(4)}`,
-        riderName: currentUserProfile.full_name || auth.currentUser?.displayName || 'Unknown Rider',
-        bikeDetails: currentUserProfile.bike_details || 'Not provided',
-        bloodGroup: currentUserProfile.blood_group || 'Not provided',
-        emergencyContact: currentUserProfile.emergency_contact || 'Not provided'
-      });
-      setIsReceivingSOS(false);
-      setShowSOSModal(true);
-    } else {
-      showToast('Wait for GPS fix and profile load to send SOS', 'error');
-    }
+    const loc = resolveSosLocation(userLocation || globalLocation);
+    const me = getAppUser(auth.currentUser);
+    setSosData({
+      coordinates: loc ? `${loc.lat.toFixed(4)}, ${loc.lng.toFixed(4)}` : 'Location unavailable',
+      riderName: currentUserProfile?.full_name || me?.displayName || 'Unknown Rider',
+      bikeDetails: currentUserProfile?.bike_details || 'Not provided',
+      bloodGroup: currentUserProfile?.blood_group || 'Not provided',
+      emergencyContact: currentUserProfile?.emergency_contact || 'Not provided'
+    });
+    setIsReceivingSOS(false);
+    setShowSOSModal(true);
   };
 
-  const PENDING_SOS_KEY = 'pending_sos';
-
-  const dispatchSOSToBackend = async (lat: number, lng: number) => {
-    // Parse emergency contact phone/name from the free-text profile field, e.g. "9876543210 (Father)"
-    let emergencyContactPhone: string | undefined;
-    let emergencyContactName: string | undefined;
-    const rawContact: string = currentUserProfile?.emergency_contact || '';
-    const phoneMatch = rawContact.match(/\+?\d[\d\-\s]+/);
-    if (phoneMatch) emergencyContactPhone = phoneMatch[0].replace(/[\s-]/g, '');
-    const relationMatch = rawContact.match(/\(([^)]+)\)/);
-    if (relationMatch) emergencyContactName = relationMatch[1];
-
-    try {
-      const res = await apiClient.post('/api/v1/sos/dispatch', {
-        ride_id: id,
-        lat,
-        lng,
-        emergency_contact_phone: emergencyContactPhone,
-        emergency_contact_name: emergencyContactName
-      });
-      if (res.data?.sms_sent) {
-        showToast('🚨 SOS sent — emergency contact notified via SMS.', 'success');
-      } else {
-        showToast(`In-app SOS alert sent to your group. SMS to emergency contact was NOT confirmed${res.data?.reason ? `: ${res.data.reason}` : '.'}`, 'error');
-      }
-    } catch (err) {
-      console.error('SOS dispatch to backend failed:', err);
-      showToast('In-app SOS alert sent to your group, but SMS to your emergency contact could not be confirmed.', 'error');
-    }
-  };
-
-  const savePendingSOS = (lat: number, lng: number) => {
-    try {
-      localStorage.setItem(PENDING_SOS_KEY, JSON.stringify({ ride_id: id, lat, lng, timestamp: new Date().toISOString() }));
-    } catch (e) {
-      console.error('Failed to persist pending SOS:', e);
-    }
-  };
-
-  const handleTriggerSOS = async () => {
-    const user = auth.currentUser;
+  const handleTriggerSOS = async (extra?: Record<string, unknown>) => {
+    const user = getAppUser(auth.currentUser);
     if (!user || !id) return;
-
-    const lat = userLocation?.lat ?? 0;
-    const lng = userLocation?.lng ?? 0;
-
-    if (!navigator.onLine) {
-      savePendingSOS(lat, lng);
-      showToast('You are offline. SOS will be sent automatically when your connection returns.', 'error');
-      throw new Error('Offline — SOS queued for retry.');
-    }
-
-    try {
-      await supabase.from('ride_events').insert({
-        ride_id: id,
-        user_id: user.uid,
-        event_type: 'SOS',
-        description: 'Emergency SOS!',
-        payload: sosData
-      });
-      showToast('🚨 SOS Sent to all riders!', 'success');
-    } catch (err) {
-      console.error('SOS insert failed:', err);
-      savePendingSOS(lat, lng);
-      showToast('Could not reach the server. SOS will retry automatically when back online.', 'error');
-      throw err;
-    }
-
-    // Best-effort dispatch to real emergency contact via backend SMS gateway.
-    // This is independent of the in-app alert above — report failures honestly.
-    await dispatchSOSToBackend(lat, lng);
+    const ev = await triggerSos({
+      rideId: id,
+      memberUid: user.uid,
+      riderName: currentUserProfile?.full_name || user.displayName || user.email?.split('@')[0] || 'A RideClub rider',
+      rideName: ride?.title || ride?.name || null,
+      liveLocation: userLocation || globalLocation,
+      emergencyContactRaw: currentUserProfile?.emergency_contact,
+      payload: { ...(sosData || {}), ...(extra || {}) },
+    });
+    setActiveSosId(ev.id);
+    setShowSOSModal(true);
   };
 
-  // Retry any pending SOS once connectivity returns
+  // Resume queued SOS deliveries (e.g. after an app restart while offline)
   useEffect(() => {
-    const retryPendingSOS = async () => {
-      const raw = localStorage.getItem(PENDING_SOS_KEY);
-      if (!raw) return;
-      try {
-        const pending = JSON.parse(raw);
-        const user = auth.currentUser;
-        if (!user || !pending?.ride_id) return;
-        await supabase.from('ride_events').insert({
-          ride_id: pending.ride_id,
-          user_id: user.uid,
-          event_type: 'SOS',
-          description: 'Emergency SOS! (queued while offline)',
-          payload: sosData
-        });
-        localStorage.removeItem(PENDING_SOS_KEY);
-        showToast('🚨 Queued SOS alert has been sent now that you are back online.', 'success');
-        await dispatchSOSToBackend(pending.lat, pending.lng);
-      } catch (err) {
-        console.error('Retrying pending SOS failed:', err);
-      }
-    };
-    window.addEventListener('online', retryPendingSOS);
-    // Also attempt once on mount in case we came back online before listener attached
-    if (navigator.onLine) retryPendingSOS();
-    return () => window.removeEventListener('online', retryPendingSOS);
+    const user = getAppUser(auth.currentUser);
+    if (user) resumePendingSos(user.uid);
   }, []);
 
   const handleRevokeSOS = async () => {
-    const user = auth.currentUser;
+    const user = getAppUser(auth.currentUser);
     if (!user || !id) return;
+    if (activeSosId) resolveSos(activeSosId);
+    setActiveSosId(null);
     await supabase.from('ride_events')
       .delete()
       .eq('ride_id', id)
@@ -1257,12 +1259,33 @@ const LiveRide = () => {
   // Keep the ref in sync with the latest handleTriggerSOS
   handleTriggerSOSRef.current = handleTriggerSOS;
 
-  const { isCountingDown, countdown, cancelCountdown } = useCrashDetection({
-    onCrashDetected: () => {
-      handleTriggerSOSRef.current();
+  const accident = useAccidentDetection({
+    rideId: id,
+    enabled: isCrashDetectionActive,
+    speedKph: userLocation ? currentSpeedKph : null,
+    getLocation: () => {
+      const loc = resolveSosLocation(userLocation || globalLocation);
+      return loc ? { lat: loc.lat, lng: loc.lng, accuracy: loc.accuracy, speedKph: currentSpeedKph, isStale: loc.stale } : null;
     },
-    isActive: isCrashDetectionActive && !showEmergencySetup
+    onConfirmed: (c, outcome) => {
+      setSosData((prev: any) => prev || {
+        coordinates: 'Location unavailable', riderName: currentUserProfile?.full_name || 'Unknown Rider',
+        bikeDetails: currentUserProfile?.bike_details || 'Not provided', bloodGroup: currentUserProfile?.blood_group || 'Not provided',
+        emergencyContact: currentUserProfile?.emergency_contact || 'Not provided',
+      });
+      setIsReceivingSOS(false);
+      handleTriggerSOS({ trigger: 'automatic_crash_sos', outcome, confidence: Number(c.confidence.toFixed(2)), peak_g: Number(c.peakAccelMagnitudeG.toFixed(1)) });
+    },
+    debug: import.meta.env.DEV,
   });
+
+  const enableAccidentDetection = async () => {
+    const ok = await requestMotionPermission();
+    setAccidentPref(ok ? 'on' : 'off');
+    setAccidentPreference(ok ? 'on' : 'off');
+    setIsCrashDetectionActive(ok);
+    if (!ok) showToast('Motion access was denied, so accident detection is off. You can turn it on later from the SOS screen.', 'error');
+  };
 
   const handleLeaveOrEnd = async () => {
     const user = auth.currentUser;
@@ -1429,7 +1452,7 @@ const LiveRide = () => {
     return [PEEK_H, h * 0.5, h - 128];
   };
   const routeStopRows = rideStops
-    .filter((st: any) => st.stop_type !== 'Start' && typeof st.latitude === 'number' && typeof st.longitude === 'number')
+    .filter((st: any) => typeof st.latitude === 'number' && typeof st.longitude === 'number')
     .sort((x: any, y: any) => (x.sequence ?? 0) - (y.sequence ?? 0))
     .map((st: any) => {
       const here = userLocation || globalLocation;
@@ -1438,12 +1461,205 @@ const LiveRide = () => {
       const at = km != null ? new Date(Date.now() + (km / pace) * 3600000) : null;
       return {
         key: st.id || `${st.sequence}-${st.stop_name}`,
+        id: st.id,
         name: st.stop_name || 'Stop',
         isDest: st.stop_type === 'Destination',
+        isStart: /start|origin/i.test(st.stop_type || ''),
+        addedBy: st.added_by_name ? String(st.added_by_name).split(' ')[0] : null,
         dist: km == null ? '--' : km < 1 ? `${Math.round(km * 1000)} m` : `${km.toFixed(1)} km`,
         eta: at ? at.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : '--',
       };
     });
+  const SEARCH_CATEGORIES = [
+    { id: 'fuel', label: 'Fuel', icon: Fuel },
+    { id: 'restaurant', label: 'Food', icon: Utensils },
+    { id: 'cafe', label: 'Café', icon: Coffee },
+    { id: 'hotel', label: 'Hotels', icon: BedDouble },
+    { id: 'hospital', label: 'Hospital', icon: Hospital },
+    { id: 'parking', label: 'Parking', icon: SquareParking },
+    { id: 'tourist attraction', label: 'Sights', icon: Landmark },
+  ];
+
+  // Nominatim search biased to ~40 km around the rider, falling back to an unbounded search
+  const runPlaceSearch = async (term: string) => {
+    const q = term.trim();
+    if (!q) { setSearchResults([]); return; }
+    const here = userLocation || globalLocation;
+    setSearching(true);
+    try {
+      const base = `https://nominatim.openstreetmap.org/search?format=jsonv2&addressdetails=1&limit=20&q=${encodeURIComponent(q)}`;
+      const box = here ? `&viewbox=${here.lng - 0.4},${here.lat + 0.4},${here.lng + 0.4},${here.lat - 0.4}&bounded=1` : '';
+      let data: any[] = await (await fetch(base + box)).json();
+      if ((!data || data.length === 0) && box) data = await (await fetch(base)).json();
+      const rows = (data || []).map((r: any) => {
+        const lat = parseFloat(r.lat), lng = parseFloat(r.lon);
+        const km = here ? turf.distance(turf.point([here.lng, here.lat]), turf.point([lng, lat])) : null;
+        const name = r.name || String(r.display_name || '').split(',')[0];
+        return {
+          id: String(r.place_id),
+          name,
+          type: String(r.type || r.category || 'place').replace(/_/g, ' '),
+          address: String(r.display_name || '').split(',').slice(1, 4).join(',').trim(),
+          lat, lng, km,
+        };
+      });
+      rows.sort((a: any, b: any) => (a.km ?? 9e9) - (b.km ?? 9e9));
+      setSearchResults(rows);
+    } catch (e) {
+      console.error('Place search failed', e);
+      showToast('Search failed — check your connection', 'error');
+    } finally {
+      setSearching(false);
+    }
+  };
+
+  const previewPlace = (p: any) => {
+    if (!map.current) return;
+    setIsFollowingUser(false);
+    previewMarkerRef.current?.remove();
+    const el = document.createElement('div');
+    el.style.cssText = 'width:34px;height:34px;border-radius:50% 50% 50% 4px;transform:rotate(-45deg);background:#111827;border:3px solid #fff;box-shadow:0 4px 10px rgba(0,0,0,0.3);';
+    previewMarkerRef.current = new maplibregl.Marker({ element: el, anchor: 'bottom' }).setLngLat([p.lng, p.lat]).addTo(map.current);
+    map.current.easeTo({ center: [p.lng, p.lat], zoom: 15, pitch: 0, duration: 800 });
+  };
+
+  const closeSearch = () => {
+    setSearchOpen(false);
+    previewMarkerRef.current?.remove();
+    previewMarkerRef.current = null;
+  };
+
+  const deleteStop = async (stopId: string, name: string) => {
+    if (!id || !isAdmin || !window.confirm(`Remove ${name} from stops?`)) return;
+    try {
+      const { error } = await supabase.from('ride_stops').delete().eq('id', stopId);
+      if (error) throw error;
+      const me = getAppUser(auth.currentUser);
+      const myName = (me && (riders[me.uid]?.display_name || me.displayName || me.email?.split('@')[0])) || 'Ride leader';
+      const { data: fresh } = await supabase.from('ride_stops').select('*').eq('ride_id', id);
+      const rest = (fresh || []).sort((a: any, b: any) => (a.sequence ?? 0) - (b.sequence ?? 0));
+      for (const [i, st] of rest.entries()) {
+        if (st.sequence !== i) await supabase.from('ride_stops').update({ sequence: i }).eq('id', st.id);
+      }
+      const coords = rest.filter((st: any) => typeof st.latitude === 'number').map((st: any) => [st.longitude, st.latitude]);
+      try {
+        if (coords.length >= 2) {
+          const { fetchTomTomRoute } = await import('../../lib/routing');
+          const geom = await fetchTomTomRoute(coords, 'driving-car');
+          if (geom) await supabase.from('rides').update({ route_geometry: geom }).eq('id', id);
+        }
+      } catch (e) {
+        console.warn('Route recalculation after removing stop failed', e);
+      }
+      await supabase.from('ride_edit_log').insert({ ride_id: id, editor_id: me?.uid, editor_name: myName, edit_type: 'stop_removed', changes: { stop: name } });
+      await supabase.from('ride_events').insert({
+        ride_id: id, user_id: me?.uid, event_type: 'RIDE_UPDATED',
+        description: `Stop removed: ${name}`,
+        payload: { editor_name: myName, edit_types: ['stop_removed'], changes_summary: name },
+      });
+      await handleRideUpdated();
+      showToast(`Removed from stops · ${name}`, 'success');
+    } catch (e: any) {
+      console.error('Remove stop failed', e);
+      showToast(e?.message || 'Could not remove this stop', 'error');
+    }
+  };
+
+  const addPlaceAsStop = async (p: any) => {
+    if (!id || addingPlaceId) return;
+    const dup = rideStops.find((st: any) =>
+      typeof st.latitude === 'number' && turf.distance(turf.point([st.longitude, st.latitude]), turf.point([p.lng, p.lat])) < 0.15);
+    if (dup) { showToast(`${dup.stop_name || 'This place'} is already in stops`, 'info'); return; }
+
+    setAddingPlaceId(p.id);
+    try {
+      const me = getAppUser(auth.currentUser);
+      const myName = (me && (riders[me.uid]?.display_name || me.displayName || me.email?.split('@')[0])) || 'A rider';
+      const ordered = [...rideStops].sort((a: any, b: any) => (a.sequence ?? 0) - (b.sequence ?? 0))
+        .filter((st: any) => typeof st.latitude === 'number');
+      const km = (a: number[], b: number[]) => turf.distance(turf.point(a), turf.point(b));
+      const here = userLocation || globalLocation;
+      const pt = (st: any) => [st.longitude, st.latitude];
+      const startStop = ordered[0] && /start|origin/i.test(ordered[0].stop_type || '') ? ordered[0] : null;
+      const destStop = [...ordered].reverse().find((st: any) => st.stop_type === 'Destination') || null;
+      const newStop = { id: '__new__', stop_name: p.name, latitude: p.lat, longitude: p.lng };
+      const middle = [...ordered.filter((st: any) => st !== startStop && st !== destStop), newStop];
+      const origin = here ? [here.lng, here.lat] : startStop ? pt(startStop) : pt(middle[0]);
+
+      // re-optimise the whole middle order: nearest-neighbour from the rider, then 2-opt with the destination fixed last
+      const route: any[] = [];
+      const left = [...middle];
+      let cur = origin;
+      while (left.length) {
+        let bi = 0;
+        left.forEach((st, i) => { if (km(cur, pt(st)) < km(cur, pt(left[bi]))) bi = i; });
+        cur = pt(left[bi]);
+        route.push(left.splice(bi, 1)[0]);
+      }
+      const nodes = () => [origin, ...route.map(pt), ...(destStop ? [pt(destStop)] : [])];
+      for (let improved = true, guard = 0; improved && guard < 50; guard++) {
+        improved = false;
+        for (let i = 0; i < route.length - 1; i++) {
+          for (let j = i + 1; j < route.length; j++) {
+            const n = nodes();
+            const a = n[i], b = n[i + 1], c = n[j + 1], d = n[j + 2];
+            const delta = km(a, c) + (d ? km(b, d) : 0) - km(a, b) - (d ? km(c, d) : 0);
+            if (delta < -0.01) { route.splice(i, j - i + 1, ...route.slice(i, j + 1).reverse()); improved = true; }
+          }
+        }
+      }
+      const finalOrder = [...(startStop ? [startStop] : []), ...route, ...(destStop ? [destStop] : [])];
+      const newSeq = finalOrder.indexOf(newStop);
+      const bestIdx = newSeq;
+      const orderedView = finalOrder.filter(st => st !== newStop);
+
+      for (const [i, st] of finalOrder.entries()) {
+        if (st !== newStop && st.sequence !== i) await supabase.from('ride_stops').update({ sequence: i }).eq('id', st.id);
+      }
+
+      const row: any = { ride_id: id, stop_name: p.name, latitude: p.lat, longitude: p.lng, sequence: newSeq, stop_type: 'Stop', added_by_name: myName };
+      let { error } = await supabase.from('ride_stops').insert(row);
+      if (error && /added_by_name/i.test(error.message || '')) {
+        // column not migrated yet — still add the stop
+        delete row.added_by_name;
+        ({ error } = await supabase.from('ride_stops').insert(row));
+      }
+      if (error) throw error;
+
+      // recompute and share the route so every rider's map follows the new stop
+      const { data: fresh } = await supabase.from('ride_stops').select('*').eq('ride_id', id);
+      const coords = (fresh || [])
+        .sort((a: any, b: any) => (a.sequence ?? 0) - (b.sequence ?? 0))
+        .filter((st: any) => typeof st.latitude === 'number')
+        .map((st: any) => [st.longitude, st.latitude]);
+      try {
+        if (coords.length >= 2) {
+          const { fetchTomTomRoute } = await import('../../lib/routing');
+          const geom = await fetchTomTomRoute(coords, 'driving-car');
+          if (geom) await supabase.from('rides').update({ route_geometry: geom }).eq('id', id);
+        }
+      } catch (e) {
+        console.warn('Route recalculation after adding stop failed', e);
+      }
+
+      await supabase.from('ride_edit_log').insert({ ride_id: id, editor_id: me?.uid, editor_name: myName, edit_type: 'stop_added', changes: { stop: p.name } });
+      await supabase.from('ride_events').insert({
+        ride_id: id, user_id: me?.uid, event_type: 'RIDE_UPDATED',
+        description: `Stop added: ${p.name}`,
+        payload: { editor_name: myName, edit_types: ['stop_added'], changes_summary: p.name },
+      });
+
+      await handleRideUpdated();
+      const after = orderedView[bestIdx - 1]?.stop_name, before = orderedView[bestIdx]?.stop_name;
+      showToast(`Added to stops · ${p.name}${after && before ? ` (between ${after} and ${before})` : before ? ` (before ${before})` : ''}`, 'success');
+    } catch (e: any) {
+      console.error('Add stop failed', e);
+      showToast(e?.message || 'Could not add this stop', 'error');
+    } finally {
+      setAddingPlaceId(null);
+    }
+  };
+
   const tappedRider = tappedRiderId ? riders[tappedRiderId] : null;
   const tappedRiderKm = tappedRider && (userLocation || globalLocation) && typeof tappedRider.latitude === 'number'
     ? turf.distance(turf.point([(userLocation || globalLocation)!.lng, (userLocation || globalLocation)!.lat]), turf.point([tappedRider.longitude, tappedRider.latitude]))
@@ -1522,7 +1738,6 @@ const LiveRide = () => {
               <button className="fixed inset-0 z-30 cursor-default" aria-label="Close menu" onClick={() => setMoreOpen(false)} />
               <div role="menu" className="absolute right-4 bottom-full mb-2 z-40 w-[220px] bg-white rounded-2xl shadow-[0_12px_32px_rgba(0,0,0,0.18)] py-1.5 overflow-hidden">
                 {[
-                  { label: 'Riders', icon: Users, show: true, act: () => setShowUsersModal(true), danger: false },
                   { label: 'Edit ride', icon: Edit2, show: isAdmin, act: () => navigate('/ride-plus/create', { state: { editRideId: id } }), danger: false },
                   { label: isAdmin ? 'End ride' : 'Leave ride', icon: isAdmin ? StopCircle : LogOut, show: true, act: handleLeaveOrEnd, danger: true },
                   { label: 'Exit to rides', icon: X, show: true, act: () => navigate('/ride-plus'), danger: false },
@@ -1544,10 +1759,10 @@ const LiveRide = () => {
         <div className={`flex-1 flex flex-col pt-2 portrait:pt-0 pb-2 overflow-y-auto hide-scrollbar min-h-0 ${(sheetH ?? PEEK_H) <= PEEK_H + 4 ? 'portrait:hidden' : ''}`}>
 
           {/* Header */}
-          <div className="px-4 mt-1 mb-3 flex items-center gap-2 shrink-0">
+          <div className="px-4 mt-2 mb-5 flex items-center gap-2 shrink-0">
             <div className="min-w-0 flex-1">
-              <span className="text-gray-950 font-bold text-[16px] leading-tight block truncate">{ride?.name || 'Live Ride'}</span>
-              <div className="flex items-center gap-2 mt-0.5 text-[12px] font-semibold text-gray-500">
+              <span className="text-gray-950 font-bold text-[18px] leading-tight block truncate">{ride?.name || 'Live Ride'}</span>
+              <div className="flex items-center gap-2 mt-1 text-[13px] font-medium text-gray-500">
                 <button
                   onClick={() => { if (ride?.ride_code) { navigator.clipboard.writeText(ride.ride_code); showToast('Ride code copied!', 'success'); } }}
                   className="flex items-center gap-1.5 hover:text-gray-900"
@@ -1566,20 +1781,37 @@ const LiveRide = () => {
             </button>
           </div>
 
-          {/* Speedometer */}
-          <div className="shrink-0 mb-2">
-            <SpeedometerCluster speed={currentSpeedKph || 0} hideSpeedInPortrait />
+          {/* Trip card (portrait) — the landscape ETA card carries the same info */}
+          <div className="hidden portrait:block px-4 mb-3 shrink-0">
+            <div className="bg-white rounded-2xl border border-gray-200/80 px-4 pt-4 pb-3">
+              <div className="flex items-center justify-between">
+                <span className="text-[13px] font-semibold text-gray-500">Trip progress</span>
+                <span className="text-[12px] font-bold text-[#FF5A00] bg-orange-50 rounded-full px-2.5 py-0.5 tabular-nums">{Math.round(progress * 100)}%</span>
+              </div>
+              <p className="mt-1.5 text-[22px] font-bold text-gray-950 tabular-nums leading-none">
+                {userDistKm.toFixed(1)} <span className="text-[15px] font-medium text-gray-500">of {totalDistance.toFixed(1)} km</span>
+              </p>
+              <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden mt-3">
+                <div className="h-full bg-[#FF5A00] rounded-full transition-all duration-1000" style={{ width: `${Math.round(progress * 100)}%` }} />
+              </div>
+              <div className="grid grid-cols-3 divide-x divide-gray-100 mt-4 pt-3 border-t border-gray-100 text-center">
+                {[
+                  { label: 'Remaining', value: `${Math.max(0, totalDistance - userDistKm).toFixed(1)} km` },
+                  { label: 'Avg speed', value: `${avgSpeed} km/h` },
+                  { label: 'Max speed', value: `${maxSpeed} km/h` },
+                ].map((st) => (
+                  <div key={st.label} className="flex flex-col gap-0.5">
+                    <span className="text-[11px] font-semibold uppercase tracking-wide text-gray-400">{st.label}</span>
+                    <span className="text-[15px] font-bold text-gray-950 tabular-nums">{st.value}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
 
-          {/* Progress (portrait) — the landscape ETA card below carries the same info */}
-          <div className="hidden portrait:block px-4 mt-1 mb-2 shrink-0">
-            <div className="flex items-center justify-between text-[12px] font-semibold text-gray-500 tabular-nums">
-              <span>{userDistKm.toFixed(1)} / {totalDistance.toFixed(1)} km · {Math.round(progress * 100)}%</span>
-              <span>Avg {avgSpeed} · Max {maxSpeed} km/h</span>
-            </div>
-            <div className="w-full h-1.5 bg-gray-200 rounded-full overflow-hidden mt-1.5">
-              <div className="h-full bg-[#FF5A00] rounded-full transition-all duration-1000" style={{ width: `${Math.round(progress * 100)}%` }} />
-            </div>
+          {/* Speedometer */}
+          <div className="shrink-0 mb-2 portrait:mb-5">
+            <SpeedometerCluster speed={currentSpeedKph || 0} hideSpeedInPortrait />
           </div>
 
           {/* ETA Card */}
@@ -1757,24 +1989,50 @@ const LiveRide = () => {
               )}
 
               {activeTab === 'routes' && (
-                <div className="flex flex-col">
+                <div className="mt-2 flex flex-col gap-3 pb-6">
+                  <div>
+                    <h3 className="text-[15px] font-bold text-[#111111]">Route</h3>
+                    <p className="text-[12px] text-gray-500">{routeStopRows.length} {routeStopRows.length === 1 ? 'stop' : 'stops'} · distance and ETA from you</p>
+                  </div>
                   {routeStopRows.length === 0 ? (
-                    <p className="py-6 text-center text-[14px] text-gray-500">No stops on this ride.</p>
-                  ) : routeStopRows.map((st, i) => (
-                    <div key={st.key} className="flex items-center gap-3 py-3.5 border-b border-gray-200/70 last:border-0">
-                      <span className={`w-9 h-9 rounded-full flex items-center justify-center text-[13px] font-bold shrink-0 ${st.isDest ? 'bg-gray-900 text-white' : 'bg-orange-50 text-[#FF5A00]'}`}>
-                        {st.isDest ? <MapPin className="w-4 h-4" /> : String(i + 1).padStart(2, '0')}
-                      </span>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-[15px] font-semibold text-gray-950 truncate">{st.name}</p>
-                        <p className="text-[13px] text-gray-500">{st.isDest ? 'Destination' : 'Stop'}</p>
-                      </div>
-                      <div className="text-right shrink-0 tabular-nums">
-                        <p className="text-[15px] font-semibold text-gray-950">{st.dist}</p>
-                        <p className="text-[13px] text-gray-500">{st.eta}</p>
-                      </div>
+                    <div className="flex flex-col items-center justify-center py-10 text-center rounded-2xl border border-dashed border-gray-200 bg-white">
+                      <div className="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center mb-3"><MapPin className="w-6 h-6 text-gray-400" /></div>
+                      <p className="text-[#111111] font-semibold text-sm">No stops on this ride</p>
+                      <p className="text-gray-500 text-xs mt-1">Use Search on the map to add one</p>
                     </div>
-                  ))}
+                  ) : (
+                    <div className="rounded-2xl border border-gray-200 bg-white px-3.5 py-1">
+                      {routeStopRows.map((st, i) => {
+                        const last = i === routeStopRows.length - 1;
+                        return (
+                          <div key={st.key} className="flex items-stretch gap-3">
+                            <div className="flex flex-col items-center w-10 shrink-0">
+                              <div className={`w-px flex-none h-3 ${i === 0 ? 'bg-transparent' : 'bg-gray-200'}`} />
+                              <span className={`w-10 h-10 rounded-xl flex items-center justify-center text-[13px] font-bold shrink-0 ${st.isDest ? 'bg-gray-900 text-white' : st.isStart ? 'bg-emerald-50 text-emerald-700' : 'bg-orange-50 text-[#ef4523]'}`}>
+                                {st.isDest ? <MapPin className="w-5 h-5" /> : st.isStart ? <Flag className="w-5 h-5" /> : String(i + (routeStopRows[0]?.isStart ? 0 : 1)).padStart(2, '0')}
+                              </span>
+                              <div className={`w-px flex-1 ${last ? 'bg-transparent' : 'bg-gray-200'}`} />
+                            </div>
+                            <div className={`flex-1 min-w-0 flex items-start gap-2 pt-3 pb-3 ${last ? '' : 'border-b border-gray-100'}`}>
+                              <div className="flex-1 min-w-0">
+                                <p className="text-[13px] font-semibold text-[#111111] truncate">{st.name}</p>
+                                <p className="text-[11px] text-gray-500 mt-1 truncate">{st.isDest ? 'Destination' : st.isStart ? 'Start' : st.addedBy ? `Added by ${st.addedBy}` : 'Stop'}</p>
+                              </div>
+                              <div className="text-right shrink-0 tabular-nums">
+                                <p className="text-[13px] font-semibold text-[#111111]">{st.dist}</p>
+                                <p className="text-[11px] text-gray-500 mt-1">{st.isStart ? 'Starting point' : `ETA ${st.eta}`}</p>
+                              </div>
+                              {isAdmin && !st.isStart && !st.isDest && st.id && (
+                                <button onClick={() => deleteStop(st.id, st.name)} aria-label={`Remove ${st.name}`} className="w-10 h-10 -my-1 rounded-xl flex items-center justify-center text-gray-500 hover:text-red-600 hover:bg-red-50 active:scale-95 transition-colors shrink-0">
+                                  <Trash2 className="w-[18px] h-[18px]" />
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -1782,46 +2040,47 @@ const LiveRide = () => {
               {activeTab === 'activity' && (
                 <div className="mt-2 flex flex-col gap-3 pb-6">
                   <div className="flex items-center justify-between">
-                    <h3 className="text-lg font-semibold text-[#273a5a] flex items-center gap-2"><History className="w-5 h-5 text-[#ef4523]" /> Edit History</h3>
+                    <div>
+                      <h3 className="text-[15px] font-bold text-[#111111]">Ride activity</h3>
+                      <p className="text-[12px] text-gray-500">{editLog.length} {editLog.length === 1 ? 'change' : 'changes'} during this ride</p>
+                    </div>
                     {isAdmin && (
-                      <button onClick={() => navigate(`/ride-plus/create`, { state: { editRideId: id } })} className="text-[12px] font-semibold text-[#ef4523] flex items-center gap-1 px-3 py-1.5 rounded-full bg-orange-50 hover:bg-orange-100 transition-colors active:scale-95">
-                        <Edit2 className="w-3.5 h-3.5" /> Edit Ride
+                      <button onClick={() => navigate(`/ride-plus/create`, { state: { editRideId: id } })} className="h-11 text-[13px] font-semibold text-[#111111] flex items-center gap-1.5 px-4 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 transition-colors active:scale-95">
+                        <Edit2 className="w-4 h-4" /> Edit ride
                       </button>
                     )}
                   </div>
                   {editLog.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center py-8 text-center">
-                      <History className="w-10 h-10 text-gray-300 mb-3" />
-                      <p className="text-gray-500 font-medium text-sm">No edit history yet</p>
-                      <p className="text-gray-400 text-xs mt-1">Changes made to this ride will appear here</p>
+                    <div className="flex flex-col items-center justify-center py-10 text-center rounded-2xl border border-dashed border-gray-200 bg-white">
+                      <div className="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center mb-3"><History className="w-6 h-6 text-gray-400" /></div>
+                      <p className="text-[#111111] font-semibold text-sm">No activity yet</p>
+                      <p className="text-gray-500 text-xs mt-1">Stops added and ride edits will show here</p>
                     </div>
                   ) : (
-                    <div className="relative border-l-2 border-gray-100 ml-3 pl-5 flex flex-col gap-4">
-                      {editLog.map((entry: any, idx: number) => (
-                        <div key={entry.id || idx} className="relative">
-                          <div className="absolute -left-[27px] w-4 h-4 rounded-full bg-white border-4 border-[#ef4523]" />
-                          <div className="bg-gray-50 rounded-xl p-3 border border-gray-100">
-                            <div className="flex items-center justify-between mb-1">
-                              <span className="text-xs font-semibold text-[#273a5a]">{entry.editor_name || 'Admin'}</span>
-                              <span className="text-[10px] text-gray-400 font-medium">
-                                {new Date(entry.created_at).toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
-                              </span>
+                    <div className="rounded-2xl border border-gray-200 bg-white divide-y divide-gray-100 overflow-hidden">
+                      {editLog.map((entry: any, idx: number) => {
+                        const types: string[] = String(entry.edit_type || 'edit').split(/,\s*/);
+                        const isStop = types.some(t => /stop/.test(t));
+                        const Icon = isStop ? MapPin : types.some(t => /route/.test(t)) ? RouteIcon : Edit2;
+                        const title = types.map(t => t.replace(/_/g, ' ')).join(' · ');
+                        const detail = entry.changes?.stop || Object.keys(entry.changes || {}).map(k => k.replace(/_/g, ' ')).join(', ');
+                        const d = new Date(entry.created_at);
+                        return (
+                          <div key={entry.id || idx} className="flex items-start gap-3 p-3.5">
+                            <div className={`w-10 h-10 shrink-0 rounded-xl flex items-center justify-center ${isStop ? 'bg-orange-50 text-[#ef4523]' : 'bg-gray-100 text-[#111111]'}`}>
+                              <Icon className="w-5 h-5" />
                             </div>
-                            <p className="text-[11px] text-gray-500 font-medium">
-                              {entry.edit_type?.replace(/_/g, ' ').replace(/,\s*/g, ' · ')}
-                            </p>
-                            {entry.changes && (
-                              <div className="mt-2 flex flex-wrap gap-1.5">
-                                {Object.keys(entry.changes).map((key: string) => (
-                                  <span key={key} className="px-2 py-0.5 bg-orange-50 text-[#ef4523] rounded-full text-[10px] font-semibold">
-                                    {key.replace(/_/g, ' ')}
-                                  </span>
-                                ))}
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-baseline justify-between gap-2">
+                                <p className="text-[13px] font-semibold text-[#111111] capitalize truncate">{title}</p>
+                                <span className="text-[11px] text-gray-500 shrink-0 tabular-nums">{d.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}</span>
                               </div>
-                            )}
+                              {detail && <p className="text-[12px] text-gray-700 mt-0.5 truncate">{detail}</p>}
+                              <p className="text-[11px] text-gray-500 mt-1">by {entry.editor_name || 'Ride leader'} · {d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}</p>
+                            </div>
                           </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   )}
                 </div>
@@ -1867,9 +2126,28 @@ const LiveRide = () => {
           </div>
 
           {/* Map Controls */}
-          <div className={`absolute right-3 z-20 flex flex-col gap-3 landscape:top-1/2 landscape:-translate-y-1/2 portrait:bottom-[calc(var(--sheet-h)+12px)] portrait:transition-[bottom] portrait:duration-300 ${sheetTall ? 'portrait:hidden' : ''}`}>
+          <div className={`absolute landscape:right-3 portrait:left-3 z-20 flex flex-col gap-3 landscape:top-1/2 landscape:-translate-y-1/2 portrait:bottom-[calc(var(--sheet-h)+12px)] portrait:transition-[bottom] portrait:duration-300 ${sheetTall ? 'portrait:hidden' : ''}`}>
             <button
-              onClick={() => { 
+              onClick={() => { setSearchOpen(true); setMoreOpen(false); }}
+              className="w-12 h-12 rounded-full flex items-center justify-center shadow-md bg-white/95 backdrop-blur border border-gray-100 text-[#111111] hover:bg-gray-50 active:scale-95 transition-all"
+              title="Search places"
+              aria-label="Search places"
+            >
+              <Search className="w-5 h-5" />
+            </button>
+            <button
+              onClick={() => { setShowUsersModal(true); setMoreOpen(false); }}
+              className="relative w-12 h-12 rounded-full flex items-center justify-center shadow-md bg-white/95 backdrop-blur border border-gray-100 text-[#111111] hover:bg-gray-50 active:scale-95 transition-all"
+              title="Riders"
+              aria-label="Riders"
+            >
+              <Users className="w-5 h-5" />
+              <span className="absolute -top-1 -right-1 min-w-5 h-5 px-1 rounded-full bg-[#FF5A00] text-white text-[11px] font-bold flex items-center justify-center tabular-nums">
+                {Object.values(riders).filter((r: any) => r.status !== 'pending').length}
+              </span>
+            </button>
+            <button
+              onClick={() => {
                 if (!map.current) return; 
                 const next3D = !is3D;
                 let currentBearing = 0;
@@ -1991,6 +2269,83 @@ const LiveRide = () => {
           </div>
           )}
 
+          {/* Search places → pin as stop */}
+          {searchOpen && (
+            <div className="absolute z-40 inset-x-0 top-0 portrait:max-h-[62%] landscape:left-3 landscape:right-auto landscape:top-3 landscape:w-[380px] landscape:max-h-[calc(100%-24px)] landscape:rounded-2xl bg-white shadow-[0_10px_30px_rgba(0,0,0,0.18)] portrait:rounded-b-3xl flex flex-col overflow-hidden">
+              <form
+                onSubmit={(e) => { e.preventDefault(); setSearchCat(null); runPlaceSearch(searchQ); }}
+                className="flex items-center gap-2 px-3 pt-3 pb-2"
+              >
+                <button type="button" onClick={closeSearch} aria-label="Close search" className="w-11 h-11 rounded-full flex items-center justify-center text-gray-700 hover:bg-gray-100 shrink-0">
+                  <ArrowLeft className="w-5 h-5" />
+                </button>
+                <div className="flex-1 flex items-center gap-2 h-12 px-4 rounded-full bg-gray-100">
+                  <Search className="w-5 h-5 text-gray-500 shrink-0" />
+                  <input
+                    autoFocus
+                    value={searchQ}
+                    onChange={(e) => setSearchQ(e.target.value)}
+                    placeholder="Search places, fuel, food, hotels…"
+                    className="flex-1 min-w-0 bg-transparent outline-none text-[16px] text-gray-950 placeholder:text-gray-500"
+                    aria-label="Search places"
+                  />
+                  {searchQ && (
+                    <button type="button" onClick={() => { setSearchQ(''); setSearchResults([]); }} aria-label="Clear" className="text-gray-500"><X className="w-4 h-4" /></button>
+                  )}
+                </div>
+              </form>
+
+              <div className="flex gap-2 overflow-x-auto hide-scrollbar px-3 pb-3">
+                {SEARCH_CATEGORIES.map((c) => (
+                  <button
+                    key={c.id}
+                    onClick={() => { setSearchCat(c.id); setSearchQ(''); runPlaceSearch(c.id); }}
+                    className={`shrink-0 h-10 px-3.5 rounded-full border flex items-center gap-1.5 text-[14px] font-semibold transition-colors ${searchCat === c.id ? 'bg-gray-900 text-white border-gray-900' : 'bg-white text-gray-800 border-gray-200'}`}
+                  >
+                    <c.icon className="w-4 h-4" /> {c.label}
+                  </button>
+                ))}
+              </div>
+
+              <div className="flex-1 min-h-0 overflow-y-auto border-t border-gray-100">
+                {searching ? (
+                  <div className="py-10 flex justify-center"><Loader2 className="w-6 h-6 text-[#FF5A00] animate-spin" /></div>
+                ) : searchResults.length === 0 ? (
+                  <p className="py-8 px-6 text-center text-[14px] text-gray-500">
+                    {searchQ || searchCat ? 'No places found nearby.' : 'Search for any place, or pick a category above.'}
+                  </p>
+                ) : (
+                  <ul>
+                    {searchResults.map((p) => {
+                      const inStops = rideStops.some((st: any) => typeof st.latitude === 'number' && turf.distance(turf.point([st.longitude, st.latitude]), turf.point([p.lng, p.lat])) < 0.15);
+                      return (
+                        <li key={p.id} className="flex items-center gap-3 px-4 py-3 border-b border-gray-100 last:border-0">
+                          <button onClick={() => previewPlace(p)} className="flex-1 min-w-0 text-left">
+                            <p className="text-[15px] font-semibold text-gray-950 truncate">{p.name}</p>
+                            <p className="text-[13px] text-gray-500 truncate">
+                              <span className="capitalize">{p.type}</span>
+                              {p.km != null && <> · {p.km < 1 ? `${Math.round(p.km * 1000)} m` : `${p.km.toFixed(1)} km`}</>}
+                              {p.address && <> · {p.address}</>}
+                            </p>
+                          </button>
+                          <button
+                            onClick={() => addPlaceAsStop(p)}
+                            disabled={inStops || addingPlaceId === p.id}
+                            aria-label={inStops ? 'Already in stops' : `Add ${p.name} to stops`}
+                            className={`h-11 px-3.5 rounded-full flex items-center gap-1.5 text-[13px] font-bold shrink-0 transition-colors ${inStops ? 'bg-emerald-50 text-emerald-700' : 'bg-[#FF5A00] text-white active:scale-95'}`}
+                          >
+                            {addingPlaceId === p.id ? <Loader2 className="w-4 h-4 animate-spin" /> : inStops ? <Check className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
+                            {inStops ? 'Added' : 'Add stop'}
+                          </button>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
+              </div>
+            </div>
+          )}
+
           {/* Tapped rider card */}
           {tappedRider && (
             <div className={`absolute left-3 right-3 z-30 portrait:bottom-[calc(var(--sheet-h)+12px)] landscape:bottom-4 bg-white rounded-2xl shadow-[0_8px_24px_rgba(0,0,0,0.18)] px-4 py-3 flex items-center gap-3`}>
@@ -2011,7 +2366,7 @@ const LiveRide = () => {
           )}
 
           {/* Round speed gauge above the drawer (portrait) */}
-          <div className={`hidden ${sheetTall ? '' : 'portrait:flex'} absolute left-3 z-20 w-[92px] h-[92px] rounded-full bg-white shadow-[0_6px_18px_rgba(0,0,0,0.16)] items-center justify-center portrait:bottom-[calc(var(--sheet-h)+12px)] transition-[bottom] duration-300`} aria-label={`${Math.round(currentSpeedKph || 0)} km/h`}>
+          <div className={`hidden ${sheetTall ? '' : 'portrait:flex'} absolute right-3 z-20 w-[92px] h-[92px] rounded-full bg-white shadow-[0_6px_18px_rgba(0,0,0,0.16)] items-center justify-center portrait:bottom-[calc(var(--sheet-h)+12px)] transition-[bottom] duration-300`} aria-label={`${Math.round(currentSpeedKph || 0)} km/h`}>
             <svg viewBox="0 0 100 100" className="absolute inset-0 w-full h-full" aria-hidden="true">
               <circle cx="50" cy="50" r="40" fill="none" stroke="#E5E7EB" strokeWidth="7" strokeLinecap="round" strokeDasharray="188.5 400" transform="rotate(135 50 50)" />
               <circle cx="50" cy="50" r="40" fill="none" stroke={(currentSpeedKph || 0) > 120 ? '#FF5A00' : '#16A34A'} strokeWidth="7" strokeLinecap="round" strokeDasharray={`${(Math.min(currentSpeedKph || 0, 200) / 200) * 188.5} 400`} transform="rotate(135 50 50)" className="transition-all duration-500" />
@@ -2024,10 +2379,10 @@ const LiveRide = () => {
 
           {/* Hazard Banner */}
           {nextHazard ? (
-            <div className={`absolute top-3 portrait:top-[92px] left-1/2 -translate-x-1/2 z-20 pointer-events-none transition-all duration-300`}>
-              <div className="bg-red-500/90 backdrop-blur-md border border-red-400/50 text-white px-3 py-1.5 rounded-full font-semibold text-[11px] flex items-center gap-1.5 shadow-[0_4px_14px_rgba(255,59,48,0.45)] animate-pulse whitespace-nowrap max-w-[70%] overflow-hidden">
-                <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
-                <span className="truncate">{fmtHazard(nextHazard.remainingDist)} — {nextHazard.category?.split(':')[0]} Ahead</span>
+            <div className={`absolute top-3 portrait:top-[92px] left-1/2 -translate-x-1/2 z-20 pointer-events-none transition-all duration-300 w-max max-w-[calc(100%-160px)]`}>
+              <div className="bg-red-500/90 backdrop-blur-md border border-red-400/50 text-white px-3.5 py-2 rounded-2xl font-semibold text-[12px] leading-tight flex items-center gap-2 shadow-[0_4px_14px_rgba(255,59,48,0.45)] animate-pulse">
+                <AlertTriangle className="w-4 h-4 shrink-0" />
+                <span>{fmtHazard(nextHazard.remainingDist)} — {nextHazard.category?.split(':')[0]} Ahead</span>
               </div>
             </div>
           ) : incidents.length > 0 && userLocation ? (
@@ -2048,7 +2403,7 @@ const LiveRide = () => {
       {/* Users Modal */}
       {showUsersModal && (
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-dark/60 backdrop-blur-sm p-4">
-          <div className="bg-white w-full max-w-md rounded-xl shadow-2xl overflow-hidden flex flex-col max-h-[80vh]">
+          <div className="bg-white w-full max-w-md rounded-xl shadow-2xl overflow-hidden flex flex-col max-h-[95vh]">
             <div className="p-5 border-b border-gray-100 flex items-center justify-between">
               <h3 className="text-xl font-semibold text-[#273a5a] flex items-center gap-2">
                 <Users className="w-6 h-6 text-primary" /> Ride Members
@@ -2057,36 +2412,54 @@ const LiveRide = () => {
                 <X className="w-5 h-5" />
               </button>
             </div>
-            <div className="flex-1 overflow-y-auto p-4 space-y-3">
-              {Object.values(riders)
-                .filter((r: any) => r.status !== 'pending')
-                .sort((a: any, b: any) => {
-                  if (a.user_id === auth.currentUser?.uid) return -1;
-                  if (b.user_id === auth.currentUser?.uid) return 1;
-                  const distA = userLocation ? Math.sqrt(Math.pow((a.lat || 0) - userLocation.lat, 2) + Math.pow((a.lng || 0) - userLocation.lng, 2)) : 0;
-                  const distB = userLocation ? Math.sqrt(Math.pow((b.lat || 0) - userLocation.lat, 2) + Math.pow((b.lng || 0) - userLocation.lng, 2)) : 0;
-                  return distA - distB;
-                })
-                .map((r: any, idx) => {
-                  const isMe = r.user_id === auth.currentUser?.uid;
-                  return (
-                    <div key={r.user_id} className={`flex items-center justify-between p-4 rounded-xl ${isMe ? 'bg-primary/5 border border-primary/20' : 'bg-gray-50'}`}>
-                      <div className="flex items-center gap-3">
-                        <div className="relative">
-                          <img src={r.avatar_url || imgSoloRide} alt="avatar" className="w-12 h-12 rounded-full border-2 border-white shadow-md object-cover bg-white" />
-                          {r.role === 'admin' && <div className="absolute -bottom-1 -right-1 bg-yellow-400 p-1 rounded-full border-2 border-white"><Shield className="w-3 h-3 text-white" /></div>}
-                        </div>
-                        <div>
-                          <h4 className="font-semibold text-[#273a5a] flex items-center gap-2">
-                            {r.display_name} {isMe && <span className="text-xs bg-dark text-white px-2 py-0.5 rounded-full">You</span>}
-                          </h4>
-                          {r.speed > 0 ? <p className="text-sm text-gray-500 font-medium">{Math.round(r.speed)} km/h</p> : <p className="text-sm text-gray-500 font-medium">Stationary</p>}
-                        </div>
-                      </div>
-                      {idx > 0 && idx < 4 && <span className="text-[10px] font-semibold text-primary bg-primary/10 px-2 py-1 rounded-full">Nearest</span>}
+            <div className="flex-1 overflow-y-auto p-4 space-y-2">
+              {(() => {
+                const here = userLocation || globalLocation;
+                const myUid = getAppUser(auth.currentUser)?.uid;
+                const meIds = myUid ? [myUid, getDeterministicUuid(myUid)] : [];
+                const rows = Object.values(riders)
+                  .filter((r: any) => r.status !== 'pending')
+                  .map((r: any) => {
+                    const hasLoc = typeof r.latitude === 'number' && typeof r.longitude === 'number';
+                    const isMe = meIds.includes(r.user_id);
+                    const km = hasLoc && here && !isMe ? turf.distance(turf.point([here.lng, here.lat]), turf.point([r.longitude, r.latitude])) : null;
+                    return { r, hasLoc, isMe, km };
+                  })
+                  .sort((a, b) => (a.isMe ? -1 : b.isMe ? 1 : (a.km ?? Infinity) - (b.km ?? Infinity)));
+                return rows.map(({ r, hasLoc, isMe, km }) => (
+                  <button
+                    key={r.user_id}
+                    disabled={!hasLoc}
+                    onClick={() => {
+                      setShowUsersModal(false);
+                      setIsFollowingUser(false);
+                      setFocusedRiderId(isMe ? null : r.user_id);
+                      if (!isMe) setTappedRiderId(r.user_id);
+                      map.current?.flyTo({ center: [r.longitude, r.latitude], zoom: 17, pitch: 0, duration: 1200 });
+                    }}
+                    className={`w-full text-left flex items-center gap-3 p-3 rounded-xl border transition-colors ${isMe ? 'bg-orange-50/60 border-orange-200' : 'bg-white border-gray-200'} ${hasLoc ? 'hover:bg-gray-50 active:scale-[0.99]' : 'opacity-70'}`}
+                  >
+                    <div className="relative shrink-0">
+                      <img src={r.avatar_url || imgSoloRide} alt="" referrerPolicy="no-referrer" className="w-12 h-12 rounded-full border-2 border-white shadow-md object-cover bg-white" />
+                      {r.role === 'admin' && <div className="absolute -bottom-1 -right-1 bg-yellow-400 p-1 rounded-full border-2 border-white"><Shield className="w-3 h-3 text-white" /></div>}
                     </div>
-                  );
-                })}
+                    <div className="flex-1 min-w-0">
+                      <h4 className="font-semibold text-[#111111] flex items-center gap-2 truncate">
+                        <span className="truncate">{r.display_name || 'Rider'}</span> {isMe && <span className="text-xs bg-gray-900 text-white px-2 py-0.5 rounded-full shrink-0">You</span>}
+                      </h4>
+                      <p className="text-[13px] text-gray-500">
+                        {!hasLoc ? 'Location not shared yet' : r.speed > 0 ? `${Math.round(r.speed)} km/h` : 'Stopped'}
+                      </p>
+                    </div>
+                    {hasLoc && (
+                      <div className="text-right shrink-0">
+                        {km != null && <p className="text-[15px] font-bold text-[#111111] tabular-nums">{km < 1 ? `${Math.round(km * 1000)} m` : `${km.toFixed(1)} km`}</p>}
+                        <p className="text-[12px] font-semibold text-[#ef4523] flex items-center justify-end gap-1"><Crosshair className="w-3.5 h-3.5" /> Show</p>
+                      </div>
+                    )}
+                  </button>
+                ));
+              })()}
             </div>
           </div>
         </div>
@@ -2114,40 +2487,33 @@ const LiveRide = () => {
         <SOSModal 
           isReceiving={isReceivingSOS}
           data={sosData}
+          sosEventId={isReceivingSOS ? null : activeSosId}
+          memberUid={getAppUser(auth.currentUser)?.uid || ''}
           onTrigger={handleTriggerSOS}
           onRevoke={handleRevokeSOS}
           onNavigate={handleSOSNavigate}
           isCrashDetectionActive={isCrashDetectionActive}
-          onToggleCrashDetection={() => setIsCrashDetectionActive(!isCrashDetectionActive)}
+          crashDetectionStatus={accidentStatusText(isCrashDetectionActive, accident.availability)}
+          onToggleCrashDetection={() => {
+            if (isCrashDetectionActive) { setIsCrashDetectionActive(false); setAccidentPref('off'); setAccidentPreference('off'); }
+            else enableAccidentDetection();
+          }}
           onClose={() => {
             setShowSOSModal(false);
             setIsReceivingSOS(false);
           }}
         />
       )}
-      {/* Full Screen Crash Detection Countdown Overlay */}
-      {isCountingDown && (
-        <div className="fixed inset-0 z-[200] bg-danger/95 backdrop-blur-md flex flex-col items-center justify-center p-6">
-          <div className="w-24 h-24 bg-white/20 rounded-full flex items-center justify-center mb-6 animate-pulse">
-            <AlertTriangle className="w-12 h-12 text-white" />
-          </div>
-          <h2 className="text-4xl font-semibold text-white text-center mb-4">
-            CRASH DETECTED
-          </h2>
-          <p className="text-white/80 text-center mb-4 text-lg font-medium max-w-xs">
-            SOS Alert will be sent automatically to your ride group in:
-          </p>
-          <div className="text-[120px] leading-none font-semibold text-white mb-12 tabular-nums">
-            {countdown}
-          </div>
-          <button 
-            onClick={cancelCountdown}
-            className="w-full max-w-sm bg-white text-danger hover:bg-gray-100 font-semibold text-2xl py-6 rounded-full shadow-2xl transition-transform active:scale-95"
-          >
-            CANCEL SOS
-          </button>
-        </div>
+      {accident.level === 'POSSIBLE_ACCIDENT' && (
+        <AccidentCountdownOverlay secondsLeft={accident.secondsLeft} onOk={accident.confirmOk} onSos={accident.sendSosNow} />
       )}
+      {accidentPref === 'unset' && mapLoaded && !showSOSModal && (
+        <AccidentSetupPrompt
+          onAllow={enableAccidentDetection}
+          onLater={() => { setAccidentPref('off'); setAccidentPreference('off'); }}
+        />
+      )}
+      <AccidentDebugPanel snap={accident.debugSnap} level={accident.level} availability={accident.availability} />
     </div>
   );
 };

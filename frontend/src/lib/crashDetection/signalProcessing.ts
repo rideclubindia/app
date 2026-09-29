@@ -61,6 +61,7 @@ export class SignalProcessor {
       linearAccelMagnitudeG,
       gyroMagnitudeDegPerSec,
       motionState,
+      gravity: { ...this.gravity },
     };
   }
 }

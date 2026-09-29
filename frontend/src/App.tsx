@@ -7,11 +7,10 @@ import { useNavigationStore } from './store/useNavigationStore';
 import { ConfirmProvider } from './components/ConfirmDialog';
 import ErrorBoundary from './components/ErrorBoundary';
 import { LoadingSpinner } from './components/LoadingSpinner';
-import { getDeterministicUuid } from './lib/user';
+import { getDeterministicUuid, getAppUser } from './lib/user';
 import { auth } from './lib/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 import { supabase, setSupabaseToken } from './lib/supabase';
-import type { User as FirebaseUser } from 'firebase/auth';
 import BannedScreen from './pages/BannedScreen';
 import { CookieConsent } from './components/CookieConsent';
 import { Capacitor } from '@capacitor/core';
@@ -86,7 +85,7 @@ const AdminAuditLogs = lazy(() => import('./pages/Admin/AdminAuditLogs'));
 const AdminCMS = lazy(() => import('./pages/Admin/AdminCMS'));
 const AdminSettings = lazy(() => import('./pages/Admin/AdminSettings'));
 const AdminNavigations = lazy(() => import('./pages/Admin/AdminNavigations'));
-const AdminLogin = lazy(() => import('./pages/Admin/AdminLogin'));
+
 const AdminSupport = lazy(() => import('./pages/Admin/AdminSupport'));
 
 const SupportLayout = lazy(() => import('./pages/SupportAdmin/SupportLayout'));
@@ -288,12 +287,14 @@ const RequireAuth = ({ children }: { children: React.ReactNode }) => {
 };
 
 const RequireAdmin = ({ children }: { children: React.ReactNode }) => {
-  const [user, setUser] = useState<FirebaseUser | null>(null);
+  const location = useLocation();
+  const [user, setUser] = useState<{ email: string | null } | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // Email-code sessions (rie_token) and Firebase sessions both count, same as the app's RequireAuth
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-      setUser(currentUser);
+      setUser(getAppUser(currentUser));
       setLoading(false);
     });
 
@@ -305,7 +306,7 @@ const RequireAdmin = ({ children }: { children: React.ReactNode }) => {
   }
 
   if (!user?.email || user.email.toLowerCase() !== ADMIN_EMAIL) {
-    return <Navigate to="/login" replace />;
+    return <Navigate to="/login" replace state={{ from: location.pathname }} />;
   }
 
   return children;
@@ -624,7 +625,7 @@ function App() {
               {/* Admin Routes (Desktop Optimized) - Mounted at root for admin domain */}
               {isAdminDomain && (
                 <>
-                  <Route path="/login" element={<AdminLogin />} />
+                  <Route path="/login" element={<LoginScreen adminOnly redirectTo="/" />} />
                   <Route path="/" element={<RequireAdmin><AdminLayout /></RequireAdmin>}>
                   <Route index element={<Navigate to="/dashboard" replace />} />
                   <Route path="dashboard" element={<AdminDashboard />} />
@@ -648,7 +649,7 @@ function App() {
               {/* Support Admin Routes (Desktop Optimized) - Mounted at root for support domain */}
               {isSupportDomain && (
                 <>
-                  <Route path="/login" element={<AdminLogin />} />
+                  <Route path="/login" element={<LoginScreen adminOnly redirectTo="/" />} />
                   <Route path="/" element={<RequireAdmin><SupportLayout /></RequireAdmin>}>
                     <Route index element={<Navigate to="/dashboard" replace />} />
                     <Route path="dashboard" element={<SupportDashboard />} />
