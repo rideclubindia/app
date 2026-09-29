@@ -1,13 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Users, MapPin, Navigation2, Clock, ChevronRight, LogOut, Calendar, Edit2 } from 'lucide-react';
+import { Plus, Users, MapPin, Navigation2, Clock, ChevronRight, LogOut, Calendar, Edit2, Compass, ShieldAlert } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
+import { saveOfflineCopy, readOfflineCopy } from '../../lib/offlineData';
 import { auth } from '../../lib/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 import { useToast } from '../../components/ToastContext';
-import { getDeterministicUuid } from '../../lib/user';
+import { getDeterministicUuid, getAppUser } from '../../lib/user';
 import { useConfirm } from '../../components/ConfirmDialog';
 import { apiClient } from '../../lib/apiClient';
+import { IncidentDrawer } from '../../components/IncidentDrawer';
+
+import img15 from '../../assets/WebsiteImages/img15.jpg';
+const imgGroupRide = img15;
 import { Activity, AlertTriangle, ShieldCheck, Play, RefreshCw } from 'lucide-react';
 const RidePlusHMI = () => {
     const confirm = useConfirm();
@@ -27,15 +32,8 @@ const RidePlusHMI = () => {
   // Wait for Firebase auth to fully initialize
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, (user) => {
-      let activeUid = user?.uid;
-      const rieToken = localStorage.getItem('rie_token');
-      if (!activeUid && rieToken) {
-        try {
-          const payload = JSON.parse(atob(rieToken.split('.')[1]));
-          if (payload.uid) activeUid = payload.uid;
-        } catch (e) {}
-      }
-      
+      const activeUid = getAppUser(user)?.uid;
+
       setCurrentUid(activeUid || null);
       setAuthReady(true);
     });
@@ -94,8 +92,11 @@ const RidePlusHMI = () => {
         return { ...ride, myRole: mem?.role || 'member' };
       });
 
+      saveOfflineCopy('my_rides_' + uid, withRole);
       setActiveRides(withRole);
     } catch (e: any) {
+      const cached = readOfflineCopy<any[]>('my_rides_' + uid);
+      if (cached) { setActiveRides(cached); return; }
       setDbError(e.message);
       showToast('Failed to load rides: ' + e.message, 'error');
     } finally {
@@ -212,6 +213,32 @@ const RidePlusHMI = () => {
               <span className="block text-[11px] text-gray-400 font-medium mt-0.5">Enter a ride code</span>
             </div>
           </button>
+
+          <button
+            onClick={() => navigate('/explore')}
+            className="group relative bg-white border border-gray-100 p-4 rounded-[8px] shadow-sm flex flex-col items-start gap-3 hover:-translate-y-0.5 active:scale-[0.98] transition-all duration-300 overflow-hidden"
+          >
+            <div className="bg-indigo-50 p-2.5 rounded-xl flex items-center justify-center border border-indigo-100 group-hover:bg-indigo-100 transition-colors">
+              <Compass className="w-5 h-5 text-indigo-500" />
+            </div>
+            <div className="text-left">
+              <span className="block font-semibold text-[15px] leading-tight text-[#111111]">Find a Ride</span>
+              <span className="block text-[11px] text-gray-400 font-medium mt-0.5">Browse rides near you</span>
+            </div>
+          </button>
+
+          <button
+            onClick={() => navigate('/map', { state: { reportMode: true } })}
+            className="group relative bg-white border border-gray-100 p-4 rounded-[8px] shadow-sm flex flex-col items-start gap-3 hover:-translate-y-0.5 active:scale-[0.98] transition-all duration-300 overflow-hidden"
+          >
+            <div className="bg-red-50 p-2.5 rounded-xl flex items-center justify-center border border-red-100 group-hover:bg-red-100 transition-colors">
+              <ShieldAlert className="w-5 h-5 text-red-500" />
+            </div>
+            <div className="text-left">
+              <span className="block font-semibold text-[15px] leading-tight text-[#111111]">Report Incident</span>
+              <span className="block text-[11px] text-gray-400 font-medium mt-0.5">Flag a hazard or crash</span>
+            </div>
+          </button>
         </div>
 
         {/* Active Rides Section */}
@@ -245,7 +272,7 @@ const RidePlusHMI = () => {
                   
                   {/* Image Side (Ride Card) */}
                   <div className="relative w-full sm:w-[42%] h-[150px] sm:h-auto shrink-0 bg-gray-900">
-                    <img src={(ride.image_url && !ride.image_url.includes('blob:')) ? ride.image_url : "https://images.unsplash.com/photo-1558981806-ec527fa84c39?auto=format&fit=crop&w=800&q=80"} alt="Ride cover" className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
+                    <img src={(ride.image_url && !ride.image_url.includes('blob:')) ? ride.image_url : imgGroupRide} alt="Ride cover" className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
                     
                     {/* Dark gradient overlay for readability */}
                     <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent sm:bg-gradient-to-r sm:from-transparent sm:via-black/60 sm:to-black/90"></div>

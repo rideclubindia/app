@@ -188,18 +188,10 @@ const WebsitePolicyPage: React.FC<WebsitePolicyPageProps> = ({ type }) => {
       if (isHeader) {
         return (
           <div key={idx} style={{ marginBottom: '40px' }}>
-            <h3 style={{ 
-              fontSize: '22px', 
-              fontWeight: '700', 
-              color: '#000', 
-              marginBottom: '16px',
-              paddingBottom: '12px',
-              borderBottom: '1px solid #eaeaea',
-              letterSpacing: '-0.5px'
-            }}>
+            <h3 className="text-xl font-bold mb-4 pb-3 border-b border-zinc-800 tracking-tight">
               {lines[0]}
             </h3>
-            <div style={{ color: '#4a4a52', whiteSpace: 'pre-wrap', lineHeight: '1.8' }}>
+            <div className="text-zinc-400 text-sm leading-relaxed" style={{ whiteSpace: 'pre-wrap' }}>
               {lines.slice(1).join('\n')}
             </div>
           </div>
@@ -207,7 +199,7 @@ const WebsitePolicyPage: React.FC<WebsitePolicyPageProps> = ({ type }) => {
       }
 
       return (
-        <div key={idx} style={{ marginBottom: '24px', color: '#4a4a52', whiteSpace: 'pre-wrap', lineHeight: '1.8' }}>
+        <div key={idx} className="mb-6 text-zinc-400 text-sm leading-relaxed" style={{ whiteSpace: 'pre-wrap' }}>
           {block}
         </div>
       );

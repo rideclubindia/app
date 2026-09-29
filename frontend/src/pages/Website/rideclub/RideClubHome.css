@@ -1,0 +1,1491 @@
+/* ==========================================================================
+   RideClub — new public homepage design system, built from a blank slate.
+
+   Concept: a navigation/route-drawing language — the grid is a map grid,
+   not a spreadsheet. Warm off-white base, deep-charcoal ink, one brand
+   accent used only on interactive/live marks. Lines are felt more than
+   seen: a page-length 12-column guide at ~4% opacity, with occasional
+   stronger dividers reserved for real section boundaries.
+
+   Scoped entirely under .rc-site so it cannot collide with the older
+   WebsiteWebflow.css system still used by the other public pages
+   (Features/Safety/Community/etc. via WebsitePage.tsx).
+   ========================================================================== */
+
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=Big+Shoulders+Display:wght@600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+.rc-site {
+  /* Base surfaces — a deeper, warmer stone instead of near-white, so the
+     page reads as considered material rather than default paper */
+  --rc-bg: #f3efe8;
+  --rc-bg-alt: #eae4d8;
+  --rc-bg-card: #fbf9f4;
+  --rc-ink-bg: #14120f;
+
+  /* Ink */
+  --rc-ink: #1c1a15;
+  --rc-ink-muted: #5c584f;
+  --rc-ink-dim: #6c6759;
+  --rc-ink-inverse: #f3efe8;
+
+  /* Brand accent — a deeper burnt rust instead of a bright traffic-cone
+     orange, used only for live/interactive marks, never surfaces */
+  --rc-accent: #b3410c;
+  --rc-accent-ink: #8f3409;
+  --rc-accent-soft: rgba(179, 65, 12, 0.09);
+
+  /* Border hierarchy — three deliberate levels, never a flat 1px everywhere */
+  --rc-line-1: rgba(28, 26, 21, 0.05);
+  --rc-line-2: rgba(28, 26, 21, 0.1);
+  --rc-line-3: rgba(28, 26, 21, 0.18);
+
+  /* Grid + spacing */
+  --rc-maxw: 1320px;
+  --rc-gutter-x: clamp(20px, 4vw, 56px);
+  --rc-cols: 12;
+  --rc-section-y: clamp(48px, 5.5vw, 84px);
+  --rc-section-y-tight: clamp(32px, 3.5vw, 52px);
+
+  /* Geometry — near-square; 0 for structural blocks, small radius on
+     interactive/technical controls only */
+  --rc-radius-0: 0px;
+  --rc-radius-sm: 3px;
+  --rc-radius-md: 5px;
+
+  --rc-font-display: 'Big Shoulders Display', var(--rc-font-sans);
+
+  /* A warm rust-toned duotone instead of flat gray desaturation — ties
+     every photo to the same accent color as the rest of the page,
+     rather than looking like a filtered stock photo. */
+  --rc-photo-duotone: grayscale(0.35) sepia(0.3) hue-rotate(-12deg) saturate(1.7) contrast(1.08);
+  --rc-font-sans: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  --rc-font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  background-color: var(--rc-bg);
+  color: var(--rc-ink);
+  font-family: var(--rc-font-sans);
+  font-size: 17px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  position: relative;
+  z-index: 0;
+  overflow-x: clip;
+}
+
+.rc-site * {
+  box-sizing: border-box;
+}
+
+/* dark theme: toggled from the nav (data-rc-theme on <html>); the default when no choice is saved */
+:root[data-rc-theme="dark"] .rc-site {
+  --rc-bg: #12110e;
+  --rc-bg-alt: #1f1c17;
+  --rc-bg-card: #221f1a;
+  --rc-band: #181612;
+  --rc-ink-bg: #0a0907;
+  --rc-ink: #f1ece3;
+  --rc-ink-muted: #b5ad9f;
+  --rc-ink-dim: #948c7f;
+  --rc-ink-inverse: #12110e;
+  --rc-accent: #cf5419;
+  --rc-accent-ink: #ee8b56;
+  --rc-accent-soft: rgba(238, 139, 86, 0.12);
+  --rc-line-1: rgba(241, 236, 227, 0.05);
+  --rc-line-2: rgba(241, 236, 227, 0.11);
+  --rc-line-3: rgba(241, 236, 227, 0.2);
+  color-scheme: dark;
+}
+
+.rc-theme-toggle {
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--rc-line-3);
+  background: transparent;
+  color: var(--rc-ink);
+  cursor: pointer;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+.rc-theme-toggle:hover { background: var(--rc-ink); color: var(--rc-bg); }
+
+/* -------------------------------------------------------------
+   Page-length grid guide — two edge hairlines plus a 12-column
+   background at ~4.5% opacity. Felt, not seen: it never competes
+   with content, it just keeps everything locking to the same
+   vertical lines all the way down the page.
+   ------------------------------------------------------------- */
+/* three continuous page-length lines (edges + center): layouts are split into halves padded away from them */
+.rc-site::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  left: calc(max(0px, (100% - var(--rc-maxw)) / 2) + var(--rc-gutter-x));
+  right: calc(max(0px, (100% - var(--rc-maxw)) / 2) + var(--rc-gutter-x));
+  border-right: 1px solid var(--rc-line-2);
+  background: linear-gradient(to right, var(--rc-line-2) 1px, transparent 1px) 0 0 / 50% 100% repeat-x;
+  z-index: 1;
+  pointer-events: none;
+}
+@media (max-width: 900px) {
+  .rc-site::before { background-size: 100% 100%; }
+}
+
+.rc-grid-bg {
+  background-image: repeating-linear-gradient(
+    to right,
+    var(--rc-line-1) 0,
+    var(--rc-line-1) 1px,
+    transparent 1px,
+    transparent calc(100% / var(--rc-cols))
+  );
+  background-repeat: no-repeat;
+  background-origin: content-box;
+}
+
+@media (max-width: 900px) {
+  .rc-grid-bg { --rc-cols: 8; }
+}
+@media (max-width: 640px) {
+  .rc-grid-bg { --rc-cols: 4; }
+}
+
+/* -------------------------------------------------------------
+   Section shell — every section is a horizontal band in the same
+   page-length grid, separated by a level-2 rule, not a floating
+   card with its own margin.
+   ------------------------------------------------------------- */
+.rc-section {
+  max-width: var(--rc-maxw);
+  margin: 0 auto;
+  padding: var(--rc-section-y) var(--rc-gutter-x) clamp(20px, 2.2vw, 34px);
+  /* divider drawn as an inset 1px line so it ends at the frame lines, not the padding edge */
+  background-image: linear-gradient(var(--rc-line-2), var(--rc-line-2));
+  background-repeat: no-repeat;
+  background-position: center top;
+  background-size: calc(100% - 2 * var(--rc-gutter-x)) 1px;
+}
+.rc-section.rc-no-border { background-image: none; }
+.rc-section.rc-tight { padding-top: var(--rc-section-y-tight); }
+/* colored panels: fill spans frame line to frame line, full height, with inner breathing room */
+.rc-section.rc-alt,
+.rc-section.rc-dark {
+  background-size: calc(100% - 2 * var(--rc-gutter-x)) 100%;
+  background-position: center;
+  padding: clamp(48px, 5.5vw, 80px) calc(var(--rc-gutter-x) + clamp(24px, 3.5vw, 56px));
+  margin-top: clamp(48px, 6vw, 88px);
+}
+.rc-section.rc-alt { background-image: linear-gradient(var(--rc-bg-alt), var(--rc-bg-alt)); }
+
+/* A real dark chapter, not just a lighter gray — redefines the core
+   tokens locally so every existing rule (text, borders, list markers)
+   automatically inverts without per-component overrides. */
+.rc-section.rc-dark {
+  background-image: linear-gradient(var(--rc-ink-bg), var(--rc-ink-bg));
+  --rc-bg: var(--rc-ink-bg);
+  --rc-bg-alt: #1c1911;
+  --rc-bg-card: #201d16;
+  --rc-ink: #f3efe8;
+  --rc-ink-muted: rgba(243, 239, 232, 0.72);
+  --rc-ink-dim: rgba(243, 239, 232, 0.5);
+  --rc-line-1: rgba(243, 239, 232, 0.05);
+  --rc-line-2: rgba(243, 239, 232, 0.14);
+  --rc-line-3: rgba(243, 239, 232, 0.24);
+}
+
+.rc-label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-family: var(--rc-font-mono);
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--rc-ink-dim);
+  margin-bottom: 10px;
+}
+.rc-label .rc-label-num {
+  color: var(--rc-accent-ink);
+}
+
+.rc-h2 {
+  font-family: var(--rc-font-display);
+  font-weight: 700;
+  font-size: clamp(34px, 4.4vw, 58px);
+  line-height: 0.98;
+  letter-spacing: 0;
+  text-transform: uppercase;
+  color: var(--rc-ink);
+  margin: 0 0 18px;
+  text-wrap: balance;
+}
+
+.rc-body {
+  font-size: 16px;
+  line-height: 1.65;
+  color: var(--rc-ink-muted);
+  max-width: 56ch;
+  margin: 0;
+}
+
+.rc-section-head {
+  max-width: 72ch;
+  margin-bottom: clamp(28px, 3vw, 44px);
+}
+
+.rc-section-head-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 24px;
+  margin-bottom: clamp(28px, 3vw, 44px);
+}
+.rc-section-head-row .rc-h2 { margin-bottom: 0; }
+.rc-view-all {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  font-size: 13px;
+  font-weight: 550;
+  color: var(--rc-ink);
+  text-decoration: none;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--rc-ink);
+}
+@media (max-width: 640px) {
+  .rc-section-head-row { flex-direction: column; align-items: flex-start; }
+}
+
+/* Intro — one short editorial statement, large-ish but not a display
+   headline, no image. */
+.rc-intro-statement {
+  font-family: var(--rc-font-display);
+  font-size: clamp(22px, 2.4vw, 30px);
+  font-weight: 500;
+  line-height: 1.35;
+  letter-spacing: 0;
+  color: var(--rc-ink);
+  max-width: 52ch;
+  margin: 0;
+}
+
+/* Approach — the gauge art with a two-stat overlay row beneath it */
+.rc-approach-media { display: flex; flex-direction: column; gap: 16px; }
+.rc-approach-stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  border-top: 1px solid var(--rc-line-2);
+  margin-top: clamp(24px, 3vw, 36px);
+}
+.rc-approach-stats > div {
+  padding: 14px clamp(12px, 1.5vw, 20px) 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.rc-approach-stats > div:last-child { border-left: 1px solid var(--rc-line-2); padding-left: clamp(12px, 1.5vw, 20px); }
+.rc-approach-flow { margin-top: clamp(40px, 5vw, 64px); }
+
+.rc-community-statement {
+  font-family: var(--rc-font-display);
+  font-size: clamp(26px, 2.8vw, 38px);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0;
+  line-height: 1.05;
+  color: var(--rc-ink);
+  margin: 0 0 28px;
+  text-wrap: balance;
+}
+
+/* Overrides the inherited padding-top from .rc-discover-list, which was
+   tuned to align with a heading beside it — here the list sits under a
+   full-width gallery instead, so it only needs a modest gap, not both
+   that padding and an additional margin stacked on top of it. */
+.rc-featured-list.rc-discover-list {
+  padding-top: 0;
+  margin-top: clamp(24px, 2.5vw, 32px);
+}
+
+/* -------------------------------------------------------------
+   Corner-bracket decoration removed — a bordered box already defines
+   the relationship; brackets on top of it were pure decoration.
+   ------------------------------------------------------------- */
+
+/* -------------------------------------------------------------
+   Buttons
+   ------------------------------------------------------------- */
+.rc-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-family: var(--rc-font-sans);
+  font-weight: 550;
+  font-size: 14px;
+  letter-spacing: -0.005em;
+  text-decoration: none;
+  padding: 13px 24px;
+  border-radius: var(--rc-radius-sm);
+  cursor: pointer;
+  white-space: nowrap;
+  border: 1px solid transparent;
+  transition: background-color 0.18s ease, color 0.18s ease, border-color 0.18s ease;
+}
+/* The primary action carries the brand color, not a neutral black box —
+   the accent gets real presence instead of being confined to tiny marks. */
+.rc-btn-primary {
+  background: var(--rc-accent);
+  color: #ffffff;
+  border-color: var(--rc-accent);
+}
+.rc-btn-primary:hover {
+  background: var(--rc-accent-ink);
+  border-color: var(--rc-accent-ink);
+  color: #ffffff;
+}
+.rc-btn-ghost {
+  background: transparent;
+  color: var(--rc-ink);
+  border-color: var(--rc-line-3);
+}
+.rc-btn-ghost:hover {
+  border-color: var(--rc-ink);
+}
+
+/* -------------------------------------------------------------
+   Nav — minimal, grid-aligned, transparent over the hero, solid
+   once scrolled past it.
+   ------------------------------------------------------------- */
+.rc-nav {
+  position: sticky;
+  top: 0;
+  z-index: 90;
+  height: 72px;
+  display: flex;
+  align-items: stretch;
+  justify-content: space-between;
+  padding: 0 calc(max(0px, (100% - var(--rc-maxw)) / 2) + var(--rc-gutter-x));
+  background: color-mix(in srgb, var(--rc-bg) 90%, transparent);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border-bottom: 1px solid var(--rc-line-2);
+  transition: background-color 0.3s ease, border-color 0.3s ease;
+}
+
+.rc-nav-logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  text-decoration: none;
+}
+
+.rc-nav-links {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.rc-nav-link {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--rc-ink-muted);
+  text-decoration: none;
+  padding: 8px 14px;
+  border-radius: var(--rc-radius-sm);
+  transition: color 0.18s ease, background-color 0.18s ease;
+}
+.rc-nav-link:hover { color: var(--rc-ink); background: var(--rc-bg-alt); }
+
+.rc-nav-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.rc-mobile-toggle {
+  display: none;
+  width: 36px;
+  height: 36px;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: 1px solid var(--rc-line-3);
+  color: var(--rc-ink);
+  cursor: pointer;
+}
+
+/* Both rules share one breakpoint — the toggle must appear exactly
+   when the inline links disappear, or navigation becomes unreachable
+   in between (this was a real bug: links hidden below 920px, but the
+   toggle only appeared below 640px, leaving 641–919px with no way to
+   reach the nav at all). */
+@media (max-width: 920px) {
+  .rc-nav-links { display: none; }
+  .rc-mobile-toggle { display: flex; }
+}
+
+.rc-mobile-menu {
+  position: fixed;
+  inset: 72px 0 0 0;
+  z-index: 89;
+  background: var(--rc-bg);
+  padding: 24px var(--rc-gutter-x);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.rc-mobile-menu a {
+  font-family: var(--rc-font-display);
+  font-size: 28px;
+  font-weight: 600;
+  color: var(--rc-ink);
+  text-decoration: none;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--rc-line-2);
+}
+
+/* Hero — photo left with oversized slide number + overlapping about card, headline + slide tabs right */
+/* bounded by the grid like every section: photo = left line to center line, text = center line to right line */
+.rc-hero {
+  position: relative;
+  max-width: var(--rc-maxw);
+  margin: 0 auto;
+  padding: 0 var(--rc-gutter-x);
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  min-height: clamp(560px, calc(100vh - 72px), 820px);
+}
+.rc-hero > * { min-width: 0; }
+
+.rc-hero-media {
+  position: relative;
+  z-index: 2;
+  overflow: hidden;
+  background: var(--rc-ink-bg);
+}
+.rc-hero-media img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.rc-hero-media::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(20,18,15,0.35) 0%, rgba(20,18,15,0) 35%, rgba(20,18,15,0) 60%, rgba(20,18,15,0.55) 100%);
+  pointer-events: none;
+}
+
+.rc-hero-num {
+  position: absolute;
+  z-index: 1;
+  top: clamp(16px, 2vw, 28px);
+  right: clamp(20px, 2.5vw, 36px);
+  font-family: var(--rc-font-display);
+  font-weight: 800;
+  font-size: clamp(110px, 12vw, 190px);
+  line-height: 0.8;
+  color: rgba(243, 239, 232, 0.92);
+  text-shadow: 0 2px 30px rgba(0, 0, 0, 0.35);
+  pointer-events: none;
+}
+
+.rc-hero-about {
+  position: absolute;
+  z-index: 2;
+  left: 0;
+  bottom: 0;
+  width: min(440px, 82%);
+  padding: clamp(24px, 2.6vw, 36px);
+  background: var(--rc-ink-bg);
+  color: #f3efe8;
+}
+.rc-hero-about-label {
+  display: block;
+  font-family: var(--rc-font-mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--rc-accent);
+  margin-bottom: 12px;
+}
+.rc-hero-about p {
+  font-size: 15px;
+  line-height: 1.6;
+  color: rgba(243, 239, 232, 0.78);
+  margin: 0 0 22px;
+}
+.rc-hero-start {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  color: #f3efe8;
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration: none;
+}
+.rc-hero-start-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: var(--rc-accent);
+  color: #fff;
+  transition: transform 0.25s ease;
+}
+.rc-hero-start:hover .rc-hero-start-icon { transform: translateX(3px); }
+
+.rc-hero-content {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 32px;
+  padding: clamp(28px, 3vw, 44px) var(--rc-half-pad);
+}
+.rc-hero-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+}
+.rc-hero-kicker {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--rc-ink-muted);
+}
+.rc-hero-chip {
+  display: flex;
+  flex-direction: column;
+  padding: 10px 14px;
+  border: 1px solid var(--rc-line-2);
+  background: var(--rc-bg-card);
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: var(--rc-ink);
+  white-space: nowrap;
+}
+
+.rc-hero-display {
+  font-family: var(--rc-font-display);
+  font-weight: 800;
+  font-size: clamp(52px, 5.8vw, 92px);
+  line-height: 0.92;
+  letter-spacing: 0;
+  text-transform: uppercase;
+  color: var(--rc-ink);
+  margin: 0 0 22px;
+  text-wrap: balance;
+}
+.rc-hero-copy {
+  font-size: 16px;
+  line-height: 1.65;
+  color: var(--rc-ink-muted);
+  max-width: 40ch;
+  margin: 0;
+}
+
+.rc-hero-tabs-wrap { padding-bottom: 4px; }
+.rc-hero-tabs {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+}
+.rc-hero-tab {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 0;
+  border: none;
+  background: none;
+  text-align: left;
+  cursor: pointer;
+  color: var(--rc-ink-dim);
+  font: inherit;
+  transition: color 0.2s ease;
+}
+.rc-hero-tab:hover,
+.rc-hero-tab.is-active { color: var(--rc-ink); }
+.rc-hero-tab-bar {
+  position: relative;
+  height: 2px;
+  margin-bottom: 10px;
+  background: var(--rc-line-2);
+  overflow: hidden;
+}
+.rc-hero-tab.is-active .rc-hero-tab-bar { background: var(--rc-line-3); }
+.rc-hero-tab-progress {
+  position: absolute;
+  inset: 0;
+  background: var(--rc-accent);
+  transform-origin: left;
+  animation: rc-hero-progress linear forwards;
+}
+@keyframes rc-hero-progress { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+.rc-hero-tab-num {
+  font-family: var(--rc-font-mono);
+  font-size: 11px;
+  letter-spacing: 0.05em;
+}
+.rc-hero-tab.is-active .rc-hero-tab-num { color: var(--rc-accent-ink); }
+.rc-hero-tab-label {
+  font-size: 13.5px;
+  font-weight: 550;
+  line-height: 1.35;
+}
+.rc-hero-arrows {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 22px;
+}
+.rc-hero-arrows button {
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--rc-line-3);
+  background: transparent;
+  color: var(--rc-ink);
+  cursor: pointer;
+  transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+}
+.rc-hero-arrows button:hover { background: var(--rc-ink); color: var(--rc-bg); border-color: var(--rc-ink); }
+
+@media (max-width: 900px) {
+  .rc-hero { grid-template-columns: 1fr; min-height: 0; }
+  .rc-hero-media { aspect-ratio: 4 / 5; max-height: 72vh; }
+  .rc-hero-content { padding: 32px 0 40px; }
+}
+@media (max-width: 560px) {
+  .rc-hero-media { aspect-ratio: auto; max-height: none; padding-top: 80%; }
+  .rc-hero-media img { bottom: auto; height: auto; aspect-ratio: 5 / 4; }
+  .rc-hero-media::after { bottom: auto; height: 0; padding-top: 80%; }
+  .rc-hero-about { position: relative; width: 100%; }
+  .rc-hero-tabs { grid-template-columns: 1fr; gap: 12px; }
+  .rc-hero-top { flex-direction: column; }
+}
+
+.rc-status-live { color: #2f6b52; font-weight: 600; }
+/* -------------------------------------------------------------
+   Discover Rides — one featured ride treated as a headline with an
+   inline typographic stat line, plus a plain list of the rest. Not
+   a repeating data table.
+   ------------------------------------------------------------- */
+.rc-discover {
+  display: grid;
+  grid-template-columns: 7fr 5fr;
+  column-gap: clamp(24px, 4vw, 56px);
+  align-items: start;
+}
+.rc-discover > * { min-width: 0; }
+@media (max-width: 860px) {
+  .rc-discover { grid-template-columns: 1fr; row-gap: 32px; }
+}
+
+.rc-discover-stats {
+  font-family: var(--rc-font-mono);
+  font-size: 14px;
+  color: var(--rc-ink-muted);
+  margin: 0 0 18px;
+}
+.rc-discover-stats span { color: var(--rc-ink-dim); margin: 0 2px; }
+
+.rc-discover-list {
+  list-style: none;
+  margin: 0;
+  padding-top: clamp(48px, 6vw, 72px);
+}
+.rc-discover-list li {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px 0;
+  border-top: 1px solid var(--rc-line-2);
+  font-size: 15px;
+  font-weight: 550;
+  color: var(--rc-ink);
+}
+.rc-discover-list li:last-child { border-bottom: 1px solid var(--rc-line-2); }
+.rc-discover-list li span:last-child {
+  font-family: var(--rc-font-mono);
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--rc-ink-dim);
+  text-align: right;
+  white-space: nowrap;
+}
+@media (max-width: 860px) {
+  .rc-discover-list { padding-top: 8px; }
+}
+
+/* -------------------------------------------------------------
+   Problem section — typographic list, not cards.
+   ------------------------------------------------------------- */
+.rc-problem-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.rc-problem-list li {
+  display: flex;
+  align-items: baseline;
+  gap: clamp(16px, 3vw, 40px);
+  padding: clamp(18px, 2.2vw, 26px) 0;
+  border-top: 1px solid var(--rc-line-2);
+}
+.rc-problem-list li:last-child { border-bottom: 1px solid var(--rc-line-2); }
+
+.rc-problem-num {
+  font-family: var(--rc-font-mono);
+  font-size: 13px;
+  color: var(--rc-ink-dim);
+  flex-shrink: 0;
+  width: 3ch;
+}
+
+.rc-problem-text {
+  font-family: var(--rc-font-display);
+  font-weight: 700;
+  text-transform: uppercase;
+  font-size: clamp(22px, 2.8vw, 34px);
+  letter-spacing: 0;
+  color: var(--rc-ink-dim);
+  transition: color 0.25s ease;
+}
+.rc-problem-list li.is-solved .rc-problem-text { color: var(--rc-ink); }
+.rc-problem-list li.is-solved .rc-problem-num { color: var(--rc-accent-ink); }
+
+/* -------------------------------------------------------------
+   Two-up editorial module (Solution, Navigation feature): number,
+   label, headline, copy on one side, image on the other — used
+   selectively with an outline, alternating sides.
+   ------------------------------------------------------------- */
+.rc-module {
+  display: grid;
+  grid-template-columns: 5fr 7fr;
+  column-gap: clamp(24px, 4vw, 56px);
+  align-items: center;
+}
+.rc-module > * { min-width: 0; }
+.rc-module.rc-module-reverse { grid-template-columns: 7fr 5fr; }
+.rc-module.rc-module-reverse .rc-module-media { order: -1; }
+
+@media (max-width: 860px) {
+  .rc-module,
+  .rc-module.rc-module-reverse { grid-template-columns: 1fr; row-gap: 28px; }
+  .rc-module.rc-module-reverse .rc-module-media { order: 0; }
+}
+
+/* No border — the photograph sits inside the grid without a box
+   around it; the grid column already defines its edges. */
+.rc-module-media {
+  position: relative;
+  aspect-ratio: 5 / 4;
+  overflow: hidden;
+  background: var(--rc-ink-bg); /* fills the box while the photo loads instead of showing empty */
+}
+.rc-module-media img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  filter: var(--rc-photo-duotone) brightness(0.95);
+}
+/* Ink-on-paper for vector artwork modules — no photo filter/cover, the
+   SVG just centers in its own tinted panel. */
+.rc-module-media-art {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--rc-bg-alt);
+  aspect-ratio: 16 / 10;
+  padding: clamp(16px, 2.5vw, 32px);
+}
+.rc-module-media-art svg {
+  width: 100%;
+  height: 100%;
+  max-width: 440px;
+}
+
+.rc-module-list {
+  list-style: none;
+  margin: 24px 0 0;
+  padding-top: 20px;
+  border-top: 1px solid var(--rc-line-2);
+}
+.rc-module-list li {
+  font-size: 14.5px;
+  color: var(--rc-ink-muted);
+  padding: 10px 0;
+  position: relative;
+  padding-left: 16px;
+}
+.rc-module-list li::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0.6em;
+  width: 5px;
+  height: 5px;
+  background: var(--rc-accent);
+}
+
+/* -------------------------------------------------------------
+   Flow section — a connected sequence (CREATE→SHARE→JOIN→RIDE,
+   DETECT→VERIFY→ALERT→RESPOND), not four generic cards.
+   ------------------------------------------------------------- */
+.rc-flow {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  position: relative;
+}
+
+/* Stops exactly at the last node's center (75% for 4 equal columns,
+   each node sitting at the start of its column) — it must not run
+   past the content it's connecting. */
+.rc-flow::before {
+  content: '';
+  position: absolute;
+  top: 11px;
+  left: 0;
+  right: 25%;
+  height: 1px;
+  background: var(--rc-line-3);
+}
+
+.rc-flow-step {
+  position: relative;
+  padding-top: 40px;
+  padding-right: clamp(16px, 2vw, 28px);
+}
+
+.rc-flow-node {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 23px;
+  height: 23px;
+  border: 1.5px solid var(--rc-ink);
+  background: var(--rc-bg);
+  color: var(--rc-ink);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--rc-font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  z-index: 1;
+}
+
+.rc-flow-title {
+  font-family: var(--rc-font-display);
+  font-weight: 600;
+  font-size: 17px;
+  color: var(--rc-ink);
+  margin-bottom: 8px;
+}
+
+.rc-flow-desc {
+  font-size: 13.5px;
+  line-height: 1.55;
+  color: var(--rc-ink-muted);
+}
+
+@media (max-width: 760px) {
+  .rc-flow { grid-template-columns: 1fr; row-gap: 28px; }
+  .rc-flow::before { top: 0; bottom: 0; left: 11px; right: auto; width: 1px; height: auto; }
+  .rc-flow-step { padding-top: 0; padding-left: 40px; padding-right: 0; }
+  .rc-flow-node { top: 0; left: 0; }
+}
+
+/* -------------------------------------------------------------
+   Stat row — large numbers as visual anchors across the full grid
+   width.
+   ------------------------------------------------------------- */
+.rc-stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  border-top: 1px solid var(--rc-line-3);
+}
+.rc-stat {
+  padding: 20px clamp(16px, 2vw, 28px) 0;
+  border-left: 1px solid var(--rc-line-2);
+}
+.rc-stat:first-child { border-left: none; padding-left: 0; }
+/* Data pops in the brand color; headlines stay ink — color itself
+   carries the hierarchy between "statement" and "number" text. */
+.rc-stat-val {
+  display: block;
+  font-family: var(--rc-font-display);
+  font-weight: 800;
+  font-size: clamp(32px, 3.6vw, 50px);
+  letter-spacing: 0;
+  color: var(--rc-accent-ink);
+  margin-bottom: 8px;
+}
+/* Same treatment, sized for a short word/phrase rather than a number */
+.rc-stat-val-sm {
+  display: block;
+  font-family: var(--rc-font-display);
+  font-weight: 700;
+  text-transform: uppercase;
+  font-size: clamp(18px, 1.8vw, 23px);
+  color: var(--rc-accent-ink);
+  margin-bottom: 8px;
+}
+.rc-stat-label {
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--rc-ink-muted);
+}
+
+@media (max-width: 760px) {
+  .rc-stats { grid-template-columns: 1fr 1fr; row-gap: 24px; }
+  .rc-stat:nth-child(2n+1) { border-left: none; padding-left: 0; }
+  .rc-stat:nth-child(n+3) { border-left: 1px solid var(--rc-line-2); padding-left: clamp(16px, 2vw, 28px); }
+}
+
+/* -------------------------------------------------------------
+   Community network — simple node/line diagram built in CSS, not
+   generic profile cards.
+   ------------------------------------------------------------- */
+.rc-network {
+  display: grid;
+  grid-template-columns: 5fr 7fr;
+  column-gap: clamp(24px, 4vw, 56px);
+  align-items: center;
+}
+.rc-network > * { min-width: 0; }
+@media (max-width: 860px) {
+  .rc-network { grid-template-columns: 1fr; row-gap: 32px; }
+}
+
+.rc-network-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.rc-network-list li {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  padding: 16px 0;
+  border-top: 1px solid var(--rc-line-2);
+  font-size: 15px;
+  font-weight: 550;
+  color: var(--rc-ink);
+}
+.rc-network-list li:last-child { border-bottom: 1px solid var(--rc-line-2); }
+.rc-network-list li span:last-child {
+  font-family: var(--rc-font-mono);
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--rc-ink-dim);
+}
+
+/* No box around the diagram — it's graphic artwork (route nodes and
+   connecting lines), not a UI panel that needs framing. */
+.rc-network-diagram {
+  position: relative;
+  aspect-ratio: 4 / 3;
+}
+.rc-network-node {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--rc-ink);
+  transform: translate(-50%, -50%);
+}
+.rc-network-node.is-accent { background: var(--rc-accent); width: 13px; height: 13px; }
+.rc-network-svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+/* -------------------------------------------------------------
+   Route art — the hero's dominant visual: a hand-drawn route line
+   with real waypoints, replacing a stock/dashboard photo entirely.
+   ------------------------------------------------------------- */
+.rc-route-art {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+.rc-route-contour {
+  stroke: var(--rc-line-2);
+  stroke-width: 1;
+  fill: none;
+}
+.rc-route-line {
+  stroke: var(--rc-ink);
+  stroke-width: 2.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  fill: none;
+}
+.rc-route-leader {
+  stroke: var(--rc-line-3);
+  stroke-width: 1;
+}
+.rc-route-node {
+  fill: var(--rc-bg);
+  stroke: var(--rc-ink);
+  stroke-width: 2;
+}
+.rc-route-node.is-accent {
+  fill: var(--rc-accent);
+  stroke: var(--rc-accent);
+}
+.rc-route-label {
+  font-family: var(--rc-font-sans);
+  font-size: 13px;
+  font-weight: 600;
+  fill: var(--rc-ink);
+}
+.rc-route-sublabel {
+  font-family: var(--rc-font-mono);
+  font-size: 10px;
+  fill: var(--rc-ink-dim);
+}
+
+/* -------------------------------------------------------------
+   Gauge art — a stylized lean-angle dial replacing a HUD photo for
+   the Navigation section.
+   ------------------------------------------------------------- */
+.rc-gauge-art {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+.rc-gauge-ring {
+  stroke: var(--rc-line-3);
+  stroke-width: 1.5;
+}
+.rc-gauge-ring-inner {
+  stroke: var(--rc-line-2);
+  stroke-width: 1;
+}
+.rc-gauge-tick {
+  stroke: var(--rc-line-3);
+  stroke-width: 2;
+}
+.rc-gauge-needle {
+  stroke: var(--rc-accent);
+  stroke-width: 3;
+  stroke-linecap: round;
+}
+.rc-gauge-hub {
+  fill: var(--rc-ink);
+}
+.rc-gauge-value {
+  font-family: var(--rc-font-display);
+  font-size: 36px;
+  font-weight: 700;
+  fill: var(--rc-ink);
+}
+.rc-gauge-caption {
+  font-family: var(--rc-font-mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  fill: var(--rc-ink-dim);
+}
+
+/* -------------------------------------------------------------
+   Showcase — asymmetric image grid, real spans not equal tiles.
+   ------------------------------------------------------------- */
+.rc-showcase-grid {
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
+  grid-auto-flow: dense;
+  gap: 24px;
+}
+.rc-showcase-card { text-decoration: none; color: inherit; display: block; }
+.rc-showcase-card.is-large { grid-column: span 7; }
+.rc-showcase-card.is-medium { grid-column: span 5; }
+@media (max-width: 900px) {
+  .rc-showcase-card.is-large,
+  .rc-showcase-card.is-medium { grid-column: span 12; grid-row: span 1; }
+}
+/* No border on the photographs either — the asymmetric grid spans
+   already define their edges. */
+.rc-showcase-media {
+  aspect-ratio: 4 / 3;
+  overflow: hidden;
+  background: var(--rc-ink-bg);
+}
+/* 7:5 column split — these ratios give both photos the same height */
+.rc-showcase-card.is-medium .rc-showcase-media { aspect-ratio: 20 / 21; }
+@media (max-width: 900px) {
+  .rc-showcase-card.is-medium .rc-showcase-media { aspect-ratio: 4 / 3; }
+}
+.rc-showcase-media img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  filter: grayscale(0.55) contrast(1.08) brightness(0.97);
+  transition: transform 0.4s ease, filter 0.3s ease;
+}
+.rc-showcase-card:hover .rc-showcase-media img {
+  transform: scale(1.03);
+  filter: grayscale(0.1) contrast(1.05);
+}
+.rc-showcase-body { padding-top: 16px; }
+.rc-showcase-tag {
+  display: block;
+  font-family: var(--rc-font-mono);
+  font-size: 11px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--rc-accent-ink);
+  margin-bottom: 8px;
+}
+.rc-showcase-body h3 {
+  font-size: 17px;
+  font-weight: 650;
+  color: var(--rc-ink);
+  margin: 0 0 6px;
+}
+.rc-showcase-body p {
+  font-size: 13.5px;
+  line-height: 1.55;
+  color: var(--rc-ink-muted);
+  margin: 0;
+}
+
+/* -------------------------------------------------------------
+   Journal — a compact 3-column archive, top-rule cards rather than
+   boxes, matching the reference's news-archive density.
+   ------------------------------------------------------------- */
+.rc-journal-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  column-gap: clamp(24px, 3vw, 40px);
+}
+.rc-journal-card {
+  display: block;
+  text-decoration: none;
+  color: inherit;
+  padding-top: 20px;
+  border-top: 1px solid var(--rc-line-2);
+  transition: opacity 0.18s ease;
+}
+.rc-journal-card:hover { opacity: 0.7; }
+.rc-journal-meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-family: var(--rc-font-mono);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--rc-accent-ink);
+  margin-bottom: 14px;
+}
+.rc-journal-step {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border: 1px solid var(--rc-line-3);
+  color: var(--rc-ink);
+  font-size: 10px;
+}
+.rc-journal-card h3 {
+  font-size: 17px;
+  font-weight: 650;
+  color: var(--rc-ink);
+  margin: 0 0 8px;
+  line-height: 1.3;
+}
+.rc-journal-card p {
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--rc-ink-muted);
+  margin: 0;
+}
+@media (max-width: 860px) {
+  .rc-journal-grid { grid-template-columns: 1fr; row-gap: 28px; }
+}
+
+/* -------------------------------------------------------------
+   Testimonial — full-bleed photo with a framed panel, grid lines
+   still visible through the tint.
+   ------------------------------------------------------------- */
+.rc-testimonial {
+  position: relative;
+  min-height: 440px;
+  display: flex;
+  align-items: flex-end;
+  overflow: hidden;
+  background: var(--rc-ink-bg);
+}
+.rc-testimonial img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  filter: var(--rc-photo-duotone) brightness(0.9);
+}
+/* Tint only — no grid lines drawn across the photo itself, per the
+   grid-safety rule: lines frame content, they never cross it. */
+.rc-testimonial::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: linear-gradient(180deg, rgba(17,17,15,0.1) 0%, rgba(17,17,15,0.8) 100%);
+}
+.rc-testimonial-panel {
+  position: relative;
+  z-index: 1;
+  margin: clamp(20px, 4vw, 40px);
+  max-width: 580px;
+  padding: clamp(24px, 3vw, 36px);
+  background: rgba(17, 17, 15, 0.55);
+  backdrop-filter: blur(6px);
+  border: 1px solid rgba(250, 249, 246, 0.16);
+}
+.rc-testimonial-quote {
+  font-family: var(--rc-font-display);
+  font-size: clamp(18px, 2vw, 23px);
+  font-weight: 500;
+  line-height: 1.45;
+  color: #ffffff;
+  margin: 0 0 20px;
+}
+.rc-testimonial-author { color: #ffffff; font-weight: 600; margin-bottom: 2px; }
+.rc-testimonial-role { font-family: var(--rc-font-mono); font-size: 12px; color: var(--rc-accent); margin-bottom: 20px; }
+.rc-testimonial-controls { display: flex; align-items: center; gap: 12px; }
+.rc-testimonial-btn {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(250, 249, 246, 0.3);
+  background: transparent;
+  color: #ffffff;
+  cursor: pointer;
+}
+.rc-testimonial-counter {
+  font-family: var(--rc-font-mono);
+  font-size: 12px;
+  color: rgba(250, 249, 246, 0.7);
+}
+
+/* -------------------------------------------------------------
+   CTA — large editorial statement framed by grid lines.
+   ------------------------------------------------------------- */
+/* Full-bleed cinematic photo + overlay panel — one large image, a
+   minimal statement and CTA, not a bordered form card. */
+.rc-final-cta {
+  position: relative;
+  min-height: 480px;
+  display: flex;
+  align-items: flex-end;
+  overflow: hidden;
+  background: var(--rc-ink-bg);
+}
+.rc-final-cta img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  filter: var(--rc-photo-duotone) brightness(0.85);
+}
+.rc-final-cta::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, rgba(17,17,15,0.94) 0%, rgba(17,17,15,0.82) 45%, rgba(17,17,15,0.25) 80%);
+}
+.rc-final-cta-panel {
+  position: relative;
+  z-index: 1;
+  padding: clamp(32px, 5vw, 64px);
+  max-width: 560px;
+}
+.rc-final-cta-panel .rc-label { color: rgba(250, 249, 246, 0.6); }
+.rc-final-cta-panel .rc-label-num { color: var(--rc-accent); }
+.rc-final-cta-headline {
+  font-family: var(--rc-font-display);
+  font-weight: 800;
+  text-transform: uppercase;
+  font-size: clamp(34px, 4.8vw, 58px);
+  line-height: 0.98;
+  letter-spacing: 0;
+  color: #ffffff;
+  margin: 0 0 28px;
+}
+.rc-final-cta-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 28px;
+}
+.rc-btn-on-photo {
+  border-color: rgba(250, 249, 246, 0.4);
+  color: #ffffff;
+}
+.rc-btn-on-photo:hover { border-color: #ffffff; }
+.rc-final-cta-form {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  max-width: 420px;
+}
+.rc-final-cta-form input {
+  flex: 1;
+  min-width: 200px;
+  padding: 11px 14px;
+  border: 1px solid rgba(250, 249, 246, 0.3);
+  background: rgba(250, 249, 246, 0.08);
+  color: #ffffff;
+  font-family: var(--rc-font-mono);
+  font-size: 13px;
+}
+.rc-final-cta-form input::placeholder { color: rgba(250, 249, 246, 0.5); }
+.rc-final-cta-form button {
+  padding: 11px 18px;
+  border: 1px solid rgba(250, 249, 246, 0.4);
+  background: transparent;
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.rc-final-cta-msg {
+  margin-top: 12px;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* -------------------------------------------------------------
+   Footer — compact 3-column structure.
+   ------------------------------------------------------------- */
+.rc-footer {
+  --rc-half-pad: clamp(24px, 3vw, 44px);
+  position: relative;
+  background: #14120f;
+  color: rgba(250, 249, 246, 0.7);
+  overflow: hidden;
+}
+/* the page's three grid lines continue faintly through the footer */
+.rc-footer::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: calc(max(0px, (100% - var(--rc-maxw)) / 2) + var(--rc-gutter-x));
+  right: calc(max(0px, (100% - var(--rc-maxw)) / 2) + var(--rc-gutter-x));
+  border-left: 1px solid rgba(250, 249, 246, 0.08);
+  border-right: 1px solid rgba(250, 249, 246, 0.08);
+  background: linear-gradient(rgba(250, 249, 246, 0.08), rgba(250, 249, 246, 0.08)) center / 1px 100% no-repeat;
+  pointer-events: none;
+}
+.rc-footer-inner {
+  position: relative;
+  max-width: var(--rc-maxw);
+  margin: 0 auto;
+  padding: clamp(56px, 6vw, 88px) var(--rc-gutter-x) 0;
+}
+.rc-footer-main { display: grid; grid-template-columns: 1fr 1fr; }
+.rc-footer-main > * { min-width: 0; padding: 0 var(--rc-half-pad); }
+.rc-footer-brand { display: flex; flex-direction: column; align-items: flex-start; gap: 22px; }
+.rc-footer-logo { display: block; height: 110px; margin: -30px -12px -28px; }
+.rc-footer-pitch {
+  margin: 0;
+  max-width: 22ch;
+  font-family: var(--rc-font-display);
+  font-weight: 800;
+  text-transform: uppercase;
+  font-size: clamp(26px, 2.6vw, 38px);
+  line-height: 1;
+  color: #fff;
+}
+.rc-footer-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 24px; margin-top: 6px; }
+.rc-footer-mail { display: inline-flex; align-items: center; gap: 8px; font-size: 15px; color: rgba(250, 249, 246, 0.85); text-decoration: none; border-bottom: 1px solid rgba(250, 249, 246, 0.3); padding-bottom: 2px; }
+.rc-footer-mail:hover { color: #fff; border-color: #fff; }
+.rc-footer-nav { display: grid; grid-template-columns: 1fr 1fr; gap: 36px 24px; }
+.rc-footer-col-title {
+  font-family: var(--rc-font-mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--rc-accent);
+  margin-bottom: 12px;
+}
+.rc-footer-col a {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: fit-content;
+  color: rgba(250, 249, 246, 0.78);
+  text-decoration: none;
+  font-size: 15px;
+  padding: 5px 0;
+  transition: color 0.2s ease, transform 0.2s ease;
+}
+.rc-footer-col a:hover { color: #fff; transform: translateX(3px); }
+.rc-footer-ext { transform: rotate(-45deg); opacity: 0.6; }
+.rc-footer-word {
+  margin-top: clamp(40px, 5vw, 64px);
+  padding: 0 var(--rc-half-pad);
+  user-select: none;
+}
+.rc-footer-bottom {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 22px var(--rc-half-pad) 26px;
+  border-top: 1px solid rgba(250, 249, 246, 0.1);
+  font-size: 13px;
+  color: rgba(250, 249, 246, 0.5);
+}
+.rc-footer-legal { display: flex; align-items: center; gap: 20px; }
+.rc-footer-top-btn {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(250, 249, 246, 0.25);
+  background: transparent;
+  color: rgba(250, 249, 246, 0.8);
+  cursor: pointer;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+.rc-footer-top-btn:hover { background: #fff; color: #14120f; }
+@media (max-width: 900px) {
+  .rc-footer::before { background: none; }
+  .rc-footer-main { grid-template-columns: 1fr; gap: 44px; }
+  .rc-footer-main > * { padding: 0; }
+  .rc-footer-bottom { padding-left: 0; padding-right: 0; }
+}
+.rc-footer-bottom a { color: inherit; text-decoration: none; }
+
+
+@media (prefers-reduced-motion: reduce) {
+  .rc-site *, .rc-site *::before, .rc-site *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

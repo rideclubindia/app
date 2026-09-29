@@ -6,7 +6,7 @@ import { getCachedTile, cacheTile } from './tileCache';
  * Uses the `idb://` prefix to distinguish requests that should be cached.
  */
 export const offlineProtocol = async (params: RequestParameters, abortController: AbortController) => {
-  const url = params.url.replace('idb://', 'https://');
+  const url = params.url.startsWith('idb://') ? params.url.replace('idb://', 'https://') : params.url;
   
   try {
     // 1. Check if the tile is in IndexedDB

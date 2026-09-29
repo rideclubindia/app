@@ -31,6 +31,8 @@ import { HomeMap } from './components/home/HomeMap';
 import { renderRiderMarker } from './components/home/RiderMarker';
 import { LeftNavigationRail } from './components/LeftNavigationRail';
 import { getRealtime } from './realtime';
+import { useOrientationLock } from './hooks/useOrientationLock';
+import { isLandscapeAllowedRoute } from './lib/orientationRoutes';
 const measurementId = import.meta.env.VITE_GA_MEASUREMENT_ID;
 if (measurementId) {
   ReactGA.initialize(measurementId);
@@ -49,6 +51,7 @@ const AnalyticsTracker = () => {
 };
 
 const MapView = lazy(() => import('./pages/MapView'));
+const ExploreRides = lazy(() => import('./pages/ExploreRides'));
 const Home = lazy(() => import('./pages/Home'));
 const SplashScreen = lazy(() => import('./pages/SplashScreen'));
 const LoginScreen = lazy(() => import('./pages/LoginScreen'));
@@ -61,12 +64,14 @@ const Navigation = lazy(() => import('./pages/Navigation'));
 const SavedLocationPicker = lazy(() => import('./pages/SavedLocationPicker'));
 const SavedLocationsList = lazy(() => import('./pages/SavedLocationsList'));
 const MyIncidents = lazy(() => import('./pages/MyIncidents'));
+const ReportIncident = lazy(() => import('./pages/ReportIncident'));
 const EditProfile = lazy(() => import('./pages/EditProfile'));
 const GroupsHMI = lazy(() => import('./features/groups/GroupsHMI'));
 const RidePlusHMI = lazy(() => import('./features/rides/RidePlusHMI'));
 const RideHistory = lazy(() => import('./pages/RideHistory'));
 const CreateRide = lazy(() => import('./pages/RidePlus/CreateRide'));
 const JoinRide = lazy(() => import('./pages/RidePlus/JoinRide'));
+const RideDetail = lazy(() => import('./pages/RidePlus/RideDetail'));
 const LiveRide = lazy(() => import('./pages/RidePlus/LiveRide'));
 const AdminLayout = lazy(() => import('./pages/Admin/AdminLayout'));
 const AdminIncidents = lazy(() => import('./pages/Admin/AdminIncidents'));
@@ -105,6 +110,7 @@ const WebsiteCommunity = lazy(() => import('./pages/Website/Community'));
 const WebsiteSafety = lazy(() => import('./pages/Website/Safety'));
 const WebsiteAppInfo = lazy(() => import('./pages/Website/TheApp'));
 const WebsiteAbout = lazy(() => import('./pages/Website/AboutUs'));
+const WebsiteArchitecture = lazy(() => import('./pages/Website/Architecture'));
 const WebsiteContact = lazy(() => import('./pages/Website/Contact'));
 export const ADMIN_EMAIL = 'iharsharoyal@gmail.com';
 
@@ -112,7 +118,14 @@ const BodyStyler = ({ isWebsiteDomain }: { isWebsiteDomain: boolean }) => {
   const location = useLocation();
   useEffect(() => {
     const root = document.getElementById('root');
-    if (isWebsiteDomain && location.pathname === '/') {
+    const websitePages = [
+      '/', '/features', '/community', '/safety', '/app', '/about', '/contact',
+      '/architecture', '/specs',
+      '/download', '/pricing', '/careers', '/press', '/blog', '/privacy',
+      '/terms', '/cookies', '/guidelines', '/website', '/dev-website'
+    ];
+    const isWebpage = isWebsiteDomain || websitePages.includes(location.pathname) || location.pathname.startsWith('/website');
+    if (isWebpage) {
       document.body.style.overflow = 'auto';
       document.body.style.height = 'auto';
       document.body.style.overscrollBehaviorY = 'auto';
@@ -155,7 +168,7 @@ const RequireAuth = ({ children }: { children: React.ReactNode }) => {
           const payloadBase64 = rieToken.split('.')[1];
           const decodedPayload = JSON.parse(atob(payloadBase64));
           effectiveUser = {
-            uid: decodedPayload.uid,
+            uid: decodedPayload.uid || decodedPayload.sub,
             email: decodedPayload.sub,
             displayName: decodedPayload.sub.split('@')[0],
             getIdToken: async () => rieToken,
@@ -214,7 +227,7 @@ const RequireAuth = ({ children }: { children: React.ReactNode }) => {
             email: effectiveUser.email || '',
             avatar_url: effectiveUser.photoURL || undefined,
             status: 'active'
-          }, { onConflict: 'id' });
+          }, { onConflict: 'email' });
         } else {
           setBanned(profileRes.data.status === 'suspended' || profileRes.data.status === 'banned');
           setWarning(profileRes.data.status === 'warning');
@@ -301,12 +314,17 @@ const RequireAdmin = ({ children }: { children: React.ReactNode }) => {
 const Layout = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { coordinates: userLocation, locationName, isMapReporting } = useLocationStore();
+  const { coordinates: userLocation, locationName, mapPanelMode } = useLocationStore();
   const [mapInstance, setMapInstance] = useState<maplibregl.Map | null>(null);
   const riderMarkerRef = useRef<maplibregl.Marker | null>(null);
   const [currentRide, setCurrentRide] = useState<any>(null);
   const [activeNavigation, setActiveNavigation] = useState<any>(null);
   const [nearbyRiderCount, setNearbyRiderCount] = useState(0);
+
+  // MapLibre sizes its canvas to its container once, at load — it does not
+  // notice when the surrounding CSS grid/flex resizes it later (e.g. the
+  // left panel collapsing to give the map the full screen while reporting
+  // an incident). Nudge it to re-measure after the layout transition lands.
 
   // Fetch Current Ride & Active Nav
   useEffect(() => {
@@ -359,21 +377,31 @@ const Layout = () => {
 
   const isHomeRoute = location.pathname === '/home';
   const isMapRoute = location.pathname === '/map';
+  const isExploreRoute = location.pathname === '/explore';
+  const isIncidentsRoute = location.pathname === '/my-incidents' || location.pathname === '/report-incident';
   const isRidePlusRoute = location.pathname.startsWith('/ride-plus');
   const isProfileRoute = location.pathname === '/profile';
   const isGroupsRoute = location.pathname === '/groups';
   const isGroupDashRoute = location.pathname === '/group-ride-dashboard';
-  const isFullPageRoute = isHomeRoute || isGroupDashRoute || isRidePlusRoute;
+  const isAlertsRoute = location.pathname === '/alerts';
+  const isSupportRoute = location.pathname.startsWith('/support');
+  const isFullPageRoute = isHomeRoute || isGroupDashRoute || isRidePlusRoute || isProfileRoute || isGroupsRoute || isAlertsRoute || isSupportRoute || isExploreRoute || isIncidentsRoute;
+
+  // Ride is the only screen under this Layout allowed to reflow for a
+  // landscape window; every other one keeps its portrait layout regardless
+  // of the actual window shape.
+  const allowLandscape = isLandscapeAllowedRoute(location.pathname);
 
   return (
-    <div className="w-full h-full flex portrait:flex-col landscape:flex-row overflow-hidden">
+    <div className={`w-full h-full flex overflow-hidden ${allowLandscape ? 'portrait:flex-col landscape:flex-row' : 'flex-col'}`}>
       <LeftNavigationRail />
       <div className="flex-1 min-w-0 min-h-0">
         <RiderCockpitLayout
-          leftPanelWidth={isFullPageRoute ? '100%' : (isMapReporting ? '50%' : '35%')}
-          variant={isMapRoute ? "dark" : "light"}
+          leftPanelWidth={isFullPageRoute ? '100%' : (isMapRoute && mapPanelMode !== 'default' ? '0%' : '35%')}
+          forcePortrait={!allowLandscape}
+          variant="light"
           mapChildren={
-            !isHomeRoute && (
+            !isFullPageRoute && (
               <div className="relative w-full h-full">
                 {(activeNavigation || currentRide) && (
                   <NavigationOverlay
@@ -404,7 +432,7 @@ const Layout = () => {
 
 const MobileShell = () => (
   <div className="w-full h-full bg-white flex justify-center font-sans overflow-hidden">
-    <div className="w-full h-full bg-white overflow-hidden relative">
+    <div className="w-full h-full max-w-[64rem] bg-white overflow-hidden relative">
       <Outlet />
     </div>
   </div>
@@ -506,7 +534,7 @@ const MaintenanceGuard = ({ children, isAdminDomain, isWebsiteDomain, isSupportD
          <p className="text-[#8A8A8E] max-w-sm leading-relaxed mb-6">
            You are not allowed to access the Ride Club app via a web browser. Please download the official mobile app to continue.
          </p>
-         <a href="/" className="px-6 py-3 bg-[#ef4523] text-white rounded-lg font-semibold">Back to Website</a>
+         <a href="/" className="px-6 py-3 bg-[var(--rc-primary)] text-white rounded-lg font-semibold">Back to Website</a>
        </div>
      );
   }
@@ -534,9 +562,9 @@ const MaintenanceGuard = ({ children, isAdminDomain, isWebsiteDomain, isSupportD
       <div className="fixed inset-0 bg-white z-[9999] flex flex-col items-center justify-center p-6 text-center font-sans">
         <div className="w-24 h-24 mb-6 bg-[#FFF0E6] rounded-full flex items-center justify-center">
           <svg className="w-12 h-12" viewBox="0 0 91 91" id="Layer_1" version="1.1" xmlSpace="preserve" xmlns="http://www.w3.org/2000/svg">
-            <path d="M38.841,55.666l0.682-0.676l-0.02-0.016c-0.881-0.891,4.984-6.855,4.984-6.855l-8.119-8.118L8.663,66.904 c-1.973,1.977-2.92,4.705-2.658,7.686c0.242,2.793,1.533,5.49,3.813,7.771c2.43,2.424,5.553,3.66,8.533,3.66 c2.521,0,4.938-0.889,6.746-2.691l20.258-20.26l-5.111-5.17C39.604,57.252,39.151,56.488,38.841,55.666" fill="#ef4523"/>
-            <path d="M87.675,16.767l-1.621-3.891L75.616,23.317c-1.777,1.777-3.336,2.678-4.635,2.678 c-0.992,0-2.006-0.537-3.146-1.674l-0.188-0.184c-1.701-1.701-3.016-3.695,1.037-7.75L79.13,5.942l-3.893-1.621 C67.31,1.019,59.005-1.073,51.952,5.985l-6.457,6.451c-6.553,6.561-8.811,14.01-6.699,21.397l6.51,6.646l5.088-5.088 c0,0,3.248,1.688,5.568,3.182l13.875,14.061c3.398-1.033,6.664-3.059,9.732-6.129l6.441-6.452 C93.073,33.001,90.985,24.692,87.675,16.767" fill="#ef4523"/>
-            <path d="M80.097,69.682L54.472,43.714c-0.84-0.855-1.898-1.527-3.148-1.996l-1.51-0.568l-4.578,4.58L21.023,21.518 l2.235-2.237c0.602-0.6,0.9-1.439,0.813-2.283c-0.086-0.846-0.547-1.607-1.258-2.074L9.72,6.321 C8.601,5.587,7.118,5.739,6.169,6.687l-4.482,4.49c-0.945,0.947-1.096,2.428-0.361,3.545l8.6,13.094 c0.465,0.711,1.227,1.174,2.072,1.26c0.096,0.01,0.191,0.014,0.287,0.014c0.746,0,1.465-0.295,1.998-0.826l2.02-2.021 l24.211,24.211l-4.588,4.59l0.572,1.512c0.459,1.207,1.119,2.25,1.965,3.105l25.645,25.984c1.688,1.688,4.006,2.617,6.527,2.617 h0.002c2.994,0,6.018-1.309,8.334-3.627l0.133-0.139c2.057-2.051,3.318-4.678,3.553-7.396 C82.907,74.219,81.993,71.582,80.097,69.682z M75.522,80.99l-0.137,0.145c-1.344,1.344-3.076,2.117-4.75,2.117 c-0.838,0-2.039-0.201-2.979-1.139L42.026,56.141c-0.02-0.02-0.039-0.039-0.059-0.059l8.893-8.895 c0.012,0.014,0.023,0.027,0.035,0.039L76.54,73.211c0.844,0.848,1.246,2.076,1.125,3.455C77.53,78.211,76.784,79.73,75.522,80.99z" fill="#ef4523"/>
+            <path d="M38.841,55.666l0.682-0.676l-0.02-0.016c-0.881-0.891,4.984-6.855,4.984-6.855l-8.119-8.118L8.663,66.904 c-1.973,1.977-2.92,4.705-2.658,7.686c0.242,2.793,1.533,5.49,3.813,7.771c2.43,2.424,5.553,3.66,8.533,3.66 c2.521,0,4.938-0.889,6.746-2.691l20.258-20.26l-5.111-5.17C39.604,57.252,39.151,56.488,38.841,55.666" fill="var(--rc-primary)"/>
+            <path d="M87.675,16.767l-1.621-3.891L75.616,23.317c-1.777,1.777-3.336,2.678-4.635,2.678 c-0.992,0-2.006-0.537-3.146-1.674l-0.188-0.184c-1.701-1.701-3.016-3.695,1.037-7.75L79.13,5.942l-3.893-1.621 C67.31,1.019,59.005-1.073,51.952,5.985l-6.457,6.451c-6.553,6.561-8.811,14.01-6.699,21.397l6.51,6.646l5.088-5.088 c0,0,3.248,1.688,5.568,3.182l13.875,14.061c3.398-1.033,6.664-3.059,9.732-6.129l6.441-6.452 C93.073,33.001,90.985,24.692,87.675,16.767" fill="var(--rc-primary)"/>
+            <path d="M80.097,69.682L54.472,43.714c-0.84-0.855-1.898-1.527-3.148-1.996l-1.51-0.568l-4.578,4.58L21.023,21.518 l2.235-2.237c0.602-0.6,0.9-1.439,0.813-2.283c-0.086-0.846-0.547-1.607-1.258-2.074L9.72,6.321 C8.601,5.587,7.118,5.739,6.169,6.687l-4.482,4.49c-0.945,0.947-1.096,2.428-0.361,3.545l8.6,13.094 c0.465,0.711,1.227,1.174,2.072,1.26c0.096,0.01,0.191,0.014,0.287,0.014c0.746,0,1.465-0.295,1.998-0.826l2.02-2.021 l24.211,24.211l-4.588,4.59l0.572,1.512c0.459,1.207,1.119,2.25,1.965,3.105l25.645,25.984c1.688,1.688,4.006,2.617,6.527,2.617 h0.002c2.994,0,6.018-1.309,8.334-3.627l0.133-0.139c2.057-2.051,3.318-4.678,3.553-7.396 C82.907,74.219,81.993,71.582,80.097,69.682z M75.522,80.99l-0.137,0.145c-1.344,1.344-3.076,2.117-4.75,2.117 c-0.838,0-2.039-0.201-2.979-1.139L42.026,56.141c-0.02-0.02-0.039-0.039-0.059-0.059l8.893-8.895 c0.012,0.014,0.023,0.027,0.035,0.039L76.54,73.211c0.844,0.848,1.246,2.076,1.125,3.455C77.53,78.211,76.784,79.73,75.522,80.99z" fill="var(--rc-primary)"/>
           </svg>
         </div>
         <h1 className="text-2xl font-semibold mb-3 text-[#273a5a]">Under Maintenance</h1>
@@ -554,11 +582,34 @@ function App() {
   const hostname = window.location.hostname;
   const isAdminDomain = hostname.startsWith('admin');
   const isSupportDomain = hostname.startsWith('support');
-  const isWebsiteDomain = hostname === 'rideclub.in' || hostname === 'www.rideclub.in';
+  const searchParams = new URLSearchParams(window.location.search);
+  const websitePaths = [
+    '/', '/features', '/community', '/safety', '/app', '/about', '/contact',
+    '/architecture', '/specs',
+    '/download', '/pricing', '/careers', '/press', '/blog', '/privacy',
+    '/terms', '/cookies', '/guidelines', '/website', '/dev-website'
+  ];
+  const isWebsitePath = websitePaths.includes(window.location.pathname) || window.location.pathname.startsWith('/website');
+  const storedMode = localStorage.getItem('rideclub_mode');
+
+  const isWebsiteDomain =
+    hostname === 'rideclub.in' ||
+    hostname === 'www.rideclub.in' ||
+    hostname === 'website.localhost' ||
+    storedMode === 'website' ||
+    searchParams.get('view') === 'website' ||
+    searchParams.get('website') === 'true' ||
+    (isWebsitePath && storedMode !== 'app');
 
   useEffect(() => {
     useNavigationStore.getState().init();
   }, []);
+
+  // Portrait is the app-wide default orientation. Only the Ride and
+  // Navigation screens ever lock landscape (see useOrientationLock in
+  // those two), and they restore this portrait lock the moment they
+  // unmount — so landscape never carries over into any other screen.
+  useOrientationLock('portrait');
 
   return (
     <ErrorBoundary>
@@ -653,6 +704,8 @@ function App() {
                     <Route path="/safety" element={<WebsiteSafety />} />
                     <Route path="/app" element={<WebsiteAppInfo />} />
                     <Route path="/about" element={<WebsiteAbout />} />
+                    <Route path="/architecture" element={<WebsiteArchitecture />} />
+                    <Route path="/specs" element={<WebsiteArchitecture />} />
                     <Route path="/contact" element={<WebsiteContact />} />
                     <Route path="/download" element={<WebsitePage title="Download" />} />
                     <Route path="/pricing" element={<WebsitePage title="Pricing" />} />
@@ -675,12 +728,16 @@ function App() {
                 <Route element={<RequireAuth><Layout /></RequireAuth>}>
                   <Route path="/home" element={<Home />} />
                   <Route path="/map" element={<MapView />} />
+                  <Route path="/explore" element={<ExploreRides />} />
+                  <Route path="/my-incidents" element={<MyIncidents />} />
+                  <Route path="/report-incident" element={<ReportIncident />} />
                   <Route path="/groups" element={<GroupsHMI />} />
                   <Route path="/ride-plus" element={<RidePlusHMI />} />
                   <Route path="/ride-history" element={<RideHistory />} />
                   <Route path="/my-rides" element={<MyRides />} />
                   <Route path="/ride-plus/create" element={<CreateRide />} />
                   <Route path="/ride-plus/join" element={<JoinRide />} />
+                  <Route path="/ride-plus/view/:id" element={<RideDetail />} />
                   <Route path="/ride-plus/live/:id" element={<LiveRide />} />
                   <Route path="/group-ride-dashboard" element={<GroupRideDashboard />} />
                   <Route path="/alerts" element={<AlertsFeed />} />
@@ -688,6 +745,10 @@ function App() {
                   <Route path="/support" element={<SupportCenter />} />
                   <Route path="/support/:ticketId" element={<SupportChat />} />
                 </Route>
+
+                {/* Dev-only website preview (no auth) */}
+                <Route path="/website" element={<WebsiteHome />} />
+                <Route path="/dev-website" element={<WebsiteHome />} />
 
                 {/* Dev-only home preview (no auth) */}
                 {import.meta.env.DEV && (
@@ -701,13 +762,12 @@ function App() {
                 {import.meta.env.DEV && (
                   <Route path="/dev-create" element={<CreateRide />} />
                 )}
-                
+
                 <Route path="/incident/:id" element={<RequireAuth><IncidentDetail /></RequireAuth>} />
                 <Route path="/route-planner" element={<RequireAuth><RoutesScreen /></RequireAuth>} />
                 <Route path="/navigation" element={<RequireAuth><Navigation /></RequireAuth>} />
                 <Route path="/solo-ride" element={<RequireAuth><SoloRide /></RequireAuth>} />
                 <Route path="/saved-locations" element={<RequireAuth><SavedLocationsList /></RequireAuth>} />
-                <Route path="/my-incidents" element={<RequireAuth><MyIncidents /></RequireAuth>} />
                 <Route path="/edit-profile" element={<RequireAuth><EditProfile /></RequireAuth>} />
                 <Route path="/saved-location-picker" element={<RequireAuth><SavedLocationPicker /></RequireAuth>} />
               </Route>

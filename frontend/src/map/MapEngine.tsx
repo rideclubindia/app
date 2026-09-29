@@ -7,6 +7,17 @@ import { useLocationStore } from '../store/useLocationStore';
 import { useIncidentCategories } from '../hooks/useIncidentCategories';
 import { filterActiveIncidents } from '../lib/incidentExpiry';
 import { addIncidentMarker, pruneIncidentMarkers } from '../components/map/IncidentMarkers';
+import { offlineProtocol } from '../lib/offlineProtocol';
+
+let protocolRegistered = false;
+if (!protocolRegistered) {
+  try {
+    maplibregl.addProtocol('https', offlineProtocol);
+    protocolRegistered = true;
+  } catch (e) {
+    // Protocol might already be registered
+  }
+}
 
 export interface MapEngineProps {
   userLocation: { lat: number; lng: number } | null;
@@ -59,7 +70,7 @@ export const MapEngine: React.FC<MapEngineProps> = ({
 
     map.current = new maplibregl.Map({
       container: mapContainer.current,
-      style: 'https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json',
+      style: 'https://basemaps.cartocdn.com/gl/positron-gl-style/style.json',
       center: [initialLng, initialLat],
       zoom: mode === 'navigation' ? 17 : 14,
       pitch: mode === 'navigation' ? 60 : 0,
@@ -76,7 +87,14 @@ export const MapEngine: React.FC<MapEngineProps> = ({
     map.current.on('dragstart', () => { isFollowingRef.current = false; setIsFollowingUser(false); });
     map.current.on('touchstart', () => { isFollowingRef.current = false; setIsFollowingUser(false); });
 
+    // MapLibre only measures its container once at creation, so a later
+    // layout resize (e.g. a panel collapsing/expanding around it) leaves the
+    // canvas stuck at its old size unless we watch the container ourselves.
+    const ro = new ResizeObserver(() => map.current?.resize());
+    ro.observe(mapContainer.current);
+
     return () => {
+      ro.disconnect();
       userMarkerRef.current?.remove();
       destMarkerRef.current?.remove();
       map.current?.remove();
@@ -326,6 +344,7 @@ export const MapEngine: React.FC<MapEngineProps> = ({
             lng,
             lat,
             category: alert.category,
+            iconName: alert.icon_name,
             categories: reportTypes,
             markersRef: incidentMarkersRef.current
           });

@@ -2,11 +2,12 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import type { LucideIcon } from 'lucide-react';
 
+// Highway Safety Signage palette: brand-orange / safety-yellow blobs over an asphalt-dark ground.
 const PALETTES: Record<string, [string, string, string]> = {
-  orange: ['#ef4523', '#ff6b4a', '#1a0a06'],
-  dark: ['#2a2a2a', '#0a0a0a', '#000000'],
-  violet: ['#ef4523', '#6b21a8', '#0a0a0a'],
-  ember: ['#ff8a3d', '#ef4523', '#1a0505'],
+  orange: ['#ff6b22', '#ffc72c', '#0a0d0c'],
+  dark: ['#1a1a1a', '#0a0a0a', '#000000'],
+  violet: ['#ff8a3d', '#ff6b22', '#0a0d0c'],
+  ember: ['#ffb100', '#ff6b22', '#1a0f05'],
 };
 
 interface MeshProps {

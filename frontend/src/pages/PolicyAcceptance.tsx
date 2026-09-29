@@ -53,19 +53,23 @@ const PolicyAcceptance: React.FC<PolicyAcceptanceProps> = ({ onAccept }) => {
   const handleAccept = async () => {
     let userUid = auth.currentUser?.uid;
     const rieToken = localStorage.getItem('rie_token');
-    
+
     if (!userUid && rieToken) {
       try {
         const payload = JSON.parse(atob(rieToken.split('.')[1]));
-        if (payload.uid) {
-          userUid = payload.uid;
+        if (payload.uid || payload.sub) {
+          userUid = payload.uid || payload.sub;
         }
       } catch (e) {
         console.warn("Could not parse rie_token in policy acceptance", e);
       }
     }
 
-    if (!userUid || !isFormValid) return;
+    if (!isFormValid) return;
+    if (!userUid) {
+      showToast('Could not verify your account. Please log in again.', 'error');
+      return;
+    }
     setIsSubmitting(true);
     try {
       try {
@@ -397,7 +401,7 @@ const PolicyAcceptance: React.FC<PolicyAcceptanceProps> = ({ onAccept }) => {
             </div>
 
             {/* App Permissions Access - Moved to Left Column */}
-            <div className="flex items-start gap-4 mb-auto">
+            <div className="flex items-start gap-4 mb-2">
               <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[#ef4523] to-[#ef4523] flex items-center justify-center shrink-0 shadow-[0_4px_16px_rgba(255,106,0,0.3)]">
                 <ShieldCheck className="w-6 h-6 text-white" />
               </div>
@@ -518,7 +522,7 @@ const PolicyAcceptance: React.FC<PolicyAcceptanceProps> = ({ onAccept }) => {
 
             {/* Bottom CTA Area */}
             {isFormValid && (
-              <div className="p-3 sm:p-4 border-t border-white/[0.06] shrink-0 bg-[#273a5a]/90 backdrop-blur-md animate-in slide-in-from-bottom-4 fade-in duration-300">
+              <div className=" sm:p-0 border-t border-white/[0.06] shrink-0 bg-[#273a5a]/90 backdrop-blur-md animate-in slide-in-from-bottom-4 fade-in duration-300">
                 <button 
                   onClick={handleAccept}
                   disabled={isSubmitting}

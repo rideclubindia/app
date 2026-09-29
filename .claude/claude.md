@@ -209,3 +209,17 @@ Do NOT:
 5. Stop.
 
 Never expand the scope without permission.
+
+## Comments
+
+Keep code comments to a maximum of one line.
+
+Do NOT write multi-line comments, lengthy explanations, or block comments.
+
+Only add comments when they are necessary to clarify non-obvious logic.
+
+Comments must never exceed one line.
+
+Avoid comments unless the logic is non-obvious and genuinely requires clarification.
+
+Do NOT add descriptive, explanatory, section, or multi-line comments.

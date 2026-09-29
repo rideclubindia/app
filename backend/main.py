@@ -6,7 +6,7 @@ from core.limiter import limiter
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
-from api.routers import auth, tracking, pins, analytics, dashboard, intelligence, grca, traffic, sos
+from api.routers import auth, tracking, pins, analytics, dashboard, intelligence, grca, traffic, sos, emergency
 from api.routers.websockets import gateway, sio
 import socketio
 import logging
@@ -35,11 +35,7 @@ app = FastAPI(
 )
 
 # Rate limiting
-app.state.limiter = limiter
-app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
-app.add_middleware(SlowAPIMiddleware)
-
-# Add CORS middleware FIRST - must be before other middleware
+# Add CORS middleware FIRST so all responses including exceptions and 429 have CORS headers
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.ALLOWED_ORIGINS_LIST,
@@ -47,6 +43,11 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Rate limiting
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+app.add_middleware(SlowAPIMiddleware)
 
 # Include routers
 app.include_router(auth.router, prefix=f"{settings.API_V1_STR}/auth", tags=["Authentication"])
@@ -58,6 +59,7 @@ app.include_router(intelligence.router, prefix=f"{settings.API_V1_STR}/ml", tags
 app.include_router(grca.router, prefix=f"{settings.API_V1_STR}")
 app.include_router(traffic.router, prefix=f"{settings.API_V1_STR}/traffic", tags=["Traffic"])
 app.include_router(sos.router, prefix=f"{settings.API_V1_STR}/sos", tags=["SOS"])
+app.include_router(emergency.router, prefix="/api", tags=["Emergency"])
 
 
 @app.get("/health")
@@ -99,5 +101,6 @@ def prometheus_metrics():
 app.mount("/socket.io", socketio.ASGIApp(sio, socketio_path="socket.io"))
 
 if __name__ == "__main__":
+    import os
     import uvicorn
-    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
+    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=os.getenv("ENV", "development") != "production")

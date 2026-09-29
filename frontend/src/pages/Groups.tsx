@@ -386,7 +386,6 @@ const Groups = () => {
   const groupInitials = (name: string) => name.split(' ').map((n: string) => n[0]).join('').substring(0, 2).toUpperCase();
 
   return (
-    <React.Fragment>
     <div className="w-full h-full bg-[#F2F4F7] flex flex-row overflow-hidden font-sans">
 
       {/* ===== LEFT: Group List (always visible) ===== */}
@@ -447,16 +446,140 @@ const Groups = () => {
         </div>
       </div>
 
-      {/* ===== RIGHT: Chat / Members / Empty ===== */}
-      <div className="flex-1 min-w-0 flex flex-col">
-        {!activeGroup ? (
-          /* Empty State */
-          <div className="flex-1 flex flex-col items-center justify-center p-8 text-center">
-            <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center mb-4 border border-gray-200 shadow-sm">
-              <MessageSquare className="w-7 h-7 text-gray-300" />
+      {/* ===== RIGHT: Chat / Members / Create Group / Empty ===== */}
+      <div className="flex-1 min-w-0 flex flex-col bg-white">
+        {showCreateModal ? (
+          /* Inline Create Group Panel (No popup) */
+          <div className="flex-1 flex flex-col min-h-0 bg-white">
+            <div className="flex items-center justify-between shrink-0 px-6 py-4 border-b border-gray-100">
+              <div className="flex items-center gap-3">
+                <button 
+                  onClick={() => setShowCreateModal(false)} 
+                  className="w-9 h-9 rounded-xl bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-gray-800 active:scale-95 transition-all cursor-pointer"
+                  title="Cancel"
+                >
+                  <ArrowLeft className="w-5 h-5" />
+                </button>
+                <div>
+                  <h2 className="text-[17px] font-bold text-gray-950 leading-tight">Create New Group</h2>
+                  <p className="text-[12px] text-gray-500 font-medium">Build your local rider pack</p>
+                </div>
+              </div>
+              <button 
+                onClick={() => setShowCreateModal(false)}
+                className="w-8 h-8 rounded-full hover:bg-gray-100 flex items-center justify-center text-gray-400 hover:text-gray-700 transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
             </div>
-            <h3 className="text-[16px] font-semibold text-[#111111] mb-1">Select a group</h3>
-            <p className="text-[13px] text-gray-400 font-medium max-w-[240px]">Pick a group from the list to open its chat, or create a new one.</p>
+
+            <div className="flex-1 overflow-y-auto px-6 py-5 max-w-[600px] w-full mx-auto flex flex-col gap-5 custom-scrollbar">
+              <div>
+                <label className="text-[11px] font-bold text-gray-600 uppercase tracking-wider mb-1.5 block">Group Name</label>
+                <input 
+                  type="text" 
+                  value={newGroupParams.name}
+                  onChange={e => setNewGroupParams({...newGroupParams, name: e.target.value})}
+                  className="w-full h-11 bg-white border border-gray-300 rounded-xl px-4 outline-none text-[14px] text-gray-950 placeholder-gray-400 font-medium focus:border-[#FF5A00] focus:ring-2 focus:ring-[#FF5A00]/20 transition-all"
+                  placeholder="e.g., Highway Hawks, Bengaluru Night Riders"
+                  autoFocus
+                />
+              </div>
+
+              <div>
+                <div className="flex justify-between items-center mb-2">
+                  <label className="text-[11px] font-bold text-gray-600 uppercase tracking-wider block">Coverage Radius</label>
+                  <span className="text-[12px] font-black text-[#FF5A00] bg-orange-50 border border-orange-200 px-2 py-0.5 rounded-md">{newGroupParams.radius} km</span>
+                </div>
+                <input 
+                  type="range" 
+                  min="1" max="100" 
+                  value={newGroupParams.radius}
+                  onChange={e => setNewGroupParams({...newGroupParams, radius: parseInt(e.target.value)})}
+                  className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-[#FF5A00]"
+                />
+                <div className="flex justify-between text-[10px] text-gray-400 font-semibold mt-1">
+                  <span>1 km (Local)</span>
+                  <span>50 km</span>
+                  <span>100 km (Wide Region)</span>
+                </div>
+              </div>
+
+              <div>
+                <label className="text-[11px] font-bold text-gray-600 uppercase tracking-wider mb-1.5 block">Privacy & Access</label>
+                <div className="grid grid-cols-2 gap-3">
+                  <button 
+                    type="button"
+                    onClick={() => setNewGroupParams({...newGroupParams, isPrivate: false})}
+                    className={`p-3 rounded-xl border flex flex-col items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                      !newGroupParams.isPrivate 
+                        ? 'border-[#FF5A00] bg-orange-50/80 text-[#FF5A00] shadow-xs' 
+                        : 'border-gray-200 bg-gray-50/60 text-gray-600 hover:bg-gray-100'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2">
+                      <Globe className="w-4 h-4" />
+                      <span className="font-bold text-[13px]">Public Group</span>
+                    </div>
+                    <span className="text-[10px] text-gray-500 font-medium">Anyone nearby can see & join</span>
+                  </button>
+
+                  <button 
+                    type="button"
+                    onClick={() => setNewGroupParams({...newGroupParams, isPrivate: true})}
+                    className={`p-3 rounded-xl border flex flex-col items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                      newGroupParams.isPrivate 
+                        ? 'border-[#FF5A00] bg-orange-50/80 text-[#FF5A00] shadow-xs' 
+                        : 'border-gray-200 bg-gray-50/60 text-gray-600 hover:bg-gray-100'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2">
+                      <Lock className="w-4 h-4" />
+                      <span className="font-bold text-[13px]">Private Group</span>
+                    </div>
+                    <span className="text-[10px] text-gray-500 font-medium">Requires passcode to enter</span>
+                  </button>
+                </div>
+              </div>
+
+              {newGroupParams.isPrivate && (
+                <div className="animate-in fade-in slide-in-from-top-2">
+                  <label className="text-[11px] font-bold text-gray-600 uppercase tracking-wider mb-1.5 block">Secret Passcode</label>
+                  <input 
+                    type="text" 
+                    value={newGroupParams.passcode}
+                    onChange={e => setNewGroupParams({...newGroupParams, passcode: e.target.value})}
+                    className="w-full h-11 bg-white border border-gray-300 rounded-xl px-4 outline-none text-[14px] text-gray-950 placeholder-gray-400 font-medium focus:border-[#FF5A00] focus:ring-2 focus:ring-[#FF5A00]/20 transition-all"
+                    placeholder="Enter joining PIN or password"
+                  />
+                </div>
+              )}
+
+              <div className="pt-3">
+                <button 
+                  onClick={createGroup}
+                  disabled={isCreating || !newGroupParams.name.trim() || (newGroupParams.isPrivate && !newGroupParams.passcode.trim())}
+                  className="w-full h-11 bg-[#FF5A00] hover:bg-[#e04f00] text-white font-bold rounded-xl disabled:opacity-40 active:scale-98 transition-all flex items-center justify-center gap-2 shadow-sm shadow-[#FF5A00]/30 cursor-pointer text-[14px]"
+                >
+                  {isCreating ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Shield className="w-4 h-4" /> Create Group</>}
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : !activeGroup ? (
+          /* Empty State */
+          <div className="flex-1 flex flex-col items-center justify-center p-8 text-center bg-[#F9FAFB]">
+            <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center mb-3 border border-gray-200 shadow-xs">
+              <MessageSquare className="w-7 h-7 text-gray-400" />
+            </div>
+            <h3 className="text-[16px] font-bold text-gray-950 mb-1">Select a group</h3>
+            <p className="text-[12px] text-gray-500 font-medium max-w-[260px] mb-4">Pick a group from the left list to chat and view alerts, or start your own pack.</p>
+            <button 
+              onClick={() => { setShowCreateModal(true); setActiveGroup(null); }}
+              className="px-4 py-2 bg-[#FF5A00] hover:bg-[#e04f00] text-white font-bold text-[12px] rounded-xl flex items-center gap-1.5 shadow-xs cursor-pointer active:scale-95 transition-all"
+            >
+              <Plus className="w-4 h-4" /> Create New Group
+            </button>
           </div>
         ) : showMembers ? (
           /* Members & Settings View */
@@ -629,84 +752,6 @@ const Groups = () => {
         )}
       </div>
     </div>
-
-      {/* Create Modal */}
-      {showCreateModal && (
-        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="w-full max-w-[400px] bg-white rounded-[8px] p-5 shadow-2xl">
-            <div className="flex justify-between items-center mb-5">
-              <h2 className="text-lg font-semibold text-[#111111]">Create Group</h2>
-              <button onClick={() => setShowCreateModal(false)} className="w-8 h-8 hover:bg-gray-100 rounded-full transition-colors flex items-center justify-center">
-                <X className="w-5 h-5 text-gray-500" />
-              </button>
-            </div>
-
-            <div className="space-y-4">
-              <div>
-                <label className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-1 block">Group Name</label>
-                <input 
-                  type="text" 
-                  value={newGroupParams.name}
-                  onChange={e => setNewGroupParams({...newGroupParams, name: e.target.value})}
-                  className="w-full h-11 bg-[#F7F8FA] border border-gray-200 rounded-xl px-4 outline-none text-[14px] text-[#111111] placeholder-gray-400 font-medium focus:border-[#FF5A00]/60 focus:bg-white transition-all"
-                  placeholder="Night Riders"
-                />
-              </div>
-
-              <div>
-                <label className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-1 flex justify-between">
-                  <span>Coverage Radius</span>
-                  <span className="text-[#FF5A00]">{newGroupParams.radius} km</span>
-                </label>
-                <input 
-                  type="range" 
-                  min="1" max="100" 
-                  value={newGroupParams.radius}
-                  onChange={e => setNewGroupParams({...newGroupParams, radius: parseInt(e.target.value)})}
-                  className="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-[#FF5A00]"
-                />
-              </div>
-
-              <div className="flex gap-3 pt-1">
-                <button 
-                  onClick={() => setNewGroupParams({...newGroupParams, isPrivate: false})}
-                  className={`flex-1 p-3 rounded-xl border flex items-center justify-center gap-2 font-semibold text-[13px] transition-all ${!newGroupParams.isPrivate ? 'border-[#FF5A00] bg-[#FFF0E6] text-[#FF5A00]' : 'border-gray-200 text-gray-400 hover:bg-gray-50'}`}
-                >
-                  <Globe className="w-4 h-4" /> Public
-                </button>
-                <button 
-                  onClick={() => setNewGroupParams({...newGroupParams, isPrivate: true})}
-                  className={`flex-1 p-3 rounded-xl border flex items-center justify-center gap-2 font-semibold text-[13px] transition-all ${newGroupParams.isPrivate ? 'border-[#FF5A00] bg-[#FFF0E6] text-[#FF5A00]' : 'border-gray-200 text-gray-400 hover:bg-gray-50'}`}
-                >
-                  <Lock className="w-4 h-4" /> Private
-                </button>
-              </div>
-
-              {newGroupParams.isPrivate && (
-                <div className="pt-1">
-                  <label className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-1 block">Passcode</label>
-                  <input 
-                    type="text" 
-                    value={newGroupParams.passcode}
-                    onChange={e => setNewGroupParams({...newGroupParams, passcode: e.target.value})}
-                    className="w-full h-11 bg-[#F7F8FA] border border-gray-200 rounded-xl px-4 outline-none text-[14px] text-[#111111] placeholder-gray-400 font-medium focus:border-[#FF5A00]/60 focus:bg-white transition-all"
-                    placeholder="Enter secret code"
-                  />
-                </div>
-              )}
-
-              <button 
-                onClick={createGroup}
-                disabled={isCreating || !newGroupParams.name.trim() || (newGroupParams.isPrivate && !newGroupParams.passcode.trim())}
-                className="w-full h-12 bg-[#FF5A00] text-white font-semibold rounded-xl mt-2 disabled:opacity-40 active:scale-95 transition-all flex items-center justify-center gap-2 shadow-lg shadow-[#FF5A00]/25"
-              >
-                {isCreating ? <Loader2 className="w-5 h-5 animate-spin" /> : <><Shield className="w-4 h-4" /> Create Group</>}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-    </React.Fragment>
   );
 };
 

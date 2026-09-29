@@ -23,6 +23,7 @@ Backpressure
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
 import socket
 import time
@@ -38,7 +39,8 @@ from realtime.location_pipeline import LocationPipeline
 from realtime.metrics import (
     M_ACTIVE_CONNS, M_BYTES_IN, M_CONNECT_FAILS, M_CONNECTS, M_CRITICAL_EVENTS,
     M_DISCONNECTS, M_DROPPED, M_EVENT_LATENCY, M_HANDLER_TIME, M_MSG_IN,
-    M_MSG_OUT, M_RIDE_ROOMS, M_REAUTHS,
+    M_MSG_OUT, M_RIDE_ROOMS, M_REAUTHS, M_EVENT_LOOP_LAG, M_LOAD_LEVEL, M_SOS_EVENTS,
+    M_REDIS_ERRORS,
 )
 from realtime.ratelimit import RateLimiterRegistry
 from realtime.rooms import RoomManager
@@ -69,7 +71,10 @@ class Gateway:
         self._sessions: Dict[str, Dict[str, Any]] = {}
         self._draining = False
         self._sweep_task: Optional[asyncio.Task] = None
+        self._lag_task: Optional[asyncio.Task] = None
+        self._control_task: Optional[asyncio.Task] = None
         self._started_at = time.time()
+        self._load_level = 0  # 0=normal, 1=high, 2=critical — WebSocket Architecture.md §22/§25
         self._register_handlers()
 
     def _register_handlers(self) -> None:
@@ -119,17 +124,20 @@ class Gateway:
             logger.warning("Redis unavailable - gateway in DEGRADED single-node mode: %s", exc)
         self.pipeline.start()
         self._sweep_task = asyncio.get_running_loop().create_task(self._sweep_loop())
+        self._lag_task = asyncio.get_running_loop().create_task(self._lag_and_degradation_loop())
+        self._control_task = asyncio.get_running_loop().create_task(self._control_loop())
         logger.info("Realtime gateway started (node=%s)", socket.gethostname())
 
     async def stop(self) -> None:
         """Graceful shutdown: drain, notify clients, then release resources."""
         self._draining = True
-        if self._sweep_task:
-            self._sweep_task.cancel()
-            try:
-                await self._sweep_task
-            except (asyncio.CancelledError, Exception):
-                pass
+        for task in (self._sweep_task, self._lag_task, self._control_task):
+            if task:
+                task.cancel()
+                try:
+                    await task
+                except (asyncio.CancelledError, Exception):
+                    pass
         # Tell live clients to reconnect elsewhere; LB readiness also flips.
         await self.sio.emit(proto.EV_SERVER, proto.envelope(
             proto.EV_SERVER, {"code": proto.ERR_SERVER_DRAINING, "message": "Node draining"}))
@@ -187,6 +195,20 @@ class Gateway:
         if self._draining:
             M_CONNECT_FAILS.inc()
             raise socketio.exceptions.ConnectionRefusedError(proto.ERR_SERVER_DRAINING)
+
+        # §21 connection caps — checked before auth so a flood of connection
+        # attempts can't burn handshake/DB work once this node (or this IP)
+        # is already at its ceiling; reject gracefully, never let unbounded
+        # growth run the process out of file descriptors/memory.
+        if len(self._sessions) >= settings.RTC_MAX_CONNECTIONS_PER_INSTANCE:
+            M_CONNECT_FAILS.inc()
+            raise socketio.exceptions.ConnectionRefusedError(proto.ERR_RATE_LIMITED)
+        ip = self._client_ip(environ)
+        ip_conn_count = sum(1 for meta in self._sessions.values() if meta.get("ip") == ip)
+        if ip_conn_count >= settings.RTC_MAX_CONNECTIONS_PER_IP:
+            M_CONNECT_FAILS.inc()
+            raise socketio.exceptions.ConnectionRefusedError(proto.ERR_RATE_LIMITED)
+
         try:
             identity = await self._authenticate(sid, environ, auth)
         except AuthError as exc:
@@ -204,6 +226,8 @@ class Gateway:
             "connected_at": time.time(),
             "last_activity": time.time(),
             "rooms": set(),
+            "ip": ip,
+            "violations": 0,
         }
         M_CONNECTS.inc()
         M_ACTIVE_CONNS.set(len(self._sessions))
@@ -250,6 +274,14 @@ class Gateway:
         M_BYTES_IN.inc(data_len)
         if not await self.ratelimits.messages.allow(sid):
             M_DROPPED.inc(op=op)
+            meta["violations"] = meta.get("violations", 0) + 1
+            if meta["violations"] >= settings.RTC_MAX_MESSAGE_VIOLATIONS:
+                # §12/§21 — a client that keeps hitting the rate limiter after
+                # repeated warnings is disconnected outright rather than left
+                # to keep consuming handler time on every rejected message.
+                logger.warning("Disconnecting abusive session %s after %d rate-limit violations",
+                               sid, meta["violations"])
+                asyncio.get_running_loop().create_task(self.sio.disconnect(sid))
             return False
         return True
 
@@ -462,12 +494,154 @@ class Gateway:
         return env
 
     async def handle_kick(self, ride_id: str, member_id: str) -> None:
-        """Remove all of a user's sessions from a ride room on this node."""
+        """Remove all of a user's sessions from a ride room on THIS node only.
+        Cross-node delivery is broadcast_control's job — see below.
+        """
         room = f"ride:{ride_id}"
         for sid, meta in list(self._sessions.items()):
             if meta["identity"].member_id == member_id and room in meta["rooms"]:
                 await self.rooms.leave_ride(sid, meta["session_id"], ride_id)
                 meta["rooms"].discard(room)
+
+    async def force_disconnect_user(self, member_id: str) -> None:
+        """All of a user's sessions on THIS node only — see broadcast_control
+        for the cross-node fan-out (§6: revoked/suspended users, account
+        takeover response).
+        """
+        for sid, meta in list(self._sessions.items()):
+            if meta["identity"].member_id == member_id:
+                try:
+                    await self.sio.disconnect(sid)
+                except Exception:
+                    pass
+
+    # --------------------------------------------------------- cross-node control
+    async def broadcast_control(self, action: str, **kwargs) -> None:
+        """Publish a control command to every gateway node (§6/§17's
+        previously-unwired handle_kick, and the revoked-user/account-
+        suspension force-disconnect the base spec calls for). A REST router
+        (e.g. an admin suspend-user action, or a ride-removal endpoint) calls
+        this — it doesn't know or care which node holds the target socket.
+
+        No-op in degraded (Redis-unavailable) single-node mode: the caller
+        should also fall back to the local `handle_kick`/`force_disconnect_user`
+        call directly in that case if it needs same-node effect.
+        """
+        if not self.store.redis:
+            return
+        try:
+            await self.store.redis.publish("rtc:control", json.dumps({"action": action, **kwargs}))
+        except Exception:
+            M_REDIS_ERRORS.inc()
+            logger.exception("Failed to publish control command %s (non-fatal)", action)
+
+    async def _control_loop(self) -> None:
+        """Subscribes every node to rtc:control and applies commands locally —
+        a node only actually disconnects sockets it holds; the pub/sub fan-out
+        (same AsyncRedisManager Redis instance, a plain channel, not socket.io
+        rooms) is what makes this reach every node regardless of where the
+        target session lives.
+        """
+        if not self.store.redis:
+            return  # degraded single-node mode — nothing to subscribe to
+        pubsub = self.store.redis.pubsub()
+        try:
+            await pubsub.subscribe("rtc:control")
+            async for message in pubsub.listen():
+                if message.get("type") != "message":
+                    continue
+                try:
+                    cmd = json.loads(message["data"])
+                    action = cmd.get("action")
+                    if action == "disconnect_user":
+                        await self.force_disconnect_user(cmd["member_id"])
+                    elif action == "kick_ride":
+                        await self.handle_kick(cmd["ride_id"], cmd["member_id"])
+                except asyncio.CancelledError:
+                    raise
+                except Exception:
+                    logger.exception("Bad control command payload (non-fatal): %r", message.get("data"))
+        except asyncio.CancelledError:
+            raise
+        except Exception:
+            logger.exception("Control loop error")
+        finally:
+            try:
+                await pubsub.unsubscribe("rtc:control")
+            except Exception:
+                pass
+
+    # ---------------------------------------------------- degradation signal
+    async def _lag_and_degradation_loop(self) -> None:
+        """WebSocket Architecture.md §22/§25/§28 — measures event-loop
+        scheduling lag (an earlier, more direct overload signal than CPU/
+        memory alone, which is all the existing k8s HPA scales on today) and
+        derives a local load level that widens the location-broadcast
+        coalescing window under load. SOS/critical events never consult this
+        — they go through publish_critical_ride_event's dedicated path,
+        which never checks or is throttled by load level.
+
+        Deliberately per-node/local, not cluster-wide via Redis: a simple,
+        immediately-actionable signal for this node's own pipeline, not a
+        distributed consensus mechanism — a genuine simplification worth
+        revisiting if cluster-wide coordinated degradation is ever needed.
+        """
+        interval = 2.0
+        # Local-only thresholds; not yet benchmarked against real load
+        # (§26) — treat as a starting point, tune once load-tested.
+        high_lag_ms, critical_lag_ms = 50.0, 200.0
+        while True:
+            expected = time.monotonic() + interval
+            await asyncio.sleep(interval)
+            lag_ms = max(0.0, (time.monotonic() - expected) * 1000)
+            M_EVENT_LOOP_LAG.set(lag_ms)
+
+            if lag_ms >= critical_lag_ms:
+                new_level = 2
+            elif lag_ms >= high_lag_ms:
+                new_level = 1
+            else:
+                new_level = 0
+
+            if new_level != self._load_level:
+                logger.warning(
+                    "Load level %s -> %s (event loop lag %.1fms)",
+                    self._load_level, new_level, lag_ms,
+                )
+                self._load_level = new_level
+                # Widen (or restore) the location coalescing window — the
+                # only degradation lever wired up today; more (reducing
+                # subscription acceptance, shedding `pins`) can hook the
+                # same self._load_level flag later without new plumbing.
+                from realtime.location_pipeline import COALESCE_WINDOW_S
+                self.pipeline.coalesce_window_s = {
+                    0: COALESCE_WINDOW_S,
+                    1: COALESCE_WINDOW_S * 2,
+                    2: COALESCE_WINDOW_S * 4,
+                }[new_level]
+            M_LOAD_LEVEL.set(float(self._load_level))
+
+    async def publish_sos_event(self, ride_id: str, event_type: str, payload: dict, member_id: str = "") -> dict:
+        """Priority lane for SOS (WebSocket Architecture.md §11) — separate
+        from publish_critical_ride_event's shared stream/trim policy so a
+        burst of ordinary ride events (member joins, status changes) can
+        never crowd out or delay an SOS event's own recovery history, and so
+        this path is structurally exempt from the degradation lever above.
+        """
+        env = proto.envelope(
+            proto.EV_RIDE_EVENT,
+            {"ride": ride_id, "eventType": event_type, "by": member_id, "data": payload},
+            event_id=proto.new_event_id(),
+        )
+        try:
+            await self.store.append_sos_event(ride_id, env)
+        except Exception:
+            M_REDIS_ERRORS.inc()
+            logger.exception("Failed to persist SOS event to priority stream (non-fatal, still emitting)")
+        await self.sio.emit(proto.EV_RIDE_EVENT, env, room=f"ride:{ride_id}")
+        M_MSG_OUT.inc()
+        M_SOS_EVENTS.inc(eventType=event_type)
+        return env
 
     # ------------------------------------------------------------------ sweep
     async def _sweep_loop(self) -> None:

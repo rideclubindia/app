@@ -3,7 +3,7 @@ from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.orm import Session
 from core.database import get_db
 from core.config import settings
-from models.models import User
+from models.models import User, Ride, RideParticipant
 import jwt
 from pydantic import ValidationError
 from schemas.schemas import TokenData
@@ -27,3 +27,24 @@ def get_current_user(db: Session = Depends(get_db), token: str = Depends(oauth2_
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     return user
+
+
+def require_ride_access(db: Session, ride_id: str, user: User) -> None:
+    """Raise 403/404 unless the given user owns or has joined the ride.
+
+    Used to close the IDOR gap where ride analytics/dashboard/cohesion
+    endpoints previously returned data for any ride_id to any caller.
+    """
+    ride = db.query(Ride).filter(Ride.id == ride_id).first()
+    if not ride:
+        raise HTTPException(status_code=404, detail="Ride not found")
+
+    if ride.group_id == user.id:
+        return
+
+    is_participant = db.query(RideParticipant).filter(
+        RideParticipant.ride_id == ride_id,
+        RideParticipant.user_id == user.id,
+    ).first()
+    if not is_participant:
+        raise HTTPException(status_code=403, detail="You do not have access to this ride")

@@ -48,6 +48,9 @@ export const incidentTimeline = [
   }
 ];
 
+// TODO: fabricated incident reports (specific injuries/crashes never happened) —
+// this is a stronger claim than a generic quote and needs real, consented rider
+// stories before launch, not just a placeholder swap.
 export const safetyTestimonials = [
   {
     id: 't1',

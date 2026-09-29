@@ -5,7 +5,7 @@ import { auth } from '../lib/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 import { getDeterministicUuid, isWithinHours, formatRelativeTime } from '../lib/user';
 
-import { useIncidentCategories, incidentIconMap } from '../hooks/useIncidentCategories';
+import { useIncidentCategories, resolvePinIcon } from '../hooks/useIncidentCategories';
 import { useToast } from './ToastContext';
 
 export const timeAgo = (dateStr: string) => {
@@ -162,8 +162,7 @@ export const IncidentDrawer: React.FC<IncidentDrawerProps> = ({ incident, onClos
             reportTypes.find(t => t.id === incident.category)?.bg || 'bg-gray-100'
           }`}>
             {(() => {
-              const typeConfig = reportTypes.find(t => t.id === incident.category) || reportTypes[7];
-              const IconComponent = typeConfig ? incidentIconMap[typeConfig.iconName] : MoreHorizontal;
+              const IconComponent = resolvePinIcon(incident, reportTypes);
               return <IconComponent className={`w-8 h-8 ${reportTypes.find(t => t.id === incident.category)?.color || 'text-gray-600'}`} />;
             })()}
           </div>

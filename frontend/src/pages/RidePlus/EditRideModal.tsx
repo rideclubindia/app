@@ -175,7 +175,7 @@ const EditRideModal: React.FC<EditRideModalProps> = ({ rideId, onClose, onSaved 
 
     map.current = new maplibregl.Map({
       container: mapContainer.current,
-      style: 'https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json',
+      style: 'https://basemaps.cartocdn.com/gl/positron-gl-style/style.json',
       center,
       zoom: 12,
     });

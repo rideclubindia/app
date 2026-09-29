@@ -325,6 +325,35 @@ harness, migrations, docs.
 - Reconnect-storm handling at LB level.
 - Long-run soak (memory growth, FD leaks).
 
+**Recently added** (see `WebSocket Architecture.md` at the repo root for the
+full audit this came from):
+- A dedicated SOS priority stream (`store.append_sos_event`/
+  `gateway.publish_sos_event`, `stre:sos:{ride_id}`, `SOS_STREAM_MAXLEN=20000`)
+  so SOS/emergency events never share the general critical-event stream's
+  trim window with ordinary ride churn.
+- A local per-node event-loop-lag gauge (`rtc_event_loop_lag_ms`) and
+  load-level gauge (`rtc_load_level`) feeding a graceful-degradation lever
+  that widens the location-coalescing window under high/critical lag — the
+  existing k8s HPA (`backend/k8s/hpa.yaml`) still only scales on CPU/memory,
+  so this local lever is a stopgap until a custom-metrics-based HPA is wired
+  up, not a replacement for one.
+- Explicit per-instance (`RTC_MAX_CONNECTIONS_PER_INSTANCE`, default 30000)
+  and per-IP (`RTC_MAX_CONNECTIONS_PER_IP`, default 200) connection caps in
+  `on_connect` — distinct from the existing handshake-frequency rate
+  limiter, which throttles connect *rate*, not concurrent *count*.
+- Abusive-session auto-disconnect: a session that keeps hitting the message
+  rate limiter past `RTC_MAX_MESSAGE_VIOLATIONS` (default 20) is disconnected
+  outright rather than left consuming handler time on every rejected message.
+- A cross-node control channel (`gateway.broadcast_control` /
+  `Gateway._control_loop`, Redis pub/sub channel `rtc:control`) — this is
+  what actually wires up `handle_kick` (previously documented as intended,
+  callable, but never invoked from anywhere) and adds
+  `force_disconnect_user` for the revoked/suspended-user case the base spec
+  calls for. A REST router (e.g. a future admin suspend-user action) calls
+  `broadcast_control("disconnect_user", member_id=...)`; every node
+  subscribed to the channel disconnects that user's sessions if it holds any.
+  No-ops safely in degraded (Redis-unavailable) single-node mode.
+
 **Known limitations / next improvements**
 1. python-socketio per-node ceiling is lower than Go/NGINX njs equivalents —
    if a single node must hold >50 K sockets, consider a Rust/Go edge gateway.

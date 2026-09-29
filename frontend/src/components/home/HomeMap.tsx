@@ -14,7 +14,7 @@ import { offlineProtocol } from '../../lib/offlineProtocol';
 let protocolRegistered = false;
 if (!protocolRegistered) {
   try {
-    maplibregl.addProtocol('idb', offlineProtocol);
+    maplibregl.addProtocol('https', offlineProtocol);
     protocolRegistered = true;
   } catch (e) {
     // Protocol might already be registered in HMR
@@ -47,7 +47,7 @@ export const HomeMap: React.FC<HomeMapProps> = ({ userLocation, onMapLoad }) => 
 
     map.current = new maplibregl.Map({
       container: mapContainer.current,
-      style: 'https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json',
+      style: 'https://basemaps.cartocdn.com/gl/positron-gl-style/style.json',
       center: [initialLng, initialLat],
       zoom: 14,
       attributionControl: false,
@@ -58,7 +58,16 @@ export const HomeMap: React.FC<HomeMapProps> = ({ userLocation, onMapLoad }) => 
       onMapLoad(map.current!);
     });
 
+    // MapLibre only ever measures its container once at creation — it has
+    // no way to know the surrounding flex/grid layout later resized it (e.g.
+    // the side panel collapsing to give the map the full screen while
+    // reporting an incident). Watch the actual container box and resize the
+    // canvas to match whenever it changes, instead of guessing a timeout.
+    const ro = new ResizeObserver(() => map.current?.resize());
+    ro.observe(mapContainer.current);
+
     return () => {
+      ro.disconnect();
       map.current?.remove();
       map.current = null;
     };
@@ -127,6 +136,7 @@ export const HomeMap: React.FC<HomeMapProps> = ({ userLocation, onMapLoad }) => 
             lng,
             lat,
             category: alert.category,
+            iconName: alert.icon_name,
             categories: reportTypes,
             markersRef: incidentMarkersRef.current,
             onClick: () => navigate(`/incident/${alert.id}`)
@@ -178,33 +188,6 @@ export const HomeMap: React.FC<HomeMapProps> = ({ userLocation, onMapLoad }) => 
     <div className="absolute inset-0 w-full h-full z-0">
       <div ref={mapContainer} className="absolute inset-0 w-full h-full" />
 
-      {/* Map Controls (same as /ride-plus/live) */}
-      {mapReady && (
-        <div className="absolute right-4 top-1/2 -translate-y-1/2 z-20 flex flex-col gap-2">
-          <button
-            onClick={() => setShowTraffic(!showTraffic)}
-            className={`w-9 h-9 rounded-full flex items-center justify-center shadow-md active:scale-95 transition-all duration-300 ${showTraffic ? 'bg-[#FF5A00] text-white shadow-[0_4px_16px_rgba(255,90,0,0.4)]' : 'bg-white/95 backdrop-blur border border-gray-100 text-[#111111] hover:bg-gray-50'}`}
-            title="Toggle Traffic"
-          >
-            <Layers className="w-4 h-4" />
-          </button>
-          <button
-            onClick={handle3D}
-            className={`w-9 h-9 rounded-full flex items-center justify-center shadow-md active:scale-95 transition-all duration-300 ${is3D ? 'bg-[#FF5A00] text-white shadow-[0_4px_16px_rgba(255,90,0,0.4)]' : 'bg-white/95 backdrop-blur border border-gray-100 text-[#111111] hover:bg-gray-50'}`}
-            title="3D View"
-          >
-            {is3D ? <Compass className="w-4 h-4" /> : <Navigation2 className="w-4 h-4" />}
-          </button>
-          <button
-            onClick={handleFollow}
-            className={`w-9 h-9 rounded-full flex items-center justify-center shadow-md active:scale-95 transition-all duration-300 ${isFollowingUser ? 'bg-[#FF5A00] text-white shadow-[0_4px_16px_rgba(255,90,0,0.4)]' : 'bg-white/95 backdrop-blur border border-gray-100 text-[#111111] hover:bg-gray-50'}`}
-            title="My Location"
-            aria-label="My Location"
-          >
-            <Crosshair className="w-4 h-4" />
-          </button>
-        </div>
-      )}
     </div>
   );
 };
