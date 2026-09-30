@@ -343,7 +343,7 @@ export default function Navigation() {
 
   // Navigating: follow the rider heading-up; otherwise frame the whole route (or fall back to locating)
   // Same behaviour as ride navigation: centre on the rider (or start point) facing the route direction ahead
-  const recenter = () => {
+  const recenter = (nav: boolean = navigating) => {
     const m = map.current;
     if (!m) return;
     const line = routes[selected]?.geometry?.coordinates as LngLat[] | undefined;
@@ -359,19 +359,19 @@ export default function Navigation() {
       } catch { /* keep current bearing */ }
     }
     setFollowing(true);
-    m.easeTo({ center: target, bearing, pitch: navigating ? 60 : 0, zoom: navigating ? 18 : 16, duration: 1000 });
+    m.easeTo({ center: target, bearing, pitch: nav ? 60 : 0, zoom: nav ? 19 : 16, duration: 1000 });
   };
 
   // Centre on the rider; asks for location again when there's no fix yet
   const locate = async () => {
     if (me && map.current) {
       setFollowing(true);
-      map.current.easeTo({ center: [me.lng, me.lat], zoom: navigating ? 17 : 15, bearing: navigating && me.heading != null ? me.heading : 0, pitch: navigating ? 45 : 0, duration: 700 });
+      map.current.easeTo({ center: [me.lng, me.lat], zoom: navigating ? 19 : 15, bearing: navigating && me.heading != null ? me.heading : 0, pitch: navigating ? 45 : 0, duration: 700 });
       return;
     }
     // No GPS but the rider set their start point: that is where they are, so don't ask for location again
     if (manualStart && map.current) {
-      map.current.easeTo({ center: [manualStart.lng, manualStart.lat], zoom: navigating ? 16 : 15, bearing: 0, pitch: navigating ? 45 : 0, duration: 700 });
+      map.current.easeTo({ center: [manualStart.lng, manualStart.lat], zoom: navigating ? 19 : 15, bearing: 0, pitch: navigating ? 60 : 0, duration: 700 });
       return;
     }
     setAskingLoc(true);
@@ -388,7 +388,8 @@ export default function Navigation() {
       showToast(r.status === 'denied' ? 'Location is blocked. Allow it in settings, or set your start point manually.' : 'Location is off. Turn on GPS, or set your start point manually.', 'error');
     }
   };
-  const start = () => { setRouteTick((t) => t + 1); setNavigating(true); setFollowing(true); if (me && map.current) map.current.easeTo({ center: [me.lng, me.lat], zoom: 17, pitch: 45, duration: 900 }); };
+  // Starting navigation re-centres straight away, from GPS or the manual start point
+  const start = () => { setRouteTick((t) => t + 1); setNavigating(true); recenter(true); };
   const stop = () => { setNavigating(false); setFollowing(false); map.current?.easeTo({ pitch: 0, bearing: 0, duration: 600 }); };
 
   const iconBtn = (on: boolean) => `w-12 h-12 rounded-2xl shadow-md border flex items-center justify-center active:scale-95 ${on ? 'bg-[#FF5A00] border-[#FF5A00] text-white' : 'bg-white border-gray-100 text-gray-900'}`;
@@ -435,7 +436,7 @@ export default function Navigation() {
           <button onClick={locate} aria-label="My location" className={iconBtn(following)}>
             <Crosshair className="w-5 h-5" />
           </button>
-          <button onClick={recenter} aria-label="Re-center" title="Re-center" className={iconBtn(navigating && following)}>
+          <button onClick={() => recenter()} aria-label="Re-center" title="Re-center" className={iconBtn(navigating && following)}>
             <Navigation2 className="w-5 h-5" />
           </button>
         </div>
@@ -548,7 +549,7 @@ export default function Navigation() {
 
         {/* Recenter while navigating after the map was moved */}
         {navigating && !following && (
-          <button onClick={recenter} className="absolute left-1/2 -translate-x-1/2 bottom-[112px] z-20 h-12 px-5 rounded-full bg-white shadow-[0_6px_18px_rgba(0,0,0,0.18)] border border-gray-100 text-[14px] font-bold text-gray-900 flex items-center gap-2 active:scale-95">
+          <button onClick={() => recenter()} className="absolute left-1/2 -translate-x-1/2 bottom-[112px] z-20 h-12 px-5 rounded-full bg-white shadow-[0_6px_18px_rgba(0,0,0,0.18)] border border-gray-100 text-[14px] font-bold text-gray-900 flex items-center gap-2 active:scale-95">
             <Navigation2 className="w-4 h-4 fill-[#FF5A00] text-[#FF5A00]" /> Re-center
           </button>
         )}
