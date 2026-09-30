@@ -113,6 +113,8 @@ export const useLocationStore = create<LocationState>()(
         },
         (error) => {
           set({ error: error.message });
+          // No network/Wi-Fi location on this phone (or it's switched off): fall back to GPS instead of never locating
+          if (mode === 'low' && error.code === error.TIMEOUT && !get().coordinates) get().startTracking('high');
         },
         // Low power uses network/cell location and cached fixes; high accuracy only where the screen needs it
         mode === 'high' ? { enableHighAccuracy: true, timeout: 10000, maximumAge: 5000 } : { enableHighAccuracy: false, timeout: 20000, maximumAge: 60000 }

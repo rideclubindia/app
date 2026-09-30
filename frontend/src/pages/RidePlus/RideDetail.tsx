@@ -531,6 +531,9 @@ const RideDetail = () => {
   // ---- Main ride detail (Overview / Incidents) ----
   const shownRiders = showAllRiders ? members : members.slice(0, 6);
   const stopList = routePoints;
+  // Create Ride packs "Type: X" and "Tagline: Y" into the description; show them as a chip and plain text
+  const rideType = ride.description?.match(/^Type: (.+)$/m)?.[1]?.trim() || null;
+  const aboutText = (ride.description || '').replace(/^Type: .+$/m, '').replace(/^Tagline: /m, '').trim();
 
   return (
     <React.Fragment>
@@ -560,7 +563,8 @@ const RideDetail = () => {
             <div className="absolute left-4 right-4 bottom-12">
               <div className="flex items-center gap-1.5 flex-wrap mb-2">
                 {isLive && <span className="text-[11px] font-bold bg-emerald-500 text-white px-2.5 py-1 rounded-full uppercase flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />Live now</span>}
-                {ride.vehicle_type && ride.vehicle_type !== 'Any' && <span className="text-[11px] font-bold bg-white/20 backdrop-blur-sm border border-white/25 text-white px-2.5 py-1 rounded-full">{ride.vehicle_type}</span>}
+                {rideType && <span className="text-[11px] font-bold bg-white/20 backdrop-blur-sm border border-white/25 text-white px-2.5 py-1 rounded-full">{rideType}</span>}
+                {ride.vehicle_type && !/^(any|all)$/i.test(ride.vehicle_type) && <span className="text-[11px] font-bold bg-white/20 backdrop-blur-sm border border-white/25 text-white px-2.5 py-1 rounded-full capitalize">{ride.vehicle_type}</span>}
                 <span className="text-[11px] font-bold bg-white/20 backdrop-blur-sm border border-white/25 text-white px-2.5 py-1 rounded-full capitalize">{ride.visibility || 'public'} ride</span>
                 {isOwner && <span className="text-[11px] font-bold bg-[#FF6B22] text-white px-2.5 py-1 rounded-full">You're the leader</span>}
               </div>
@@ -603,10 +607,10 @@ const RideDetail = () => {
 
             {tab === 'overview' ? (
               <div className="flex flex-col gap-5">
-                {ride.description && (
+                {aboutText && (
                   <section className="card-app p-4">
                     <h2 className="text-[15px] font-black text-gray-950 mb-1.5">About this ride</h2>
-                    <p className="text-[14px] leading-relaxed text-gray-600">{ride.description.replace(/^Type: .+\n?\n?/m, '')}</p>
+                    <p className="text-[14px] leading-relaxed text-gray-600">{aboutText}</p>
                   </section>
                 )}
 

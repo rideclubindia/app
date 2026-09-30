@@ -16,8 +16,17 @@ import { getDeterministicUuid, getAppUser } from '../../lib/user';
 import { uploadImage, UploadError } from '../../lib/mediaUpload';
 import { useConfirm } from '../../components/ConfirmDialog';
 import { useRideStartGate } from '../../components/RideStartGate';
-import img16 from '../../assets/WebsiteImages/img16.jpg';
+import img16 from '../../assets/rideclub/riders_coast_wide.jpg';
+
+// Local date (not UTC) and a start at least an hour away, rounded up to the next half hour
+const defaultStart = () => {
+  const d = new Date(Date.now() + 60 * 60 * 1000);
+  d.setMinutes(d.getMinutes() <= 30 ? 30 : 60, 0, 0);
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return { date: `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`, time: `${pad(d.getHours())}:${pad(d.getMinutes())}` };
+};
 import { searchPlaces, resolvePlace } from '../../lib/places';
+import { requestLocation } from '../../lib/locationPermission';
 const imgSoloRide = img16;
 
 const DRAFT_KEY = 'rideclub_create_ride_draft';
@@ -116,8 +125,8 @@ const CreateRide = () => {
     description: '',
     visibility: 'public',
     max_riders: 20,
-    ride_date: new Date().toISOString().split('T')[0],
-    ride_time: new Date().toTimeString().slice(0, 5),
+    ride_date: defaultStart().date,
+    ride_time: defaultStart().time,
     vehicle_type: 'any'
   });
 
@@ -274,6 +283,27 @@ const CreateRide = () => {
 
   // --- Route Effects & Handlers (unchanged logic) ---
 
+  // Start defaults to where the rider is; never overrides a start they typed or picked
+  useEffect(() => {
+    if (isEditMode || originCoords || originText !== 'Locating...') return;
+    if (globalLocation) {
+      setOriginCoords({ lat: globalLocation.lat, lng: globalLocation.lng });
+      setOriginText('My location');
+      return;
+    }
+    let cancelled = false;
+    requestLocation().then((r) => {
+      if (cancelled) return;
+      if (r.status === 'granted') { setOriginCoords({ lat: r.lat, lng: r.lng }); setOriginText('My location'); }
+      else setOriginText('');
+    });
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [globalLocation, isEditMode]);
+
+  const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const searchSeqRef = useRef(0);
+
   const handleInputChange = async (text: string, target: string) => {
     if (target === 'origin') setOriginText(text);
     else if (target === 'dest') setDestText(text);
@@ -295,18 +325,25 @@ const CreateRide = () => {
     }
 
     setActiveInput(target);
-    try {
-      // Google Places near the rider (OpenStreetMap fallback); coordinates are fetched when a suggestion is picked
-      const hits = await searchPlaces(text, globalLocation ? { lat: globalLocation.lat, lng: globalLocation.lng } : null);
-      setSuggestions(hits.slice(0, 6).map((h) => ({
-        display_name: [h.name, h.address].filter(Boolean).join(', '),
-        lat: h.lat,
-        lon: h.lng,
-        hit: h,
-      })));
-    } catch (e) {
-      setSuggestions([]);
-    }
+    // Wait for a pause in typing (the free place service allows ~1 request/second) and drop replies to older text
+    if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+    const seq = ++searchSeqRef.current;
+    searchTimerRef.current = setTimeout(async () => {
+      try {
+        // Google Places near the rider (OpenStreetMap fallback); coordinates are fetched when a suggestion is picked
+        const near = globalLocation ? { lat: globalLocation.lat, lng: globalLocation.lng } : originCoords || destCoords;
+        const hits = await searchPlaces(text, near);
+        if (seq !== searchSeqRef.current) return;
+        setSuggestions(hits.slice(0, 6).map((h) => ({
+          display_name: [h.name, h.address].filter(Boolean).join(', '),
+          lat: h.lat,
+          lon: h.lng,
+          hit: h,
+        })));
+      } catch {
+        if (seq === searchSeqRef.current) setSuggestions([]);
+      }
+    }, 400);
   };
 
   const handleSelectSuggestion = async (suggestion: any, target: string) => {
@@ -352,17 +389,21 @@ const CreateRide = () => {
     setActiveInput(null);
   };
 
+  // The map lives only while the Route step is on screen: built on entry, sized to its box, removed on exit
   useEffect(() => {
     if (step !== 2) return;
     if (map.current) return;
+    let resizeObserver: ResizeObserver | null = null;
 
     if (mapContainer.current) {
       map.current = new maplibregl.Map({
         container: mapContainer.current,
         style: 'https://basemaps.cartocdn.com/gl/positron-gl-style/style.json',
-        center: [78.4867, 17.3850],
+        center: originCoords ? [originCoords.lng, originCoords.lat] : [78.4867, 17.3850],
         zoom: 12
       });
+      resizeObserver = new ResizeObserver(() => map.current?.resize());
+      resizeObserver.observe(mapContainer.current);
 
       map.current.on('load', () => {
         if (!map.current) return;
@@ -449,6 +490,13 @@ const CreateRide = () => {
         });
       });
     }
+    return () => {
+      resizeObserver?.disconnect();
+      map.current?.remove();
+      map.current = null;
+      setMapLoaded(false);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step]);
 
   const fetchRoute = async () => {
@@ -944,11 +992,16 @@ const CreateRide = () => {
                     />
                     <div className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center gap-0.5">
                       <button
-                        onClick={() => {
+                        onClick={async () => {
                           if (globalLocation) {
                             setOriginCoords({ lat: globalLocation.lat, lng: globalLocation.lng });
                             setOriginText(globalLocationName || 'My Location');
+                            return;
                           }
+                          setOriginText('Locating...');
+                          const r = await requestLocation();
+                          if (r.status === 'granted') { setOriginCoords({ lat: r.lat, lng: r.lng }); setOriginText('My Location'); }
+                          else { setOriginText(''); showToast(r.status === 'denied' ? 'Location is blocked. Type a start point instead.' : 'Location is off. Type a start point instead.', 'error'); }
                         }}
                         className="w-10 h-10 flex items-center justify-center text-[#FF6B22] hover:bg-[#FF6B22]/10 rounded-lg transition-colors active:scale-95 cursor-pointer"
                         title="Use Current Location"
@@ -1105,7 +1158,7 @@ const CreateRide = () => {
 
             <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider block mb-1.5">Location</span>
             <div className="relative mb-2">
-              <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
+              <Search className="w-4 h-4 text-gray-400 absolute left-3 top-6 -translate-y-1/2 pointer-events-none" />
               <input
                 type="text"
                 value={waypointDraft.text}
@@ -1142,7 +1195,7 @@ const CreateRide = () => {
               )}
               <button
                 onClick={() => {
-                  if (!waypointDraft.text.trim()) { showToast('Please set a location for this waypoint', 'error'); return; }
+                  if (!waypointDraft.text.trim() || !waypointDraft.coords) { showToast('Pick a place from the list or on the map for this stop', 'error'); return; }
                   if (openDropdownIdx !== null) {
                     setStops(prev => prev.map((s, i) => i === openDropdownIdx ? { ...waypointDraft } : s));
                   } else {

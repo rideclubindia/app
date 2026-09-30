@@ -1,23 +1,4 @@
--- Server-side enforcement for starting a ride: the owner needs an emergency contact with a valid mobile number,
--- and can only have one live ride at a time. Runs on every insert/update of rides.status to 'live'.
-
--- Mirrors getDeterministicUuid() in frontend/src/lib/user.ts (JS int32 hash) to map an owner id to their profile id
-CREATE OR REPLACE FUNCTION public.rc_member_uuid(s TEXT) RETURNS UUID LANGUAGE plpgsql IMMUTABLE AS $$
-DECLARE
-  h BIGINT := 0;
-  i INT;
-  t BIGINT;
-BEGIN
-  FOR i IN 1..length(s) LOOP
-    t := ((h % 4294967296) + 4294967296) % 4294967296;
-    IF t >= 2147483648 THEN t := t - 4294967296; END IF;
-    t := ((t * 32) % 4294967296 + 4294967296) % 4294967296;
-    IF t >= 2147483648 THEN t := t - 4294967296; END IF;
-    h := ascii(substr(s, i, 1)) + t - h;
-  END LOOP;
-  RETURN ('00000000-0000-0000-0000-' || lpad(to_hex(abs(h)), 12, '0'))::UUID;
-END $$;
-
+-- Fix: profiles.id is TEXT, so the uuid must be cast before comparing (the original blocked every ride start)
 CREATE OR REPLACE FUNCTION public.rc_enforce_ride_start() RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
 DECLARE
   v_profile UUID;
@@ -48,7 +29,3 @@ BEGIN
   RETURN NEW;
 END $$;
 
-DROP TRIGGER IF EXISTS rc_enforce_ride_start ON public.rides;
-CREATE TRIGGER rc_enforce_ride_start
-  BEFORE INSERT OR UPDATE OF status ON public.rides
-  FOR EACH ROW EXECUTE FUNCTION public.rc_enforce_ride_start();

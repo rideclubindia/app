@@ -1352,9 +1352,14 @@ const LiveRide = () => {
   const appUid = getAppUser(auth.currentUser)?.uid || '';
   const appMemberId = appUid.length === 36 ? appUid : getDeterministicUuid(appUid);
 
+  const confirm = useConfirm();
   const handleLeaveOrEnd = async () => {
     const user = getAppUser(auth.currentUser);
     if (!user || !id) return;
+    const ok = await confirm(isAdmin
+      ? { title: 'End this ride?', message: 'The ride ends for every rider and live tracking stops.', confirmLabel: 'End ride', variant: 'danger' }
+      : { title: 'Leave this ride?', message: 'You will stop sharing your location with the group.', confirmLabel: 'Leave ride', variant: 'warning' });
+    if (!ok) return;
     const userUuid = user.uid.length === 36 ? user.uid : getDeterministicUuid(user.uid);
     const { data: mem } = await supabase.from('ride_members').select('role').eq('ride_id', id).eq('user_id', userUuid).maybeSingle();
     if (mem?.role === 'admin') {

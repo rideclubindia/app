@@ -18,6 +18,8 @@ const sessionToken = () => (session ||= (crypto.randomUUID?.() ?? `${Date.now()}
 
 // Remembered for the whole app session once the backend reports Google isn't configured
 let googleOff = false;
+// After a Google failure (bad key, quota, outage) skip it for a while instead of retrying on every keystroke
+let googleRetryAt = 0;
 
 const km = (a: { lat: number; lng: number }, b: { lat: number; lng: number }) => {
   const r = Math.PI / 180;
@@ -27,8 +29,10 @@ const km = (a: { lat: number; lng: number }, b: { lat: number; lng: number }) =>
 
 async function searchOsm(q: string, near?: { lat: number; lng: number } | null, signal?: AbortSignal): Promise<PlaceHit[]> {
   const box = near ? `&viewbox=${near.lng - 0.4},${near.lat + 0.4},${near.lng + 0.4},${near.lat - 0.4}` : '';
-  const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&limit=8&countrycodes=in&q=${encodeURIComponent(q)}${box}`, { signal });
-  const data = await res.json();
+  const base = `https://nominatim.openstreetmap.org/search?format=json&limit=8&countrycodes=in&q=${encodeURIComponent(q)}`;
+  // Only places around the rider first; widen to all of India when nothing nearby matches
+  let data = box ? await (await fetch(`${base}${box}&bounded=1`, { signal })).json() : [];
+  if (!data?.length) data = await (await fetch(base + box, { signal })).json();
   return (data || []).map((d: any) => {
     const lat = parseFloat(d.lat), lng = parseFloat(d.lon);
     return {
@@ -45,16 +49,19 @@ async function searchOsm(q: string, near?: { lat: number; lng: number } | null, 
 export async function searchPlaces(q: string, near?: { lat: number; lng: number } | null, signal?: AbortSignal): Promise<PlaceHit[]> {
   const term = q.trim();
   if (term.length < 2) return [];
-  if (!googleOff) {
+  if (!googleOff && Date.now() >= googleRetryAt) {
     try {
       const { data } = await apiClient.get('/api/v1/places/autocomplete', {
         params: { q: term, lat: near?.lat, lng: near?.lng, session: sessionToken() },
         signal,
       });
-      return data.places as PlaceHit[];
+      // Google's location bias is soft, so a literal name match far away can outrank one nearby; nearest first
+      const hits = data.places as PlaceHit[];
+      return near ? [...hits].sort((a, b) => (a.distanceM ?? Infinity) - (b.distanceM ?? Infinity)) : hits;
     } catch (e: any) {
       if (e?.name === 'CanceledError' || e?.name === 'AbortError') throw e;
       if (e?.response?.status === 503) googleOff = true;
+      else googleRetryAt = Date.now() + 5 * 60 * 1000;
     }
   }
   return searchOsm(term, near, signal);

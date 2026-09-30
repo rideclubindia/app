@@ -1,4 +1,5 @@
 import { useCallback, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Loader2, ShieldAlert, X } from 'lucide-react';
 import { loadMyEmergencyContact, normalizeMobile, saveMyEmergencyContact } from '../lib/emergencyContact';
 
@@ -41,7 +42,8 @@ export function EmergencyContactSheet({ onDone, onCancel, initial }: { onDone: (
     }
   };
 
-  return (
+  // Portalled to <body> so page stacking contexts can't push it under the bottom navigation
+  return createPortal(
     <div className="fixed inset-0 z-[150] bg-black/50 flex items-end sm:items-center justify-center" role="dialog" aria-modal="true" aria-labelledby="ec-title">
       <div className="w-full max-w-md bg-white rounded-t-3xl sm:rounded-3xl p-5 pb-[max(20px,env(safe-area-inset-bottom))]">
         <div className="flex items-start gap-3">
@@ -71,6 +73,7 @@ export function EmergencyContactSheet({ onDone, onCancel, initial }: { onDone: (
         </button>
         <p className="mt-3 text-[12px] text-gray-400 text-center">You can change this anytime in Profile → Edit profile.</p>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
