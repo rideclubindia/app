@@ -1,4 +1,3 @@
-// Google Places search (not wired into any screen yet); re-enable with the backend route once GOOGLE_MAPS_API_KEY is set
 import { apiClient } from './apiClient';
 
 export interface PlaceHit {

@@ -14,6 +14,7 @@ import { SOSModal } from './SOSModal';
 import heroImg from '../assets/rideclub/riders_coast_wide.jpg';
 import { useAvatar, initialsImage } from '../hooks/useAvatar';
 import './HomeLandscape.css';
+import { searchPlaces, resolvePlace, formatDistance, type PlaceHit } from '../lib/places';
 
 interface Ride {
   id: string;
@@ -72,7 +73,7 @@ export const HomeLandscape = ({ currentRide }: { currentRide?: any }) => {
   const navigate = useNavigate();
 
   const [searchQuery, setSearchQuery] = useState('');
-  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [searchResults, setSearchResults] = useState<PlaceHit[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [showSOSModal, setShowSOSModal] = useState(false);
   const [rides, setRides] = useState<Ride[]>([]);
@@ -179,20 +180,19 @@ export const HomeLandscape = ({ currentRide }: { currentRide?: any }) => {
     setIsSearching(true);
     setSearchError(null);
     try {
-      const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&limit=6&q=${encodeURIComponent(q)}`, { signal: ctrl.signal });
-      if (!res.ok) throw new Error(String(res.status));
-      const data = await res.json();
+      const data = await searchPlaces(q, coordinates, ctrl.signal);
+      if (ctrl.signal.aborted) return;
       setSearchResults(data.slice(0, 6));
       setSearchedFor(q);
     } catch (err: any) {
-      if (err?.name === 'AbortError') return;
+      if (err?.name === 'AbortError' || err?.name === 'CanceledError') return;
       setSearchResults([]);
       setSearchError(navigator.onLine ? 'Search is unavailable right now. Try again.' : 'No internet connection.');
       setSearchedFor(q);
     } finally {
       if (searchAbortRef.current === ctrl) setIsSearching(false);
     }
-  }, []);
+  }, [coordinates]);
 
   // Suggestions as you type: wait for a short pause and at least 3 characters to avoid a request per keystroke
   useEffect(() => {
@@ -216,12 +216,15 @@ export const HomeLandscape = ({ currentRide }: { currentRide?: any }) => {
   };
 
   // Tapping a result starts navigation straight away (Navigation builds the route).
-  const selectDestination = (place: any) => {
-    setSearchResults([]);
-    setSearchQuery('');
-    navigate('/navigation', {
-      state: { destLat: parseFloat(place.lat), destLng: parseFloat(place.lon), destName: place.name || place.display_name.split(',')[0] },
-    });
+  const selectDestination = async (hit: PlaceHit) => {
+    try {
+      const place = await resolvePlace(hit);
+      setSearchResults([]);
+      setSearchQuery('');
+      navigate('/navigation', { state: { destLat: place.lat, destLng: place.lng, destName: place.name } });
+    } catch {
+      setSearchError('Could not open that place. Try another result.');
+    }
   };
 
   const fmtWhen = (s: string | null) => {
@@ -294,7 +297,7 @@ export const HomeLandscape = ({ currentRide }: { currentRide?: any }) => {
             {searchResults.map((r, i) => (
               <button key={i} type="button" onClick={() => selectDestination(r)} className="hl-result">
                 <MapPin size={18} />
-                <span><strong>{r.name || r.display_name.split(',')[0]}</strong><small>{r.display_name}</small></span>
+                <span><strong>{r.name}</strong><small>{[formatDistance(r.distanceM), r.address].filter(Boolean).join(' · ')}</small></span>
               </button>
             ))}
           </div>

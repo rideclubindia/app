@@ -17,6 +17,7 @@ import { useToast } from '../components/ToastContext';
 import { LeftNavigationRail } from '../components/LeftNavigationRail';
 import { getRouteOrigin } from '../lib/routeOrigin';
 import { Helmet } from 'react-helmet-async';
+import { searchPlaces, resolvePlace } from '../lib/places';
 
 const Routes = () => {
   const navigate = useNavigate();
@@ -122,11 +123,11 @@ const Routes = () => {
 
   const handleGeocode = async (text: string, target: string) => {
     try {
-      const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(text + ', Hyderabad')}`);
-      if (!res.ok) throw new Error('Search failed');
-      const data = await res.json();
-      if (data && data.length > 0) {
-         const coords = { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) };
+      // Best match near the rider instead of assuming Hyderabad
+      const hits = await searchPlaces(text, globalLocation ? { lat: globalLocation.lat, lng: globalLocation.lng } : null);
+      if (hits.length > 0) {
+         const top = await resolvePlace(hits[0]);
+         const coords = { lat: top.lat, lng: top.lng };
          if (target === 'origin') setOriginCoords(coords);
          else if (target === 'dest') setDestCoords(coords);
          else if (target.startsWith('stop-')) {
