@@ -1,7 +1,7 @@
 import { Capacitor, registerPlugin } from '@capacitor/core';
 import { useLocationStore } from '../store/useLocationStore';
 
-const AppSettings = registerPlugin<{ open(): Promise<{ opened: boolean }>; openLocationServices(): Promise<{ opened: boolean }> }>('AppSettings');
+const AppSettings = registerPlugin<{ open(): Promise<{ opened: boolean }>; openLocationServices(): Promise<{ opened: boolean }>; locationStatus(): Promise<{ granted: boolean; precise: boolean; servicesEnabled: boolean }> }>('AppSettings');
 
 export type LocationRequestResult =
   | { status: 'granted'; lat: number; lng: number }
@@ -28,4 +28,11 @@ export const canOpenSettings = () => Capacitor.isNativePlatform() && Capacitor.g
 export const openLocationSettings = async (which: 'app' | 'services' = 'app') => {
   if (!canOpenSettings()) return false;
   try { return (await (which === 'app' ? AppSettings.open() : AppSettings.openLocationServices())).opened; } catch { return false; }
+};
+
+// Native: exact permission/GPS state with no dialog; web: the Permissions API (null when unknown)
+export const locationStatus = async (): Promise<{ granted: boolean; servicesEnabled: boolean } | null> => {
+  if (canOpenSettings()) { try { return await AppSettings.locationStatus(); } catch { /* older app build without this method */ } }
+  try { const q = await navigator.permissions?.query({ name: 'geolocation' as PermissionName }); if (q && q.state !== 'prompt') return { granted: q.state === 'granted', servicesEnabled: true }; } catch { /* unsupported */ }
+  return null;
 };

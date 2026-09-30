@@ -40,4 +40,22 @@ public class AppSettingsPlugin extends Plugin {
     }
     call.resolve(r);
   }
+
+  // Real permission and GPS state without showing any dialog (the WebView Permissions API always says "prompt")
+  @PluginMethod
+  public void locationStatus(PluginCall call) {
+    JSObject r = new JSObject();
+    android.content.Context ctx = getContext();
+    boolean fine = androidx.core.content.ContextCompat.checkSelfPermission(ctx, android.Manifest.permission.ACCESS_FINE_LOCATION) == android.content.pm.PackageManager.PERMISSION_GRANTED;
+    boolean coarse = androidx.core.content.ContextCompat.checkSelfPermission(ctx, android.Manifest.permission.ACCESS_COARSE_LOCATION) == android.content.pm.PackageManager.PERMISSION_GRANTED;
+    boolean enabled = false;
+    try {
+      android.location.LocationManager lm = (android.location.LocationManager) ctx.getSystemService(android.content.Context.LOCATION_SERVICE);
+      enabled = lm != null && androidx.core.location.LocationManagerCompat.isLocationEnabled(lm);
+    } catch (RuntimeException ignored) {}
+    r.put("granted", fine || coarse);
+    r.put("precise", fine);
+    r.put("servicesEnabled", enabled);
+    call.resolve(r);
+  }
 }

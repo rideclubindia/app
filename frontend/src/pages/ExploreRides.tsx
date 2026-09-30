@@ -8,6 +8,9 @@ import { supabase } from '../lib/supabase';
 import { saveOfflineCopy, readOfflineCopy } from '../lib/offlineData';
 import { useLocationStore } from '../store/useLocationStore';
 import { MapEngine } from '../map/MapEngine';
+import { useAvatar, initialsImage } from '../hooks/useAvatar';
+import { getAppUser } from '../lib/user';
+import { auth } from '../lib/firebase';
 
 interface Ride {
   id: string;
@@ -136,6 +139,9 @@ const ExploreRides = () => {
 
   const formatRoute = (ride: Ride) => [ride.start_location?.name, ride.destination?.name].filter(Boolean).join(' → ') || 'Route TBD';
 
+  const me = getAppUser(auth.currentUser);
+  const avatar = useAvatar(me);
+
   return (
     <React.Fragment>
       <Helmet><title>Explore Rides | RideClub</title></Helmet>
@@ -152,7 +158,9 @@ const ExploreRides = () => {
             <button onClick={() => navigate('/alerts')} aria-label="Alerts" className="w-10 h-10 rounded-full bg-white flex items-center justify-center text-gray-700 active:scale-95 transition-all cursor-pointer">
               <Bell className="w-4.5 h-4.5" />
             </button>
-            <button onClick={() => navigate('/profile')} className="w-10 h-10 rounded-full bg-[#FF6B22]/10 flex items-center justify-center text-[#FF6B22] font-black text-[13px] active:scale-95 transition-all cursor-pointer">RC</button>
+            <button onClick={() => navigate('/profile')} aria-label="Profile" className="w-10 h-10 rounded-full overflow-hidden bg-[#FF6B22]/10 active:scale-95 transition-all cursor-pointer">
+              <img src={avatar} alt="" referrerPolicy="no-referrer" className="w-full h-full object-cover" onError={(e) => { const f = initialsImage(me?.displayName || 'Rider'); if (e.currentTarget.src !== f) e.currentTarget.src = f; }} />
+            </button>
           </div>
         </div>
 
@@ -166,7 +174,7 @@ const ExploreRides = () => {
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
                 placeholder="Search by place, ride name, or route..."
-                className="w-full h-12 card-app pl-4 pr-4 text-[13px] font-semibold text-gray-900 placeholder-gray-400 outline-none focus:ring-2 focus:ring-[#FF6B22]"
+                className="w-full h-12 card-app pl-11 pr-4 text-[13px] font-semibold text-gray-900 placeholder-gray-400 outline-none focus:ring-2 focus:ring-[#FF6B22]"
               />
             </div>
             <button
@@ -261,7 +269,7 @@ const ExploreRides = () => {
                       <button
                         key={ride.id}
                         onClick={() => navigate(`/ride-plus/view/${ride.id}`)}
-                        className={`bento-tile ${i === 0 ? 'bento-tile--wide' : ''} p-2.5 flex items-center gap-3 text-left cursor-pointer relative`}
+                        className={`bento-tile ${i === 0 ? 'bento-tile--wide' : ''} w-full min-w-0 p-2.5 flex items-center gap-3 text-left cursor-pointer relative`}
                       >
                         <img src={ride.image_url || 'https://images.unsplash.com/photo-1558981806-ec527fa84c39?w=400&q=60'} alt="" className="w-16 h-16 rounded-2xl object-cover shrink-0" />
                         <div className="flex-1 min-w-0">

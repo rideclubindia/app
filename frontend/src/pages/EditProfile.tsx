@@ -9,6 +9,7 @@ import { getDeterministicUuid, getAppUser } from '../lib/user';
 import { useToast } from '../components/ToastContext';
 import { Helmet } from 'react-helmet-async';
 import { getMyProfile, updateMyProfile } from '../lib/myProfile';
+import { normalizeMobile, formatEmergencyContact } from '../lib/emergencyContact';
 
 const EditProfile = () => {
   const navigate = useNavigate();
@@ -123,6 +124,14 @@ const EditProfile = () => {
 
   const handleSave = async () => {
     if (!profileId) return;
+    // Same rule as starting a ride: a real mobile number, stored as "+91XXXXXXXXXX (Name)" for the SOS SMS
+    const rawContact = formData.emergency_contact.trim();
+    if (rawContact) {
+      const phone = normalizeMobile(rawContact.split('(')[0]);
+      if (!phone) { showToast('Emergency contact needs a valid 10-digit mobile number, e.g. 9876543210 (Mom)', 'error'); return; }
+      const name = rawContact.match(/\(([^)]+)\)/)?.[1]?.trim() || 'Emergency contact';
+      formData.emergency_contact = formatEmergencyContact({ name, phone });
+    }
     setIsSaving(true);
     
     try {

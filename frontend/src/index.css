@@ -320,14 +320,14 @@
      uniform grid of identical boxes. */
   .bento-grid {
     display: grid;
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
     gap: var(--rc-space-3);
   }
   @media (min-width: 640px) {
-    .bento-grid { grid-template-columns: repeat(2, 1fr); gap: var(--rc-space-4); }
+    .bento-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--rc-space-4); }
   }
   @media (min-width: 1024px) {
-    .bento-grid { grid-template-columns: repeat(4, 1fr); }
+    .bento-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
   }
   .bento-tile {
     background-color: var(--rc-surface);

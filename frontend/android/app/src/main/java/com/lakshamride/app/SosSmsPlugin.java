@@ -80,9 +80,12 @@ public class SosSmsPlugin extends Plugin {
     boolean internet = false;
     ConnectivityManager cm = (ConnectivityManager) ctx.getSystemService(Context.CONNECTIVITY_SERVICE);
     if (cm != null) {
-      Network n = cm.getActiveNetwork();
-      NetworkCapabilities nc = n != null ? cm.getNetworkCapabilities(n) : null;
-      internet = nc != null && nc.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED);
+      // A failed check must never crash the app during an SOS; report offline instead
+      try {
+        Network n = cm.getActiveNetwork();
+        NetworkCapabilities nc = n != null ? cm.getNetworkCapabilities(n) : null;
+        internet = nc != null && nc.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED);
+      } catch (RuntimeException ignored) {}
     }
 
     Intent composer = new Intent(Intent.ACTION_SENDTO, Uri.parse("smsto:"));

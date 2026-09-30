@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Bell, CheckCircle2, CircleAlert, Loader2, MapPin, MessageSquare, Phone, Activity } from 'lucide-react';
 import { getNotificationPermission, requestNotificationPermission, type NotifyPermission } from '../lib/notify';
-import { requestLocation, openLocationSettings, canOpenSettings } from '../lib/locationPermission';
+import { requestLocation, openLocationSettings, canOpenSettings, locationStatus } from '../lib/locationPermission';
 import { loadMyEmergencyContact, type EmergencyContactInfo } from '../lib/emergencyContact';
 import { detectEnvironment } from '../lib/sos/sosOrchestrator';
 import { getAccidentPreference, setAccidentPreference, requestMotionPermission } from '../lib/crashDetection/useAccidentDetection';
@@ -10,15 +10,18 @@ import { EmergencyContactSheet } from './RideStartGate';
 type Tone = 'ok' | 'warn' | 'bad';
 interface Row { key: string; icon: typeof Bell; title: string; detail: string; tone: Tone; action?: { label: string; run: () => void } }
 
-const locationState = async (): Promise<'granted' | 'denied' | 'prompt'> => {
-  try { const s = await navigator.permissions?.query({ name: 'geolocation' as PermissionName }); if (s) return s.state as any; } catch { /* unsupported */ }
-  return 'prompt';
+const locationState = async (): Promise<'granted' | 'denied' | 'prompt' | 'off'> => {
+  const st = await locationStatus();
+  if (!st) return 'prompt';
+  // Android can't tell "never asked" from "denied"; Allow asks again and falls back to settings if blocked
+  if (!st.granted) return 'prompt';
+  return st.servicesEnabled ? 'granted' : 'off';
 };
 
 // Readiness checklist, re-read from the system every time it is shown or the app returns to the foreground
 export default function SafetyStatus() {
   const [notif, setNotif] = useState<NotifyPermission | null>(null);
-  const [loc, setLoc] = useState<'granted' | 'denied' | 'prompt' | null>(null);
+  const [loc, setLoc] = useState<'granted' | 'denied' | 'prompt' | 'off' | null>(null);
   const [contact, setContact] = useState<EmergencyContactInfo | null | undefined>(undefined);
   const [sms, setSms] = useState<{ direct: boolean; composer: boolean; native: boolean } | null>(null);
   const [accident, setAccident] = useState(getAccidentPreference());
@@ -54,9 +57,11 @@ export default function SafetyStatus() {
     },
     {
       key: 'loc', icon: MapPin, title: 'Location',
-      detail: loc === 'granted' ? 'Allowed. Background tracking runs only during a live ride' : loc === 'denied' ? 'Blocked. Live rides, SOS location and navigation won\'t work' : 'Not allowed yet',
+      detail: loc === 'granted' ? 'Allowed. Background tracking runs only during a live ride' : loc === 'denied' ? 'Blocked. Live rides, SOS location and navigation won\'t work' : loc === 'off' ? 'Allowed, but location (GPS) is turned off on this phone' : 'Not allowed yet',
       tone: loc === 'granted' ? 'ok' : 'bad',
-      action: loc === 'granted' ? undefined : loc === 'denied' ? settings : { label: 'Allow', run: () => requestLocation().then(refresh) },
+      action: loc === 'granted' ? undefined : loc === 'denied' ? settings
+        : loc === 'off' ? (canOpenSettings() ? { label: 'Turn on', run: () => { openLocationSettings('services'); } } : undefined)
+        : { label: 'Allow', run: () => requestLocation().then((r) => { if (r.status === 'denied' && canOpenSettings()) openLocationSettings('app'); refresh(); }) },
     },
     {
       key: 'notif', icon: Bell, title: 'Notifications',
