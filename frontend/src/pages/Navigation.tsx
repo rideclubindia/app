@@ -323,12 +323,14 @@ export default function Navigation() {
   const summary = active?.properties.summary as { distance: number; duration: number; trafficDelay?: number } | undefined;
   const steps: any[] = active?.properties.segments?.[0]?.steps || [];
   const nextStep = (() => {
-    if (!navigating || !active || !me || !steps.length) return null;
+    // Live GPS, or the manual start point when location isn't available
+    const pos: LngLat | null = me ? [me.lng, me.lat] : manualStart ? [manualStart.lng, manualStart.lat] : null;
+    if (!navigating || !active || !pos || !steps.length) return null;
     try {
       const line = turf.lineString(active.geometry.coordinates);
-      const idx = (turf.nearestPointOnLine(line, [me.lng, me.lat]).properties as any).index ?? 0;
+      const idx = (turf.nearestPointOnLine(line, pos).properties as any).index ?? 0;
       const s = steps.find((st) => st.way_points[0] > idx) || steps[steps.length - 1];
-      const dist = turf.length(turf.lineSlice([me.lng, me.lat], active.geometry.coordinates[s.way_points[0]], line)) * 1000;
+      const dist = turf.length(turf.lineSlice(pos, active.geometry.coordinates[s.way_points[0]], line)) * 1000;
       return { text: s.instruction as string, dist, Icon: turnIcon(s.type) };
     } catch { return null; }
   })();
@@ -407,6 +409,14 @@ export default function Navigation() {
               <div className="min-w-0">
                 <p className="text-[22px] font-bold leading-none tabular-nums">{fmtKm(nextStep.dist)}</p>
                 <p className="text-[14px] text-white/85 mt-1 truncate">{nextStep.text}</p>
+              </div>
+            </div>
+          ) : navigating && dest ? (
+            <div className="flex-1 min-w-0 rounded-2xl bg-[#0F5132] text-white shadow-lg px-4 py-3 flex items-center gap-3">
+              <ArrowUp className="w-10 h-10 shrink-0" />
+              <div className="min-w-0">
+                <p className="text-[22px] font-bold leading-none tabular-nums">{summary ? fmtKm(summary.distance) : '--'}</p>
+                <p className="text-[14px] text-white/85 mt-1 truncate">Head to {dest.name}</p>
               </div>
             </div>
           ) : (
