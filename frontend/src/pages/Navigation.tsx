@@ -346,6 +346,11 @@ export default function Navigation() {
       map.current.easeTo({ center: [me.lng, me.lat], zoom: navigating ? 17 : 15, bearing: navigating && me.heading != null ? me.heading : 0, pitch: navigating ? 45 : 0, duration: 700 });
       return;
     }
+    // No GPS but the rider set their start point: that is where they are, so don't ask for location again
+    if (manualStart && map.current) {
+      map.current.easeTo({ center: [manualStart.lng, manualStart.lat], zoom: navigating ? 16 : 15, bearing: 0, pitch: navigating ? 45 : 0, duration: 700 });
+      return;
+    }
     setAskingLoc(true);
     const r = await requestLocation();
     setAskingLoc(false);
