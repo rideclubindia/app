@@ -5,8 +5,8 @@ export const API_BASE_URL = import.meta.env.VITE_API_URL || '';
 
 export const apiClient = axios.create({
   baseURL: API_BASE_URL,
-  // A stalled request must fail instead of leaving a screen waiting forever
-  timeout: 20000,
+  // Long enough for the Render backend to wake from sleep (can take ~60 s), but a stalled request still ends
+  timeout: 60000,
   headers: {
     'Content-Type': 'application/json',
   },

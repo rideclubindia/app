@@ -149,7 +149,7 @@ const LoginScreen = ({ adminOnly = false, redirectTo = '/home' }: { adminOnly?: 
     } catch (error: any) {
       console.error(error);
       const detail = error?.response?.data?.detail;
-      showToast(detail || "Failed to send verification code.", 'error');
+      showToast(detail || (error?.code === 'ECONNABORTED' || !error?.response ? 'The server is starting up. Please try again in a moment.' : "Failed to send verification code."), 'error');
     } finally {
       setIsLoading(false);
     }
@@ -184,7 +184,7 @@ const LoginScreen = ({ adminOnly = false, redirectTo = '/home' }: { adminOnly?: 
     } catch (error: any) {
       // Authentication failure must never grant access.
       const detail = error?.response?.data?.detail;
-      showToast(detail || "Invalid verification code.", 'error');
+      showToast(detail || (error?.code === 'ECONNABORTED' || !error?.response ? 'The server is starting up. Please try again in a moment.' : "Invalid verification code."), 'error');
     } finally {
       setIsLoading(false);
     }
