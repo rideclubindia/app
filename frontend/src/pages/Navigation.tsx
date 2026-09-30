@@ -329,14 +329,24 @@ export default function Navigation() {
   };
 
   // Navigating: follow the rider heading-up; otherwise frame the whole route (or fall back to locating)
+  // Same behaviour as ride navigation: centre on the rider (or start point) facing the route direction ahead
   const recenter = () => {
-    const bbox = routes[selected]?.bbox;
-    if (!navigating && bbox && map.current) {
-      setFollowing(false);
-      map.current.fitBounds(bbox as any, { padding: { top: 140, bottom: 300, left: 40, right: 80 }, bearing: 0, pitch: 0, duration: 700 });
-      return;
+    const m = map.current;
+    if (!m) return;
+    const line = routes[selected]?.geometry?.coordinates as LngLat[] | undefined;
+    const target: LngLat | null = me ? [me.lng, me.lat] : manualStart ? [manualStart.lng, manualStart.lat] : line?.length ? line[0] : null;
+    if (!target) { locate(); return; }
+    let bearing = m.getBearing();
+    if (line && line.length > 1) {
+      try {
+        const l = turf.lineString(line);
+        const closest = turf.nearestPointOnLine(l, turf.point(target));
+        const along = (closest.properties as any).location ?? 0;
+        bearing = turf.bearing(closest, turf.along(l, Math.min(along + 0.05, turf.length(l))));
+      } catch { /* keep current bearing */ }
     }
-    locate();
+    setFollowing(true);
+    m.easeTo({ center: target, bearing, pitch: navigating ? 60 : 0, zoom: navigating ? 18 : 16, duration: 1000 });
   };
 
   // Centre on the rider; asks for location again when there's no fix yet
@@ -517,7 +527,7 @@ export default function Navigation() {
 
         {/* Recenter while navigating after the map was moved */}
         {navigating && !following && (
-          <button onClick={locate} className="absolute left-1/2 -translate-x-1/2 bottom-[112px] z-20 h-12 px-5 rounded-full bg-white shadow-[0_6px_18px_rgba(0,0,0,0.18)] border border-gray-100 text-[14px] font-bold text-gray-900 flex items-center gap-2 active:scale-95">
+          <button onClick={recenter} className="absolute left-1/2 -translate-x-1/2 bottom-[112px] z-20 h-12 px-5 rounded-full bg-white shadow-[0_6px_18px_rgba(0,0,0,0.18)] border border-gray-100 text-[14px] font-bold text-gray-900 flex items-center gap-2 active:scale-95">
             <Navigation2 className="w-4 h-4 fill-[#FF5A00] text-[#FF5A00]" /> Re-center
           </button>
         )}
