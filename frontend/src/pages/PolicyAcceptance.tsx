@@ -267,7 +267,7 @@ const PolicyAcceptance: React.FC<PolicyAcceptanceProps> = ({ onAccept }) => {
 
             <p className="flex items-start gap-2.5 text-[12px] text-[#9AA6B8] leading-relaxed mt-4 px-1">
               <Lock className="w-4 h-4 mt-0.5 shrink-0" />
-              We never sell your data. Your location is shared only with your ride group and, in an emergency, with your emergency contacts.
+              We respect your privacy and safety. Your location is shared only with members of your ride group and, in an emergency, with your designated emergency contacts.
             </p>
           </div>
         </div>
