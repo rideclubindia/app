@@ -73,7 +73,9 @@
         window.addEventListener("error", function (e) {
           var t = e.target;
           if (t && (t.tagName === "SCRIPT" || t.tagName === "LINK")) window.__rcBootFail("failed to load " + (t.src || t.href));
-          else window.__rcBootFail((e.message || "script error") + " @ " + (e.filename || "") + ":" + (e.lineno || ""));
+          // Only errors from this site count; the native bridge can throw harmlessly before the page scripts load
+          else if (e.filename && e.filename.indexOf(location.origin) === 0) window.__rcBootFail((e.message || "script error") + " @ " + e.filename + ":" + (e.lineno || ""));
+          else console.warn("[RideClub startup] ignored early error: " + (e.message || "unknown"));
         }, true);
         window.addEventListener("unhandledrejection", function (e) {
           window.__rcBootFail("unhandled rejection: " + ((e.reason && (e.reason.stack || e.reason.message)) || e.reason));
