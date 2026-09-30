@@ -248,12 +248,23 @@ export default function Navigation() {
     startMarker.current?.remove();
     startMarker.current = null;
     if (!manualStart || me) return;
+    // Same navigation arrow as the live-location marker, pointing along the route
     const el = document.createElement('div');
-    el.style.cssText = 'width:22px;height:22px;border-radius:50%;background:#16A34A;border:4px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.35)';
-    startMarker.current = new maplibregl.Marker({ element: el }).setLngLat([manualStart.lng, manualStart.lat]).addTo(m);
+    el.style.cssText = 'width:44px;height:44px;display:flex;align-items:center;justify-content:center;filter:drop-shadow(0 3px 6px rgba(0,0,0,.35))';
+    el.innerHTML = '<svg width="40" height="40" viewBox="0 0 40 40"><circle cx="20" cy="20" r="17" fill="#fff"/><path d="M20 7 L30 30 L20 24 L10 30 Z" fill="#FF5A00"/></svg>';
+    let heading = 0;
+    const line = routes[selected]?.geometry?.coordinates as LngLat[] | undefined;
+    if (line && line.length > 1) {
+      try {
+        const l = turf.lineString(line);
+        const closest = turf.nearestPointOnLine(l, turf.point([manualStart.lng, manualStart.lat]));
+        heading = turf.bearing(closest, turf.along(l, Math.min(((closest.properties as any).location ?? 0) + 0.05, turf.length(l))));
+      } catch { /* keep north */ }
+    }
+    startMarker.current = new maplibregl.Marker({ element: el, rotationAlignment: 'map' }).setLngLat([manualStart.lng, manualStart.lat]).setRotation(heading).addTo(m);
     if (!dest) m.easeTo({ center: [manualStart.lng, manualStart.lat], zoom: 14, duration: 600 });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [manualStart, me, mapReady]);
+  }, [manualStart, me, mapReady, routes, selected]);
 
   // Search as you type (Nominatim), biased to ~40 km around you
   useEffect(() => {
