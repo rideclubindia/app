@@ -111,8 +111,8 @@ const GroupsHMI = () => {
         .subscribe();
 
       const interval = setInterval(() => {
-        fetchMessages();
-      }, 2000);
+        if (document.visibilityState === 'visible') fetchMessages();
+      }, 30000);
 
       return () => { 
         supabase.removeChannel(channel); 

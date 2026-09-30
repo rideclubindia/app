@@ -21,7 +21,7 @@ export interface LocationState {
   setActiveRouteGeoJSON: (geojson: any) => void;
   setIsMapReporting: (val: boolean) => void;
   setMapPanelMode: (mode: 'default' | 'full' | 'form') => void;
-  startTracking: () => void;
+  startTracking: (mode?: 'high' | 'low') => void;
   stopTracking: () => void;
   fetchLocationOnce: () => Promise<{lat: number, lng: number, locationName: string | null}>;
 }
@@ -30,6 +30,7 @@ export const useLocationStore = create<LocationState>()(
   persist(
     (set, get) => {
       let watchId: number | null = null;
+      let trackingMode: 'high' | 'low' | null = null;
 
   const reverseGeocode = async (lat: number, lng: number) => {
     try {
@@ -63,8 +64,10 @@ export const useLocationStore = create<LocationState>()(
     setIsMapReporting: (val: boolean) => set({ isMapReporting: val }),
     setMapPanelMode: (mode: 'default' | 'full' | 'form') => set({ mapPanelMode: mode }),
 
-    startTracking: () => {
-      if (get().isTracking) return;
+    startTracking: (mode: 'high' | 'low' = 'high') => {
+      if (get().isTracking && trackingMode === mode) return;
+      if (watchId !== null) { navigator.geolocation.clearWatch(watchId); watchId = null; }
+      trackingMode = mode;
       if (!('geolocation' in navigator)) {
         set({ error: 'Geolocation not supported' });
         return;
@@ -111,7 +114,8 @@ export const useLocationStore = create<LocationState>()(
         (error) => {
           set({ error: error.message });
         },
-        { enableHighAccuracy: true, timeout: 5000, maximumAge: 10000 }
+        // Low power uses network/cell location and cached fixes; high accuracy only where the screen needs it
+        mode === 'high' ? { enableHighAccuracy: true, timeout: 10000, maximumAge: 5000 } : { enableHighAccuracy: false, timeout: 20000, maximumAge: 60000 }
       );
     },
 
@@ -120,6 +124,7 @@ export const useLocationStore = create<LocationState>()(
         navigator.geolocation.clearWatch(watchId);
         watchId = null;
       }
+      trackingMode = null;
       set({ isTracking: false });
     },
 

@@ -6,6 +6,7 @@ import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
 import android.os.Handler;
 import android.os.Looper;
+import android.os.SystemClock;
 import com.getcapacitor.JSArray;
 import com.getcapacitor.JSObject;
 import com.getcapacitor.Plugin;
@@ -33,6 +34,8 @@ public class CrashSensorPlugin extends Plugin implements SensorEventListener {
 
   private static final long FLUSH_INTERVAL_MS = 50; // batches, not per-sample bridge calls
   private static final int SAMPLING_PERIOD_US = 10_000;
+  // Sensor hub batches readings for up to 100 ms so the CPU can sleep between deliveries
+  private static final int MAX_REPORT_LATENCY_US = 100_000;
 
   private SensorManager sensorManager;
   private Sensor accelerometer;
@@ -77,8 +80,8 @@ public class CrashSensorPlugin extends Plugin implements SensorEventListener {
     if (!running) {
       running = true;
       // 100Hz (10ms) is enough for impact detection and avoids the 200Hz+ FASTEST rate's battery cost on long rides
-      sensorManager.registerListener(this, accelerometer, SAMPLING_PERIOD_US);
-      sensorManager.registerListener(this, gyroscope, SAMPLING_PERIOD_US);
+      sensorManager.registerListener(this, accelerometer, SAMPLING_PERIOD_US, MAX_REPORT_LATENCY_US);
+      sensorManager.registerListener(this, gyroscope, SAMPLING_PERIOD_US, MAX_REPORT_LATENCY_US);
       flushHandler.postDelayed(flushRunnable, FLUSH_INTERVAL_MS);
     }
     call.resolve();
@@ -104,7 +107,8 @@ public class CrashSensorPlugin extends Plugin implements SensorEventListener {
 
   @Override
   public void onSensorChanged(SensorEvent event) {
-    long tMs = System.currentTimeMillis();
+    // When the reading was taken, not when a batch was delivered
+    long tMs = System.currentTimeMillis() - (SystemClock.elapsedRealtimeNanos() - event.timestamp) / 1_000_000L;
     trackAchievedRate(tMs);
 
     double[] sample = new double[] { tMs, event.values[0], event.values[1], event.values[2] };

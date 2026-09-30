@@ -674,6 +674,18 @@ const LiveRide = () => {
     };
   }, [id]);
 
+  // Save to ride_locations after moving 15 m (at most every 10 s), or every 30 s while stopped so others see you're still there
+  const lastSavedPosRef = useRef<{ lat: number; lng: number } | null>(null);
+  const shouldSaveLocation = (lat: number, lng: number) => {
+    const since = Date.now() - lastLocSaveRef.current;
+    const prev = lastSavedPosRef.current;
+    const moved = prev ? turf.distance([prev.lng, prev.lat], [lng, lat], { units: 'meters' }) : Infinity;
+    if (since < 10000 || (moved < 15 && since < 30000)) return false;
+    lastLocSaveRef.current = Date.now();
+    lastSavedPosRef.current = { lat, lng };
+    return true;
+  };
+
   // ─── GPS watch → camera follow + position broadcast ──────────────────────
   useEffect(() => {
     if (!mapLoaded) return;
@@ -820,8 +832,7 @@ const LiveRide = () => {
           setTelemetryDegraded(!wsUp);
           if (wsUp) telemetryFailCountRef.current = 0;
           // persist to ride_locations too so other riders' maps always see this rider
-          if (Date.now() - lastLocSaveRef.current > 5000) {
-            lastLocSaveRef.current = Date.now();
+          if (shouldSaveLocation(lat, lng)) {
             const memberId = user.uid.length === 36 ? user.uid : getDeterministicUuid(user.uid);
             supabase.from('ride_locations').upsert(
               { ride_id: id, user_id: memberId, latitude: lat, longitude: lng, speed: speedKph, updated_at: new Date().toISOString() },
@@ -887,12 +898,13 @@ const LiveRide = () => {
         }
         const user = getAppUser(auth.currentUser);
         if (!loc) return;
+        // While the screen is on, the foreground watcher already shares location
+        if (document.visibilityState === 'visible') return;
         reportLocationFix(loc.latitude, loc.longitude, loc.accuracy);
         if (!user) return;
         const speedKph = loc.speed != null ? loc.speed * 3.6 : 0;
         getRealtime().sendLocation(id, { lat: loc.latitude, lng: loc.longitude, speed: speedKph, heading: loc.bearing ?? 0 });
-        if (Date.now() - lastLocSaveRef.current > 5000) {
-          lastLocSaveRef.current = Date.now();
+        if (shouldSaveLocation(loc.latitude, loc.longitude)) {
           const memberId = user.uid.length === 36 ? user.uid : getDeterministicUuid(user.uid);
           supabase.from('ride_locations').upsert(
             { ride_id: id, user_id: memberId, latitude: loc.latitude, longitude: loc.longitude, speed: speedKph, updated_at: new Date().toISOString() },
@@ -1225,15 +1237,16 @@ const LiveRide = () => {
       if (diffSecs < 10) setTimeSinceUpdate('just now');
       else if (diffSecs < 60) setTimeSinceUpdate(`${diffSecs}s ago`);
       else setTimeSinceUpdate(`${Math.floor(diffSecs/60)}m ago`);
-    }, 1000);
+    }, 10000);
     return () => clearInterval(interval);
   }, [lastUpdated]);
 
   useEffect(() => {
     if (!isDataLoaded) return;
+    // Realtime carries live changes; this full refresh is only a safety net
     const interval = setInterval(() => {
-      fetchLiveUpdates();
-    }, 10000);
+      if (document.visibilityState === 'visible') fetchLiveUpdates();
+    }, 30000);
     return () => clearInterval(interval);
   }, [isDataLoaded, id]);
 

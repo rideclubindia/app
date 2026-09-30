@@ -413,7 +413,7 @@ const Routes = () => {
     };
     
     fetchPins();
-    const interval = setInterval(fetchPins, 3000);
+    const interval = setInterval(() => { if (document.visibilityState === 'visible') fetchPins(); }, 30000);
     return () => clearInterval(interval);
   }, [mapLoaded, userGroups]);
 

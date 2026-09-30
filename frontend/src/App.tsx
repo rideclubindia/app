@@ -153,6 +153,7 @@ const BodyStyler = ({ isWebsiteDomain }: { isWebsiteDomain: boolean }) => {
 };
 
 const RequireAuth = ({ children }: { children: React.ReactNode }) => {
+  const { pathname } = useLocation();
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [banned, setBanned] = useState(false);
@@ -228,13 +229,25 @@ const RequireAuth = ({ children }: { children: React.ReactNode }) => {
 
   useEffect(() => {
     if (user && !banned && !needsPolicyAcceptance) {
-      useLocationStore.getState().startTracking();
       getRealtime().connect(); // shared realtime connection for the whole app
     } else {
       useLocationStore.getState().stopTracking();
       getRealtime().disconnect();
     }
   }, [user, banned, needsPolicyAcceptance]);
+
+  // Live ride and Navigation run their own GPS; the map and hazard reporting need precise fixes; everything else is low power
+  useEffect(() => {
+    if (!user || banned || needsPolicyAcceptance) return;
+    const apply = () => {
+      const store = useLocationStore.getState();
+      if (document.visibilityState !== 'visible' || /^\/(ride-plus\/live|navigation)/.test(pathname)) return store.stopTracking();
+      store.startTracking(/^\/(map|report)/.test(pathname) ? 'high' : 'low');
+    };
+    apply();
+    document.addEventListener('visibilitychange', apply);
+    return () => document.removeEventListener('visibilitychange', apply);
+  }, [user, banned, needsPolicyAcceptance, pathname]);
 
   if (loading) {
     return <LoadingSpinner fullScreen />;
