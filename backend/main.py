@@ -7,7 +7,7 @@ from core.limiter import limiter
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
-from api.routers import auth, tracking, pins, analytics, dashboard, intelligence, grca, traffic, sos, emergency, riders, profiles
+from api.routers import auth, tracking, pins, analytics, dashboard, intelligence, grca, traffic, sos, emergency, riders, profiles, places
 from api.routers.websockets import gateway, sio
 import socketio
 import logging
@@ -81,6 +81,7 @@ app.include_router(sos.router, prefix=f"{settings.API_V1_STR}/sos", tags=["SOS"]
 app.include_router(emergency.router, prefix="/api", tags=["Emergency"])
 app.include_router(riders.router, prefix=f"{settings.API_V1_STR}/riders", tags=["Riders"])
 app.include_router(profiles.router, prefix=settings.API_V1_STR, tags=["Profiles"])
+app.include_router(places.router, prefix=settings.API_V1_STR, tags=["Places"])
 
 
 @app.get("/health")

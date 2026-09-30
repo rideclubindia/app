@@ -50,6 +50,7 @@ class Settings(BaseSettings):
     EMAILJS_PRIVATE_KEY: str = Field("", env="EMAILJS_PRIVATE_KEY")
 
     # TomTom (default fallback is the currently hardcoded key from the frontend - rotate this ASAP)
+    GOOGLE_MAPS_API_KEY: str = Field("", env="GOOGLE_MAPS_API_KEY")
     TOMTOM_API_KEY: str = Field("GkjXLzDVKuB5KI8iXmBBYKVtYTDu6LhJ", env="TOMTOM_API_KEY")
 
     # Twilio (SOS SMS dispatch)

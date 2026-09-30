@@ -17,6 +17,7 @@ import { uploadImage, UploadError } from '../../lib/mediaUpload';
 import { useConfirm } from '../../components/ConfirmDialog';
 import { useRideStartGate } from '../../components/RideStartGate';
 import img16 from '../../assets/WebsiteImages/img16.jpg';
+import { searchPlaces, resolvePlace } from '../../lib/places';
 const imgSoloRide = img16;
 
 const DRAFT_KEY = 'rideclub_create_ride_draft';
@@ -295,27 +296,29 @@ const CreateRide = () => {
 
     setActiveInput(target);
     try {
-      const lat = globalLocation?.lat || 17.3850;
-      const lng = globalLocation?.lng || 78.4867;
-      const res = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(text)}&lat=${lat}&lon=${lng}&limit=6`);
-      const data = await res.json();
-
-      if (data && data.features) {
-        const mapped = data.features.map((f: any) => ({
-          display_name: [f.properties.name, f.properties.street, f.properties.city, f.properties.state, f.properties.country].filter(Boolean).join(', '),
-          lat: f.geometry.coordinates[1],
-          lon: f.geometry.coordinates[0]
-        }));
-        setSuggestions(mapped);
-      } else {
-        setSuggestions([]);
-      }
+      // Google Places near the rider (OpenStreetMap fallback); coordinates are fetched when a suggestion is picked
+      const hits = await searchPlaces(text, globalLocation ? { lat: globalLocation.lat, lng: globalLocation.lng } : null);
+      setSuggestions(hits.slice(0, 6).map((h) => ({
+        display_name: [h.name, h.address].filter(Boolean).join(', '),
+        lat: h.lat,
+        lon: h.lng,
+        hit: h,
+      })));
     } catch (e) {
       setSuggestions([]);
     }
   };
 
-  const handleSelectSuggestion = (suggestion: any, target: string) => {
+  const handleSelectSuggestion = async (suggestion: any, target: string) => {
+    if (suggestion.lat == null && suggestion.hit) {
+      try {
+        const r = await resolvePlace(suggestion.hit);
+        suggestion = { ...suggestion, lat: r.lat, lon: r.lng };
+      } catch {
+        showToast('Could not load that place. Try another suggestion.', 'error');
+        return;
+      }
+    }
     const coords = { lat: parseFloat(suggestion.lat), lng: parseFloat(suggestion.lon) };
     const text = suggestion.display_name;
 
