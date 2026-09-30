@@ -11,7 +11,6 @@ import { getRouteOrigin } from '../lib/routeOrigin';
 import { requestLocation, openLocationSettings, canOpenSettings } from '../lib/locationPermission';
 import { notify } from '../lib/notify';
 import { useToast } from '../components/ToastContext';
-import { searchPlaces, resolvePlace, formatDistance, type PlaceHit } from '../lib/places';
 
 // Standalone navigation: current location, traffic, route options and search (with stops). Nothing else.
 
@@ -67,7 +66,7 @@ export default function Navigation() {
 
   const [searchOpen, setSearchOpen] = useState(false);
   const [q, setQ] = useState('');
-  const [results, setResults] = useState<PlaceHit[]>([]);
+  const [results, setResults] = useState<Place[]>([]);
   const [searching, setSearching] = useState(false);
   const [searchMsg, setSearchMsg] = useState<string | null>(null);
   const searchAbort = useRef<AbortController | null>(null);
@@ -267,7 +266,7 @@ export default function Navigation() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [manualStart, me, mapReady, routes, selected]);
 
-  // Search as you type (Google Places, OpenStreetMap fallback), biased to ~50 km around you
+  // Search as you type (Nominatim), biased to ~40 km around you
   useEffect(() => {
     const term = q.trim();
     if (term.length < 3) { searchAbort.current?.abort(); setResults([]); setSearchMsg(null); setSearching(false); return; }
@@ -278,13 +277,17 @@ export default function Navigation() {
       setSearching(true);
       setSearchMsg(null);
       try {
-        const near = me ? { lat: me.lat, lng: me.lng } : manualStart ? { lat: manualStart.lat, lng: manualStart.lng } : null;
-        const list = await searchPlaces(term, near, ctrl.signal);
-        if (ctrl.signal.aborted) return;
+        const box = me ? `&viewbox=${me.lng - 0.4},${me.lat + 0.4},${me.lng + 0.4},${me.lat - 0.4}` : '';
+        const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&limit=8&q=${encodeURIComponent(term)}${box}`, { signal: ctrl.signal });
+        const data = await res.json();
+        const list: Place[] = (data || []).map((d: any) => {
+          const lng = parseFloat(d.lon), lat = parseFloat(d.lat);
+          return { id: String(d.place_id), name: d.name || d.display_name.split(',')[0], address: d.display_name.split(',').slice(1, 3).join(',').trim(), lng, lat, km: me ? turf.distance([me.lng, me.lat], [lng, lat]) : null };
+        }).sort((a: Place, b: Place) => (a.km ?? 0) - (b.km ?? 0));
         setResults(list);
         if (!list.length) setSearchMsg(`No places found for "${term}"`);
       } catch (e: any) {
-        if (e?.name !== 'AbortError' && e?.name !== 'CanceledError') { setResults([]); setSearchMsg(navigator.onLine ? 'Search is unavailable right now.' : 'No internet connection.'); }
+        if (e?.name !== 'AbortError') { setResults([]); setSearchMsg(navigator.onLine ? 'Search is unavailable right now.' : 'No internet connection.'); }
       } finally {
         if (searchAbort.current === ctrl) setSearching(false);
       }
@@ -292,16 +295,6 @@ export default function Navigation() {
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [q]);
-
-  // Suggestions only carry coordinates once picked
-  const pick = async (hit: PlaceHit, then: (p: Place) => void) => {
-    try {
-      const r = await resolvePlace(hit);
-      then({ id: r.id, name: r.name, address: r.address, lng: r.lng, lat: r.lat, km: hit.distanceM != null ? hit.distanceM / 1000 : null });
-    } catch {
-      showToast('Could not open that place. Try another result.', 'error');
-    }
-  };
 
   const closeSearch = () => { setSearchOpen(false); setQ(''); setResults([]); setSearchFor('dest'); };
 
@@ -593,12 +586,12 @@ export default function Navigation() {
                       <MapPin className="w-5 h-5 text-gray-400 shrink-0" />
                       <div className="flex-1 min-w-0">
                         <p className="text-[15px] font-semibold text-gray-950 truncate">{p.name}</p>
-                        <p className="text-[13px] text-gray-500 truncate">{[formatDistance(p.distanceM), p.address].filter(Boolean).join(' · ')}</p>
+                        <p className="text-[13px] text-gray-500 truncate">{p.km != null ? `${p.km < 1 ? `${Math.round(p.km * 1000)} m` : `${p.km.toFixed(1)} km`} · ` : ''}{p.address}</p>
                       </div>
                       {dest && searchFor === 'dest' && (
-                        <button onClick={() => pick(p, addStop)} className="h-11 px-3 rounded-full border border-gray-200 text-[13px] font-bold text-gray-900 flex items-center gap-1 shrink-0"><Plus className="w-4 h-4" /> Stop</button>
+                        <button onClick={() => addStop(p)} className="h-11 px-3 rounded-full border border-gray-200 text-[13px] font-bold text-gray-900 flex items-center gap-1 shrink-0"><Plus className="w-4 h-4" /> Stop</button>
                       )}
-                      <button onClick={() => pick(p, goTo)} className="h-11 px-4 rounded-full bg-[#FF5A00] text-white text-[13px] font-bold shrink-0">{searchFor === 'start' ? 'Start here' : 'Go'}</button>
+                      <button onClick={() => goTo(p)} className="h-11 px-4 rounded-full bg-[#FF5A00] text-white text-[13px] font-bold shrink-0">{searchFor === 'start' ? 'Start here' : 'Go'}</button>
                     </li>
                   ))}
                 </ul>

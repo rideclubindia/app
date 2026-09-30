@@ -40,7 +40,6 @@ import type { BackgroundGeolocationPlugin } from '@capacitor-community/backgroun
 import { getRouteOrigin, upcomingStops } from '../../lib/routeOrigin';
 import { triggerSos, resumePendingSos, resolveSos, resolveSosLocation, reportLocationFix } from '../../lib/sos/sosOrchestrator';
 import { getMyProfile } from '../../lib/myProfile';
-import { searchPlaces, resolvePlace } from '../../lib/places';
 
 const BackgroundGeolocation = registerPlugin<BackgroundGeolocationPlugin>('BackgroundGeolocation');
 
@@ -1552,18 +1551,31 @@ const LiveRide = () => {
     { id: 'tourist attraction', label: 'Sights', icon: Landmark },
   ];
 
-  // Google Places near the rider (OpenStreetMap fallback); coordinates load when a result is previewed or added
+  // Nominatim search biased to ~40 km around the rider, falling back to an unbounded search
   const runPlaceSearch = async (term: string) => {
     const q = term.trim();
     if (!q) { setSearchResults([]); return; }
     const here = userLocation || globalLocation;
     setSearching(true);
     try {
-      const hits = await searchPlaces(q, here ? { lat: here.lat, lng: here.lng } : null);
-      setSearchResults(hits.map((h) => ({
-        id: h.id, name: h.name, type: 'place', address: h.address,
-        lat: h.lat, lng: h.lng, km: h.distanceM != null ? h.distanceM / 1000 : null, hit: h,
-      })));
+      const base = `https://nominatim.openstreetmap.org/search?format=jsonv2&addressdetails=1&limit=20&q=${encodeURIComponent(q)}`;
+      const box = here ? `&viewbox=${here.lng - 0.4},${here.lat + 0.4},${here.lng + 0.4},${here.lat - 0.4}&bounded=1` : '';
+      let data: any[] = await (await fetch(base + box)).json();
+      if ((!data || data.length === 0) && box) data = await (await fetch(base)).json();
+      const rows = (data || []).map((r: any) => {
+        const lat = parseFloat(r.lat), lng = parseFloat(r.lon);
+        const km = here ? turf.distance(turf.point([here.lng, here.lat]), turf.point([lng, lat])) : null;
+        const name = r.name || String(r.display_name || '').split(',')[0];
+        return {
+          id: String(r.place_id),
+          name,
+          type: String(r.type || r.category || 'place').replace(/_/g, ' '),
+          address: String(r.display_name || '').split(',').slice(1, 4).join(',').trim(),
+          lat, lng, km,
+        };
+      });
+      rows.sort((a: any, b: any) => (a.km ?? 9e9) - (b.km ?? 9e9));
+      setSearchResults(rows);
     } catch (e) {
       console.error('Place search failed', e);
       showToast('Search failed — check your connection', 'error');
@@ -1572,18 +1584,7 @@ const LiveRide = () => {
     }
   };
 
-  const withCoords = async (p: any) => {
-    if (p.lat != null && p.lng != null) return p;
-    const r = await resolvePlace(p.hit);
-    const full = { ...p, lat: r.lat, lng: r.lng, address: p.address || r.address };
-    setSearchResults((rows: any[]) => rows.map((x) => (x.id === p.id ? full : x)));
-    return full;
-  };
-
-  const previewPlace = async (place: any) => {
-    if (!map.current) return;
-    let p = place;
-    try { p = await withCoords(place); } catch { showToast('Could not load that place', 'error'); return; }
+  const previewPlace = (p: any) => {
     if (!map.current) return;
     setIsFollowingUser(false);
     previewMarkerRef.current?.remove();
@@ -1635,9 +1636,7 @@ const LiveRide = () => {
     }
   };
 
-  const addPlaceAsStop = async (place: any) => {
-    let p = place;
-    try { p = await withCoords(place); } catch { showToast('Could not load that place', 'error'); return; }
+  const addPlaceAsStop = async (p: any) => {
     if (!id || addingPlaceId) return;
     const dup = rideStops.find((st: any) =>
       typeof st.latitude === 'number' && turf.distance(turf.point([st.longitude, st.latitude]), turf.point([p.lng, p.lat])) < 0.15);

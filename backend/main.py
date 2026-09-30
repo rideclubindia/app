@@ -81,7 +81,8 @@ app.include_router(sos.router, prefix=f"{settings.API_V1_STR}/sos", tags=["SOS"]
 app.include_router(emergency.router, prefix="/api", tags=["Emergency"])
 app.include_router(riders.router, prefix=f"{settings.API_V1_STR}/riders", tags=["Riders"])
 app.include_router(profiles.router, prefix=settings.API_V1_STR, tags=["Profiles"])
-app.include_router(places.router, prefix=settings.API_V1_STR, tags=["Places"])
+# Google Places proxy: re-enable once GOOGLE_MAPS_API_KEY is set on the server
+# app.include_router(places.router, prefix=settings.API_V1_STR, tags=["Places"])
 
 
 @app.get("/health")

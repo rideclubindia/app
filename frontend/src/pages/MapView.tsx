@@ -19,7 +19,6 @@ import { useIncidentNotifications } from '../hooks/useIncidentNotifications';
 import { getDeterministicUuid } from '../lib/user';
 import logoLight from '../assets/Logos/Logo for White Backgrounds 2.svg';
 import { getMyProfile } from '../lib/myProfile';
-import { searchPlaces, resolvePlace } from '../lib/places';
 
 const MapView = () => {
   const navigate = useNavigate();
@@ -478,14 +477,13 @@ const MapView = () => {
     if (e.key === 'Enter' && searchQuery.trim()) {
       setIsSearching(true);
       try {
-        const here = useLocationStore.getState().coordinates;
-        const hits = await searchPlaces(searchQuery, here);
-        const formatted = hits.slice(0, 5).map((h) => ({
-          name: h.name,
-          display_name: [h.name, h.address].filter(Boolean).join(', '),
-          lat: h.lat,
-          lon: h.lng,
-          hit: h,
+        const res = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(searchQuery)}&limit=5`);
+        const data = await res.json();
+        const formatted = data.features.map((f: any) => ({
+          name: f.properties.name,
+          display_name: [f.properties.name, f.properties.city, f.properties.state].filter(Boolean).join(', '),
+          lat: f.geometry.coordinates[1],
+          lon: f.geometry.coordinates[0],
           isSavedLocation: false
         }));
         setSearchResults(formatted);
@@ -497,12 +495,7 @@ const MapView = () => {
     }
   };
 
-  const selectSearchResult = async (picked: any) => {
-    let item = picked;
-    if (item.lat == null && item.hit) {
-      try { const r = await resolvePlace(item.hit); item = { ...item, lat: r.lat, lon: r.lng }; }
-      catch { showToast('Could not load that place', 'error'); return; }
-    }
+  const selectSearchResult = (item: any) => {
     const lat = parseFloat(item.lat);
     const lng = parseFloat(item.lon);
     
