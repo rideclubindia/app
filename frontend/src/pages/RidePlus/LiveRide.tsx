@@ -5,7 +5,7 @@ import {
   ChevronLeft, ShieldAlert, AlertTriangle, Car, Ban, Waves,
   Shield, Hammer, MoreHorizontal, Navigation2, Compass, X, Users, LogOut, MessageCircle,
   Crosshair, Layers, StopCircle, Coffee, Fuel, Utensils, BedDouble, Droplets, Camera, MapPin, RefreshCw, ArrowUp, ArrowLeft, ArrowRight, CornerUpLeft, CornerUpRight,
-  Edit2, History
+  Edit2, History, TrafficCone
 , ChevronUp, Route as RouteIcon, Search, Hospital, SquareParking, Landmark, Plus, Check, Loader2, Flag, Trash2 } from 'lucide-react';
 
 import maplibregl from 'maplibre-gl';
@@ -538,7 +538,7 @@ const LiveRide = () => {
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'ride_events', filter: `ride_id=eq.${id}` },
         p => {
           const evt = p.new as any;
-          if (evt.event_type === 'SOS' && evt.user_id !== auth.currentUser?.uid) {
+          if (evt.event_type === 'SOS' && evt.user_id !== getAppUser(auth.currentUser)?.uid) {
             const payload = evt.payload || {};
             setSosData({
               coordinates: payload.coordinates || '--, --',
@@ -551,7 +551,7 @@ const LiveRide = () => {
             setShowSOSModal(true);
           }
           // Handle ride updated notifications from other admins
-          if (evt.event_type === 'RIDE_UPDATED' && evt.user_id !== auth.currentUser?.uid) {
+          if (evt.event_type === 'RIDE_UPDATED' && evt.user_id !== getAppUser(auth.currentUser)?.uid) {
             const payload = evt.payload || {};
             showToast(`🔄 Route updated by ${payload.editor_name || 'admin'}`, 'success');
             handleRideUpdated();
@@ -563,7 +563,7 @@ const LiveRide = () => {
         p => { 
           if (p.eventType === 'INSERT' || p.eventType === 'UPDATE') {
             const m = p.new as any;
-            if (m.user_id !== auth.currentUser?.uid) {
+            if (m.user_id !== getAppUser(auth.currentUser)?.uid) {
               const searchId = m.user_id.length === 36 ? m.user_id : getDeterministicUuid(m.user_id);
               supabase.from('profiles').select('full_name, avatar_url').eq('id', searchId).single().then(({ data }) => {
                 setRiders(prev => ({ ...prev, [m.user_id]: { ...prev[m.user_id], display_name: data?.full_name || m.display_name, avatar_url: data?.avatar_url || m.avatar_url, role: m.role, user_id: m.user_id } }));
@@ -635,7 +635,7 @@ const LiveRide = () => {
     const offEvt = rt.on(EV_RIDE_EVENT, (env) => {
       const p = env.p as { ride: string; eventType: string; by: string; data: any };
       if (!p || p.ride !== id) return;
-      if (p.eventType === 'SOS' && p.by !== auth.currentUser?.uid) {
+      if (p.eventType === 'SOS' && p.by !== getAppUser(auth.currentUser)?.uid) {
         const payload = p.data || {};
         setSosData({
           coordinates: payload.coordinates || '--, --',
@@ -647,7 +647,7 @@ const LiveRide = () => {
         setIsReceivingSOS(true);
         setShowSOSModal(true);
       }
-      if (p.eventType === 'RIDE_UPDATED' && p.by !== auth.currentUser?.uid) {
+      if (p.eventType === 'RIDE_UPDATED' && p.by !== getAppUser(auth.currentUser)?.uid) {
         showToast(`Route updated by ${p.data?.editor_name || 'admin'}`, 'success');
         handleRideUpdated();
       }
@@ -693,7 +693,7 @@ const LiveRide = () => {
 
         // Place / update own marker
         if (map.current) {
-          placeRiderMarker(auth.currentUser?.uid || 'me', lng, lat);
+          placeRiderMarker(getAppUser(auth.currentUser)?.uid || 'me', lng, lat);
           // GPS heading is null/noisy when slow or stopped — follow the route direction instead
           let arrowBearing: number | null = heading != null && !isNaN(heading) && (speed ?? 0) > 2 ? heading : null;
           if (arrowBearing === null && routeFeatureRef.current) {
@@ -706,7 +706,7 @@ const LiveRide = () => {
             } catch { /* keep last rotation */ }
           }
           if (arrowBearing !== null) {
-            riderMarkersRef.current[auth.currentUser?.uid || 'me']?.setRotation(arrowBearing);
+            riderMarkersRef.current[getAppUser(auth.currentUser)?.uid || 'me']?.setRotation(arrowBearing);
           }
         }
 
@@ -838,14 +838,14 @@ const LiveRide = () => {
             const lng = startCoord[0];
             setUserLocation({ lat, lng });
              if (map.current) {
-               placeRiderMarker(auth.currentUser?.uid || 'me', lng, lat);
+               placeRiderMarker(getAppUser(auth.currentUser)?.uid || 'me', lng, lat);
                setIsFollowingUser(false);
                setIs3D(false);
                const bbox = turf.bbox(routeFeatureRef.current);
                map.current.fitBounds(bbox as [number, number, number, number], { padding: 50, duration: 1000, pitch: 0 });
              }
              // Add self to riders even if GPS fails so we don't show 0
-            const user = auth.currentUser;
+            const user = getAppUser(auth.currentUser);
             if (user && !selfAddedRef.current) {
               selfAddedRef.current = true;
               setRiders(prev => ({
@@ -1332,8 +1332,11 @@ const LiveRide = () => {
     if (!ok) showToast('Motion access was denied, so accident detection is off. You can turn it on later from the SOS screen.', 'error');
   };
 
+  const appUid = getAppUser(auth.currentUser)?.uid || '';
+  const appMemberId = appUid.length === 36 ? appUid : getDeterministicUuid(appUid);
+
   const handleLeaveOrEnd = async () => {
-    const user = auth.currentUser;
+    const user = getAppUser(auth.currentUser);
     if (!user || !id) return;
     const userUuid = user.uid.length === 36 ? user.uid : getDeterministicUuid(user.uid);
     const { data: mem } = await supabase.from('ride_members').select('role').eq('ride_id', id).eq('user_id', userUuid).maybeSingle();
@@ -1387,7 +1390,7 @@ const LiveRide = () => {
   ) as any[];
 
   const referenceRider = (
-    (auth.currentUser?.uid && liveRidersWithCoords.find((r: any) => r.user_id === auth.currentUser?.uid)) ||
+    (appUid && liveRidersWithCoords.find((r: any) => r.user_id === appMemberId || r.user_id === appUid)) ||
     liveRidersWithCoords[0] ||
     null
   );
@@ -1479,7 +1482,7 @@ const LiveRide = () => {
 
 
   
-  const currentUserData = riders[auth.currentUser?.uid || ''];
+  const currentUserData = riders[appMemberId] || riders[appUid];
   const currentUserStatus = currentUserData?.status;
   const isPending = currentUserStatus === 'pending';
 
@@ -1499,7 +1502,7 @@ const LiveRide = () => {
   }
 
   const pendingRiders = Object.values(riders).filter((r: any) => r.status === 'pending');
-  const isAdmin = currentUserData?.role === 'admin' || ride?.owner_id === auth.currentUser?.uid;
+  const isAdmin = currentUserData?.role === 'admin' || (!!appUid && ride?.owner_id === appUid);
 
   // Portrait bottom drawer: drag the handle or tap it to cycle peek → half → full
   const sheetSnaps = () => {
@@ -1773,18 +1776,15 @@ const LiveRide = () => {
           <span className="w-12 h-1.5 rounded-full bg-gray-300" />
         </div>
         <div className="hidden portrait:flex shrink-0 px-4 pb-3 items-center gap-3 relative">
-          <span className="w-12 h-12 rounded-full bg-red-50 flex items-center justify-center shrink-0">
-            <MapPin className="w-6 h-6 text-red-500" fill="currentColor" stroke="white" strokeWidth={1.5} />
-          </span>
           <div className="flex-1 min-w-0">
-            <p className="text-[12px] font-semibold text-gray-500 leading-tight">{isArrived ? 'Arrived' : 'Next stop'}</p>
-            <p className="text-[18px] font-bold text-gray-950 leading-tight truncate">{nextStop?.stop_name || ride?.destination?.name?.split(',')[0] || ride?.name || 'Destination'}</p>
-            <p className="text-[14px] text-gray-600 tabular-nums">{etaStr} · {distStr}</p>
+            <p className="text-[22px] font-bold text-gray-950 tabular-nums leading-none">{isArrived ? 'Arrived' : etaStr}</p>
+            <p className="text-[13px] text-gray-500 mt-1 truncate tabular-nums">{distStr} · to {nextStop?.stop_name || ride?.destination?.name?.split(',')[0] || ride?.name || 'destination'}</p>
           </div>
-          <button onClick={() => setMoreOpen((v) => !v)} aria-label="More options" aria-expanded={moreOpen} className={`w-12 h-12 rounded-full flex items-center justify-center shrink-0 active:scale-95 transition-all ${moreOpen ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-700'}`}>
+          <button onClick={handleLeaveOrEnd} className="h-12 px-4 rounded-2xl bg-red-600 text-white text-[14px] font-bold shrink-0 active:scale-95">{isAdmin ? 'End' : 'Leave'}</button>
+          <button onClick={() => setMoreOpen((v) => !v)} aria-label="More options" aria-expanded={moreOpen} className={`w-12 h-12 rounded-2xl border flex items-center justify-center shrink-0 active:scale-95 transition-all ${moreOpen ? 'bg-gray-900 border-gray-900 text-white' : 'border-gray-200 text-gray-700'}`}>
             <MoreHorizontal className="w-6 h-6" />
           </button>
-          <button onClick={() => { setMoreOpen(false); toggleSheet(); }} aria-label="Expand ride details" className="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center text-gray-700 shrink-0 active:scale-95 transition-all">
+          <button onClick={() => { setMoreOpen(false); toggleSheet(); }} aria-label="Expand ride details" className="w-12 h-12 rounded-2xl border border-gray-200 flex items-center justify-center text-gray-700 shrink-0 active:scale-95 transition-all">
             <ChevronUp className={`w-6 h-6 transition-transform ${(sheetH ?? PEEK_H) > PEEK_H + 20 ? 'rotate-180' : ''}`} />
           </button>
 
@@ -2148,7 +2148,6 @@ const LiveRide = () => {
       {/* 3. Map Area */}
       <div className="portrait:w-full portrait:flex-1 portrait:order-1 landscape:flex-1 landscape:h-full landscape:order-3 relative z-0 overflow-hidden">
         <div ref={mapContainer} className="absolute inset-0 w-full h-full" />
-        <div className="absolute top-0 left-0 right-0 h-20 bg-gradient-to-b from-black/20 to-transparent pointer-events-none z-10" />
 
         {!mapLoaded && (
           <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-[#F7F8FA]/90 backdrop-blur-sm">
@@ -2161,30 +2160,30 @@ const LiveRide = () => {
           <>
           {/* Top-right ride actions (SOS + Edit + End/Leave in one stack) */}
           <div className="absolute top-3 right-3 z-20 flex flex-col gap-3 items-center">
-            <button onClick={handleSOS} className="w-14 h-14 bg-red-500/90 backdrop-blur-md border border-red-400/50 rounded-full flex items-center justify-center text-white shadow-[0_0_20px_rgba(255,59,48,0.6)] shrink-0 hover:scale-110 active:scale-95 transition-all duration-300" title="SOS Emergency">
+            <button onClick={handleSOS} className="w-12 h-12 portrait:h-[68px] bg-red-600 border border-red-600 rounded-2xl flex items-center justify-center text-white shadow-md shrink-0 active:scale-95 transition-all" title="SOS Emergency" aria-label="SOS Emergency">
               <ShieldAlert className="w-7 h-7" />
             </button>
-            {(riders[auth.currentUser?.uid || '']?.role === 'admin' || ride?.owner_id === auth.currentUser?.uid) && (
-              <button onClick={() => navigate('/ride-plus/create', { state: { editRideId: id } })} className="portrait:hidden w-12 h-12 rounded-full bg-white/95 backdrop-blur border border-gray-100 shadow-md flex items-center justify-center text-[#FF5A00] hover:bg-gray-50 active:scale-95 transition-all" title="Edit Ride">
+            {isAdmin && (
+              <button onClick={() => navigate('/ride-plus/create', { state: { editRideId: id } })} className="portrait:hidden w-12 h-12 rounded-2xl bg-white border border-gray-100 shadow-md flex items-center justify-center text-[#FF5A00] hover:bg-gray-50 active:scale-95 transition-all" title="Edit Ride">
                 <Edit2 className="w-5 h-5" />
               </button>
             )}
-            {riders[auth.currentUser?.uid || '']?.role === 'admin' || ride?.owner_id === auth.currentUser?.uid ? (
-              <button onClick={handleLeaveOrEnd} className="portrait:hidden w-12 h-12 rounded-full bg-white/95 backdrop-blur border border-gray-100 shadow-md flex items-center justify-center text-red-500 hover:bg-red-50 active:scale-95 transition-all" title="End Ride">
+            {isAdmin ? (
+              <button onClick={handleLeaveOrEnd} className="portrait:hidden w-12 h-12 rounded-2xl bg-white border border-gray-100 shadow-md flex items-center justify-center text-red-500 hover:bg-red-50 active:scale-95 transition-all" title="End Ride">
                 <StopCircle className="w-5 h-5" />
               </button>
             ) : (
-              <button onClick={handleLeaveOrEnd} className="portrait:hidden w-12 h-12 rounded-full bg-white/95 backdrop-blur border border-gray-100 shadow-md flex items-center justify-center text-red-500 hover:bg-red-50 active:scale-95 transition-all" title="Leave Ride">
+              <button onClick={handleLeaveOrEnd} className="portrait:hidden w-12 h-12 rounded-2xl bg-white border border-gray-100 shadow-md flex items-center justify-center text-red-500 hover:bg-red-50 active:scale-95 transition-all" title="Leave Ride">
                 <LogOut className="w-5 h-5" />
               </button>
             )}
           </div>
 
           {/* Map Controls */}
-          <div className={`absolute landscape:right-3 portrait:left-3 z-20 flex flex-col gap-3 landscape:top-1/2 landscape:-translate-y-1/2 portrait:bottom-[calc(var(--sheet-h)+12px)] portrait:transition-[bottom] portrait:duration-300 ${sheetTall ? 'portrait:hidden' : ''}`}>
+          <div className={`absolute right-3 z-20 flex flex-col gap-3 landscape:top-1/2 landscape:-translate-y-1/2 portrait:top-[92px] ${sheetTall ? 'portrait:hidden' : ''}`}>
             <button
               onClick={() => { setSearchOpen(true); setMoreOpen(false); }}
-              className="w-12 h-12 rounded-full flex items-center justify-center shadow-md bg-white/95 backdrop-blur border border-gray-100 text-[#111111] hover:bg-gray-50 active:scale-95 transition-all"
+              className="w-12 h-12 rounded-2xl flex items-center justify-center shadow-md border active:scale-95 transition-all bg-white border-gray-100 text-gray-900 hover:bg-gray-50"
               title="Search places"
               aria-label="Search places"
             >
@@ -2192,7 +2191,7 @@ const LiveRide = () => {
             </button>
             <button
               onClick={() => { setShowUsersModal(true); setMoreOpen(false); }}
-              className="relative w-12 h-12 rounded-full flex items-center justify-center shadow-md bg-white/95 backdrop-blur border border-gray-100 text-[#111111] hover:bg-gray-50 active:scale-95 transition-all"
+              className="relative w-12 h-12 rounded-2xl flex items-center justify-center shadow-md border active:scale-95 transition-all bg-white border-gray-100 text-gray-900 hover:bg-gray-50"
               title="Riders"
               aria-label="Riders"
             >
@@ -2236,11 +2235,16 @@ const LiveRide = () => {
                 }
                 setIs3D(next3D); 
               }}
-              className={`w-12 h-12 rounded-full flex items-center justify-center active:scale-95 transition-all duration-300 shadow-md ${is3D ? 'bg-white text-[#FF5A00] ring-2 ring-[#FF5A00]' : 'bg-white/95 backdrop-blur border border-gray-100 text-[#111111] hover:bg-gray-50'}`}
+              className={`w-12 h-12 rounded-2xl flex items-center justify-center shadow-md border active:scale-95 transition-all ${is3D ? 'bg-[#FF5A00] border-[#FF5A00] text-white' : 'bg-white border-gray-100 text-gray-900 hover:bg-gray-50'}`}
+              aria-pressed={is3D}
+              aria-label="3D view"
             >
               {is3D ? <Compass className="w-5 h-5" /> : <Navigation2 className="w-5 h-5" />}
             </button>
 
+            <button onClick={() => setShowTraffic(!showTraffic)} aria-pressed={showTraffic} aria-label="Live traffic" title="Live traffic" className={`w-12 h-12 rounded-2xl flex items-center justify-center shadow-md border active:scale-95 transition-all ${showTraffic ? 'bg-[#FF5A00] border-[#FF5A00] text-white' : 'bg-white border-gray-100 text-gray-900 hover:bg-gray-50'}`}>
+              <TrafficCone className="w-5 h-5" />
+            </button>
             <button
               onClick={() => {
                 setIsFollowingUser(true);
@@ -2278,13 +2282,13 @@ const LiveRide = () => {
                     const center: [number, number] = [pos.lng, pos.lat];
                     setUserLocation({ lat: pos.lat, lng: pos.lng });
                     map.current?.easeTo({ ...options, center });
-                    placeRiderMarker(auth.currentUser?.uid || 'me', pos.lng, pos.lat);
+                    placeRiderMarker(getAppUser(auth.currentUser)?.uid || 'me', pos.lng, pos.lat);
                   }).catch(() => {
                     showToast('Live location unavailable. Please enable location permission.', 'error');
                   });
                 }
               }}
-              className={`w-12 h-12 rounded-full flex items-center justify-center active:scale-95 transition-all duration-300 shadow-md ${isFollowingUser && !focusedRiderId ? 'bg-white text-[#FF5A00] ring-2 ring-[#FF5A00]' : 'bg-white/95 backdrop-blur border border-gray-100 text-[#111111] hover:bg-gray-50'}`}
+              className={`w-12 h-12 rounded-2xl flex items-center justify-center shadow-md border active:scale-95 transition-all ${isFollowingUser && !focusedRiderId ? 'bg-[#FF5A00] border-[#FF5A00] text-white' : 'bg-white border-gray-100 text-gray-900 hover:bg-gray-50'}`}
               ref={locateBtnRef}
               title="My Location"
               aria-label="My Location"
@@ -2310,15 +2314,15 @@ const LiveRide = () => {
 
           {/* Next maneuver, or the next stop when there is no turn yet (portrait) */}
           {(
-          <div className="hidden absolute top-3 left-3 right-[80px] z-20 bg-[#0F5132] text-white rounded-2xl portrait:flex shadow-[0_6px_20px_rgba(0,0,0,0.22)] pl-3 pr-4 py-2.5 items-center gap-3">
+          <div className="hidden absolute top-3 left-3 right-[72px] z-20 h-[68px] bg-[#0F5132] text-white rounded-2xl portrait:flex shadow-lg px-4 items-center gap-3">
             <span className="w-12 h-12 flex items-center justify-center shrink-0">
               {currentInstruction
-                ? React.cloneElement(getTurnIcon(currentInstruction.type) as React.ReactElement<{ className?: string }>, { className: 'w-11 h-11 text-white' })
-                : <ArrowUp className="w-11 h-11 text-white" />}
+                ? React.cloneElement(getTurnIcon(currentInstruction.type) as React.ReactElement<{ className?: string }>, { className: 'w-10 h-10 text-white' })
+                : <ArrowUp className="w-10 h-10 text-white" />}
             </span>
             <div className="min-w-0 flex-1">
-              <p className="text-[24px] font-bold leading-none tabular-nums">{currentInstruction?.dist || distStr}</p>
-              <p className="text-[15px] text-white/85 mt-1 leading-snug truncate">
+              <p className="text-[22px] font-bold leading-none tabular-nums">{currentInstruction?.dist || distStr}</p>
+              <p className="text-[14px] text-white/85 mt-1 truncate">
                 {currentInstruction?.text || `Head to ${nextStop?.stop_name || ride?.destination?.name?.split(',')[0] || 'destination'}`}
               </p>
             </div>
@@ -2423,7 +2427,7 @@ const LiveRide = () => {
           )}
 
           {/* Round speed gauge above the drawer (portrait) */}
-          <div className={`hidden ${sheetTall ? '' : 'portrait:flex'} absolute right-3 z-20 w-[92px] h-[92px] rounded-full bg-white shadow-[0_6px_18px_rgba(0,0,0,0.16)] items-center justify-center portrait:bottom-[calc(var(--sheet-h)+12px)] transition-[bottom] duration-300`} aria-label={`${Math.round(currentSpeedKph || 0)} km/h`}>
+          <div className={`hidden ${sheetTall ? '' : 'portrait:flex'} absolute left-3 z-20 w-[92px] h-[92px] rounded-full bg-white shadow-[0_6px_18px_rgba(0,0,0,0.16)] items-center justify-center portrait:bottom-[calc(var(--sheet-h)+12px)] transition-[bottom] duration-300`} aria-label={`${Math.round(currentSpeedKph || 0)} km/h`}>
             <svg viewBox="0 0 100 100" className="absolute inset-0 w-full h-full" aria-hidden="true">
               <circle cx="50" cy="50" r="40" fill="none" stroke="#E5E7EB" strokeWidth="7" strokeLinecap="round" strokeDasharray="188.5 400" transform="rotate(135 50 50)" />
               <circle cx="50" cy="50" r="40" fill="none" stroke={(currentSpeedKph || 0) > 120 ? '#FF5A00' : '#16A34A'} strokeWidth="7" strokeLinecap="round" strokeDasharray={`${(Math.min(currentSpeedKph || 0, 200) / 200) * 188.5} 400`} transform="rotate(135 50 50)" className="transition-all duration-500" />
@@ -2525,7 +2529,7 @@ const LiveRide = () => {
       {/* SOS Modals */}
       {showEmergencySetup && (
         <EmergencySetupModal 
-          userId={auth.currentUser?.uid?.length === 36 ? auth.currentUser.uid : getDeterministicUuid(auth.currentUser?.uid || '')}
+          userId={appMemberId}
           onComplete={() => {
             setShowEmergencySetup(false);
             getMyProfile(true).then((data) => { if (data) setCurrentUserProfile(data); });
