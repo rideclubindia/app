@@ -11,6 +11,8 @@ export default defineConfig({
     tailwindcss(),
     VitePWA({
       registerType: 'autoUpdate',
+      // Registered from main.tsx so the native app can skip it (the APK always loads the live site)
+      injectRegister: false,
       includeAssets: ['favicon.png', 'favicon.svg'],
       workbox: {
         maximumFileSizeToCacheInBytes: 5000000 // 5MB
