@@ -328,6 +328,17 @@ export default function Navigation() {
     else { setDest({ id: p.id, name: p.name, lng: p.lng, lat: p.lat }); setStops([]); setNavigating(false); }
   };
 
+  // Navigating: follow the rider heading-up; otherwise frame the whole route (or fall back to locating)
+  const recenter = () => {
+    const bbox = routes[selected]?.bbox;
+    if (!navigating && bbox && map.current) {
+      setFollowing(false);
+      map.current.fitBounds(bbox as any, { padding: { top: 140, bottom: 300, left: 40, right: 80 }, bearing: 0, pitch: 0, duration: 700 });
+      return;
+    }
+    locate();
+  };
+
   // Centre on the rider; asks for location again when there's no fix yet
   const locate = async () => {
     if (me && map.current) {
@@ -387,6 +398,9 @@ export default function Navigation() {
           </button>
           <button onClick={locate} aria-label="My location" className={iconBtn(following)}>
             <Crosshair className="w-5 h-5" />
+          </button>
+          <button onClick={recenter} aria-label="Re-center" title="Re-center" className={iconBtn(navigating && following)}>
+            <Navigation2 className="w-5 h-5" />
           </button>
         </div>
 
