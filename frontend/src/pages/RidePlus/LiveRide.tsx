@@ -1780,7 +1780,7 @@ const LiveRide = () => {
             <p className="text-[22px] font-bold text-gray-950 tabular-nums leading-none">{isArrived ? 'Arrived' : etaStr}</p>
             <p className="text-[13px] text-gray-500 mt-1 truncate tabular-nums">{distStr} · to {nextStop?.stop_name || ride?.destination?.name?.split(',')[0] || ride?.name || 'destination'}</p>
           </div>
-          <button onClick={handleLeaveOrEnd} className="h-12 px-4 rounded-2xl bg-red-600 text-white text-[14px] font-bold shrink-0 active:scale-95">{isAdmin ? 'End' : 'Leave'}</button>
+          {isAdmin && <button onClick={handleLeaveOrEnd} className="h-12 px-4 rounded-2xl bg-red-600 text-white text-[14px] font-bold shrink-0 active:scale-95">End</button>}
           <button onClick={() => setMoreOpen((v) => !v)} aria-label="More options" aria-expanded={moreOpen} className={`w-12 h-12 rounded-2xl border flex items-center justify-center shrink-0 active:scale-95 transition-all ${moreOpen ? 'bg-gray-900 border-gray-900 text-white' : 'border-gray-200 text-gray-700'}`}>
             <MoreHorizontal className="w-6 h-6" />
           </button>

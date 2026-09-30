@@ -53,6 +53,14 @@ export default function Navigation() {
   const [askingLoc, setAskingLoc] = useState(false);
   const [navigating, setNavigating] = useState(false);
 
+  // Starting point typed or tapped by the rider when GPS isn't available; live location always wins once it arrives
+  const [manualStart, setManualStart] = useState<Stop | null>(null);
+  const [pickingStart, setPickingStart] = useState(false);
+  const [searchFor, setSearchFor] = useState<'dest' | 'start'>('dest');
+  const startMarker = useRef<maplibregl.Marker | null>(null);
+  const pickingRef = useRef(false);
+  pickingRef.current = pickingStart;
+
   const [searchOpen, setSearchOpen] = useState(false);
   const [q, setQ] = useState('');
   const [results, setResults] = useState<Place[]>([]);
@@ -67,6 +75,18 @@ export default function Navigation() {
     map.current = new maplibregl.Map({ container: mapEl.current, style: STYLE, center: start as LngLat, zoom: 13, attributionControl: false });
     map.current.on('load', () => setMapReady(true));
     map.current.on('dragstart', () => setFollowing(false));
+    map.current.on('click', async (e) => {
+      if (!pickingRef.current) return;
+      const { lng, lat } = e.lngLat;
+      setPickingStart(false);
+      setManualStart({ id: 'start', name: 'Pinned location', lng, lat });
+      try {
+        const r = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&zoom=17&lat=${lat}&lon=${lng}`);
+        const d = await r.json();
+        const name = d?.name || d?.display_name?.split(',').slice(0, 2).join(',');
+        if (name) setManualStart((s) => (s && s.lng === lng && s.lat === lat ? { ...s, name } : s));
+      } catch { /* keep "Pinned location" */ }
+    });
     return () => { map.current?.remove(); map.current = null; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -128,7 +148,7 @@ export default function Navigation() {
   const computeRoutes = useCallback(async () => {
     if (!dest) { setRoutes([]); return; }
     // Always the latest valid location, never a previous route origin or the first stop
-    const origin = getRouteOrigin(meRef.current);
+    const origin = getRouteOrigin(meRef.current) ?? (manualStart ? [manualStart.lng, manualStart.lat] : null);
     if (!origin) { setRoutes([]); setRouteError('NO_LOCATION'); return; }
     lastCalcRef.current = Date.now();
     setRouting(true);
@@ -146,7 +166,7 @@ export default function Navigation() {
     }
     // Recalculate when the trip changes or the first GPS fix arrives, not on every GPS tick
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dest, stops, hasFix, routeTick]);
+  }, [dest, stops, hasFix, routeTick, manualStart]);
 
   useEffect(() => { computeRoutes(); }, [computeRoutes]);
 
@@ -214,6 +234,20 @@ export default function Navigation() {
     });
   }, [stops, dest, mapReady]);
 
+  // Manual starting point pin (only while there's no live location)
+  useEffect(() => {
+    const m = map.current;
+    if (!mapReady || !m) return;
+    startMarker.current?.remove();
+    startMarker.current = null;
+    if (!manualStart || me) return;
+    const el = document.createElement('div');
+    el.style.cssText = 'width:22px;height:22px;border-radius:50%;background:#16A34A;border:4px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.35)';
+    startMarker.current = new maplibregl.Marker({ element: el }).setLngLat([manualStart.lng, manualStart.lat]).addTo(m);
+    if (!dest) m.easeTo({ center: [manualStart.lng, manualStart.lat], zoom: 14, duration: 600 });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [manualStart, me, mapReady]);
+
   // Search as you type (Nominatim), biased to ~40 km around you
   useEffect(() => {
     const term = q.trim();
@@ -244,9 +278,13 @@ export default function Navigation() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [q]);
 
-  const closeSearch = () => { setSearchOpen(false); setQ(''); setResults([]); };
+  const closeSearch = () => { setSearchOpen(false); setQ(''); setResults([]); setSearchFor('dest'); };
 
-  const goTo = (p: Place) => { setDest({ id: p.id, name: p.name, lng: p.lng, lat: p.lat }); setStops([]); setNavigating(false); closeSearch(); };
+  const goTo = (p: Place) => {
+    if (searchFor === 'start') { setManualStart({ id: p.id, name: p.name, lng: p.lng, lat: p.lat }); closeSearch(); return; }
+    setDest({ id: p.id, name: p.name, lng: p.lng, lat: p.lat }); setStops([]); setNavigating(false); closeSearch();
+  };
+  const startSearch = () => { setSearchFor('start'); setSearchOpen(true); };
 
   // Insert the stop in the gap that adds the least detour, keeping the destination last
   const addStop = (p: Place) => {
@@ -289,7 +327,7 @@ export default function Navigation() {
   return (
     <div className="fixed inset-0 bg-[#F7F8FA] overflow-hidden pt-[max(20px,env(safe-area-inset-top))] pb-[env(safe-area-inset-bottom)] pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)]">
       <div className="relative w-full h-full">
-        <div ref={mapEl} className="absolute inset-0" />
+        <div ref={mapEl} className="absolute inset-0 w-full h-full" />
 
         {/* Top: back + search, or the next turn while navigating */}
         <div className="absolute top-3 left-3 right-3 z-20 flex gap-2 items-start">
@@ -344,6 +382,14 @@ export default function Navigation() {
                   </div>
                   {stops.length > 0 && <button onClick={() => setStops([])} className="text-[12px] font-semibold text-gray-500 underline shrink-0">Clear stops</button>}
                 </div>
+                {manualStart && !me && (
+                  <div className="px-4 py-2.5 flex items-center gap-3 border-b border-gray-100">
+                    <span className="w-3 h-3 rounded-full bg-green-600 ring-4 ring-green-100 shrink-0 ml-1" />
+                    <p className="flex-1 min-w-0 text-[13px] text-gray-700 truncate">From <span className="font-semibold text-gray-950">{manualStart.name}</span></p>
+                    <button onClick={startSearch} className="text-[12px] font-semibold text-[#FF5A00] shrink-0">Change</button>
+                    <button onClick={() => setPickingStart(true)} className="text-[12px] font-semibold text-[#FF5A00] shrink-0">Map</button>
+                  </div>
+                )}
                 <div className="max-h-[34vh] overflow-y-auto">
                   {routing ? (
                     <div className="py-6 flex justify-center"><Loader2 className="w-6 h-6 text-[#FF5A00] animate-spin" /></div>
@@ -378,6 +424,11 @@ export default function Navigation() {
                             {askingLoc ? 'Checking…' : locIssue ? 'Try again' : 'Allow location'}
                           </button>
                         </div>
+                        <p className="text-[13px] font-semibold text-gray-950 mt-4">Or set where you're starting from</p>
+                        <div className="flex gap-2 mt-2">
+                          <button onClick={startSearch} className="flex-1 h-11 px-3 rounded-xl border border-gray-200 text-[14px] font-semibold text-gray-900 flex items-center justify-center gap-1.5"><Search className="w-4 h-4" /> Search</button>
+                          <button onClick={() => setPickingStart(true)} className="flex-1 h-11 px-3 rounded-xl border border-gray-200 text-[14px] font-semibold text-gray-900 flex items-center justify-center gap-1.5"><MapPin className="w-4 h-4" /> Pick on map</button>
+                        </div>
                       </div>
                     </div>
                   ) : routeError ? (
@@ -407,6 +458,14 @@ export default function Navigation() {
           </div>
         )}
 
+        {pickingStart && (
+          <div className="absolute left-3 right-3 top-[76px] z-30 rounded-2xl bg-gray-950 text-white shadow-lg px-4 py-3 flex items-center gap-3">
+            <MapPin className="w-5 h-5 shrink-0" />
+            <p className="flex-1 text-[14px] font-semibold">Tap the map where you're starting from</p>
+            <button onClick={() => setPickingStart(false)} className="text-[13px] font-semibold text-white/80 shrink-0">Cancel</button>
+          </div>
+        )}
+
         {/* Search sheet */}
         {searchOpen && (
           <div className="absolute inset-x-0 top-0 z-40 max-h-[75%] landscape:left-3 landscape:right-auto landscape:top-3 landscape:w-[400px] landscape:rounded-3xl bg-white shadow-[0_10px_30px_rgba(0,0,0,0.2)] rounded-b-3xl flex flex-col overflow-hidden">
@@ -414,7 +473,7 @@ export default function Navigation() {
               <button onClick={closeSearch} aria-label="Close search" className="w-11 h-11 rounded-full flex items-center justify-center text-gray-700 hover:bg-gray-100 shrink-0"><ArrowLeft className="w-5 h-5" /></button>
               <div className="flex-1 flex items-center gap-2 h-12 px-4 rounded-full bg-gray-100">
                 <Search className="w-5 h-5 text-gray-500 shrink-0" />
-                <input autoFocus value={q} onChange={(e) => setQ(e.target.value)} placeholder={dest ? 'Search a stop or new destination' : 'Search a place'} aria-label="Search places" className="flex-1 min-w-0 bg-transparent outline-none text-[16px] text-gray-950 placeholder:text-gray-500" />
+                <input autoFocus value={q} onChange={(e) => setQ(e.target.value)} placeholder={searchFor === 'start' ? 'Where are you starting from?' : dest ? 'Search a stop or new destination' : 'Search a place'} aria-label="Search places" className="flex-1 min-w-0 bg-transparent outline-none text-[16px] text-gray-950 placeholder:text-gray-500" />
                 {q && <button onClick={() => setQ('')} aria-label="Clear" className="text-gray-500"><X className="w-4 h-4" /></button>}
               </div>
             </div>
@@ -434,10 +493,10 @@ export default function Navigation() {
                         <p className="text-[15px] font-semibold text-gray-950 truncate">{p.name}</p>
                         <p className="text-[13px] text-gray-500 truncate">{p.km != null ? `${p.km < 1 ? `${Math.round(p.km * 1000)} m` : `${p.km.toFixed(1)} km`} · ` : ''}{p.address}</p>
                       </div>
-                      {dest && (
+                      {dest && searchFor === 'dest' && (
                         <button onClick={() => addStop(p)} className="h-11 px-3 rounded-full border border-gray-200 text-[13px] font-bold text-gray-900 flex items-center gap-1 shrink-0"><Plus className="w-4 h-4" /> Stop</button>
                       )}
-                      <button onClick={() => goTo(p)} className="h-11 px-4 rounded-full bg-[#FF5A00] text-white text-[13px] font-bold shrink-0">Go</button>
+                      <button onClick={() => goTo(p)} className="h-11 px-4 rounded-full bg-[#FF5A00] text-white text-[13px] font-bold shrink-0">{searchFor === 'start' ? 'Start here' : 'Go'}</button>
                     </li>
                   ))}
                 </ul>

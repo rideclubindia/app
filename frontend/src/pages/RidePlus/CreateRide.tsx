@@ -46,7 +46,7 @@ const CreateRide = () => {
     (async () => {
       const [{ data: owned }, { data: memberOf }] = await Promise.all([
         supabase.from('rides').select('id').eq('owner_id', u.uid).eq('status', 'live').limit(5),
-        supabase.from('ride_members').select('ride_id').in('user_id', [u.uid, memberId]).limit(50),
+        supabase.from('ride_members').select('ride_id').eq('user_id', memberId).limit(50),
       ]);
       let live = (owned || []).map((r: any) => r.id);
       const ids = (memberOf || []).map((m: any) => m.ride_id);

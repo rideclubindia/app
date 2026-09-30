@@ -32,7 +32,7 @@ export default function AppNotifier() {
     const subscribe = async () => {
       const [{ data: gm }, { data: rm }, { data: owned }] = await Promise.all([
         supabase.from('group_members').select('group_id').in('user_id', [...myIds]).eq('status', 'accepted'),
-        supabase.from('ride_members').select('ride_id').in('user_id', [...myIds]),
+        supabase.from('ride_members').select('ride_id').eq('user_id', me),
         supabase.from('rides').select('id').eq('owner_id', user.uid),
       ]);
       const groupIds = [...new Set((gm || []).map((g: any) => g.group_id))].slice(0, 100);
