@@ -10,6 +10,7 @@ import { useOrientationLock } from '../hooks/useOrientationLock';
 import { getRouteOrigin } from '../lib/routeOrigin';
 import { requestLocation, openLocationSettings, canOpenSettings } from '../lib/locationPermission';
 import { notify } from '../lib/notify';
+import { useToast } from '../components/ToastContext';
 
 // Standalone navigation: current location, traffic, route options and search (with stops). Nothing else.
 
@@ -27,6 +28,7 @@ const turnIcon = (type: number) => (type === 0 || type === 2 || type === 4 ? Cor
 
 export default function Navigation() {
   useOrientationLock('any');
+  const { showToast } = useToast();
   const navigate = useNavigate();
   const { state } = useLocation() as { state: any };
   const storeCoords = useLocationStore((s) => s.coordinates);
@@ -55,11 +57,12 @@ export default function Navigation() {
 
   // Starting point typed or tapped by the rider when GPS isn't available; live location always wins once it arrives
   const [manualStart, setManualStart] = useState<Stop | null>(null);
-  const [pickingStart, setPickingStart] = useState(false);
+  const [pickMode, setPickMode] = useState<'start' | 'stop' | 'dest' | null>(null);
   const [searchFor, setSearchFor] = useState<'dest' | 'start'>('dest');
   const startMarker = useRef<maplibregl.Marker | null>(null);
-  const pickingRef = useRef(false);
-  pickingRef.current = pickingStart;
+  const pickModeRef = useRef(pickMode);
+  pickModeRef.current = pickMode;
+  const applyPick = useRef<(mode: 'start' | 'stop' | 'dest', p: Place) => void>(() => {});
 
   const [searchOpen, setSearchOpen] = useState(false);
   const [q, setQ] = useState('');
@@ -76,16 +79,20 @@ export default function Navigation() {
     map.current.on('load', () => setMapReady(true));
     map.current.on('dragstart', () => setFollowing(false));
     map.current.on('click', async (e) => {
-      if (!pickingRef.current) return;
+      const mode = pickModeRef.current;
+      if (!mode) return;
       const { lng, lat } = e.lngLat;
-      setPickingStart(false);
-      setManualStart({ id: 'start', name: 'Pinned location', lng, lat });
+      setPickMode(null);
+      let name = 'Pinned location';
       try {
-        const r = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&zoom=17&lat=${lat}&lon=${lng}`);
+        const ctrl = new AbortController();
+        const t = setTimeout(() => ctrl.abort(), 4000);
+        const r = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&zoom=17&lat=${lat}&lon=${lng}`, { signal: ctrl.signal });
+        clearTimeout(t);
         const d = await r.json();
-        const name = d?.name || d?.display_name?.split(',').slice(0, 2).join(',');
-        if (name) setManualStart((s) => (s && s.lng === lng && s.lat === lat ? { ...s, name } : s));
+        name = d?.name || d?.display_name?.split(',').slice(0, 2).join(',') || name;
       } catch { /* keep "Pinned location" */ }
+      applyPick.current(mode, { id: `pin-${lng.toFixed(5)},${lat.toFixed(5)}`, name, address: '', lng, lat, km: null });
     });
     return () => { map.current?.remove(); map.current = null; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -315,9 +322,32 @@ export default function Navigation() {
     } catch { return null; }
   })();
 
-  const locate = () => {
-    setFollowing(true);
-    if (me && map.current) map.current.easeTo({ center: [me.lng, me.lat], zoom: navigating ? 17 : 15, duration: 700 });
+  applyPick.current = (mode, p) => {
+    if (mode === 'start') setManualStart({ id: 'start', name: p.name, lng: p.lng, lat: p.lat });
+    else if (mode === 'stop') addStop(p);
+    else { setDest({ id: p.id, name: p.name, lng: p.lng, lat: p.lat }); setStops([]); setNavigating(false); }
+  };
+
+  // Centre on the rider; asks for location again when there's no fix yet
+  const locate = async () => {
+    if (me && map.current) {
+      setFollowing(true);
+      map.current.easeTo({ center: [me.lng, me.lat], zoom: navigating ? 17 : 15, bearing: navigating && me.heading != null ? me.heading : 0, pitch: navigating ? 45 : 0, duration: 700 });
+      return;
+    }
+    setAskingLoc(true);
+    const r = await requestLocation();
+    setAskingLoc(false);
+    if (r.status === 'granted') {
+      setLocIssue(null);
+      setMe({ lng: r.lng, lat: r.lat, heading: null });
+      setFollowing(true);
+      map.current?.easeTo({ center: [r.lng, r.lat], zoom: 15, duration: 700 });
+      setRouteTick((t) => t + 1);
+    } else {
+      setLocIssue(r.status);
+      showToast(r.status === 'denied' ? 'Location is blocked. Allow it in settings, or set your start point manually.' : 'Location is off. Turn on GPS, or set your start point manually.', 'error');
+    }
   };
   const start = () => { setRouteTick((t) => t + 1); setNavigating(true); setFollowing(true); if (me && map.current) map.current.easeTo({ center: [me.lng, me.lat], zoom: 17, pitch: 45, duration: 900 }); };
   const stop = () => { setNavigating(false); setFollowing(false); map.current?.easeTo({ pitch: 0, bearing: 0, duration: 600 }); };
@@ -387,7 +417,7 @@ export default function Navigation() {
                     <span className="w-3 h-3 rounded-full bg-green-600 ring-4 ring-green-100 shrink-0 ml-1" />
                     <p className="flex-1 min-w-0 text-[13px] text-gray-700 truncate">From <span className="font-semibold text-gray-950">{manualStart.name}</span></p>
                     <button onClick={startSearch} className="text-[12px] font-semibold text-[#FF5A00] shrink-0">Change</button>
-                    <button onClick={() => setPickingStart(true)} className="text-[12px] font-semibold text-[#FF5A00] shrink-0">Map</button>
+                    <button onClick={() => setPickMode('start')} className="text-[12px] font-semibold text-[#FF5A00] shrink-0">Map</button>
                   </div>
                 )}
                 <div className="max-h-[34vh] overflow-y-auto">
@@ -427,7 +457,7 @@ export default function Navigation() {
                         <p className="text-[13px] font-semibold text-gray-950 mt-4">Or set where you're starting from</p>
                         <div className="flex gap-2 mt-2">
                           <button onClick={startSearch} className="flex-1 h-11 px-3 rounded-xl border border-gray-200 text-[14px] font-semibold text-gray-900 flex items-center justify-center gap-1.5"><Search className="w-4 h-4" /> Search</button>
-                          <button onClick={() => setPickingStart(true)} className="flex-1 h-11 px-3 rounded-xl border border-gray-200 text-[14px] font-semibold text-gray-900 flex items-center justify-center gap-1.5"><MapPin className="w-4 h-4" /> Pick on map</button>
+                          <button onClick={() => setPickMode('start')} className="flex-1 h-11 px-3 rounded-xl border border-gray-200 text-[14px] font-semibold text-gray-900 flex items-center justify-center gap-1.5"><MapPin className="w-4 h-4" /> Pick on map</button>
                         </div>
                       </div>
                     </div>
@@ -458,12 +488,19 @@ export default function Navigation() {
           </div>
         )}
 
-        {pickingStart && (
+        {pickMode && (
           <div className="absolute left-3 right-3 top-[76px] z-30 rounded-2xl bg-gray-950 text-white shadow-lg px-4 py-3 flex items-center gap-3">
             <MapPin className="w-5 h-5 shrink-0" />
-            <p className="flex-1 text-[14px] font-semibold">Tap the map where you're starting from</p>
-            <button onClick={() => setPickingStart(false)} className="text-[13px] font-semibold text-white/80 shrink-0">Cancel</button>
+            <p className="flex-1 text-[14px] font-semibold">{pickMode === 'start' ? "Tap the map where you're starting from" : pickMode === 'stop' ? 'Tap the map to add a stop' : 'Tap the map to set your destination'}</p>
+            <button onClick={() => setPickMode(null)} className="text-[13px] font-semibold text-white/80 shrink-0">Cancel</button>
           </div>
+        )}
+
+        {/* Recenter while navigating after the map was moved */}
+        {navigating && !following && (
+          <button onClick={locate} className="absolute left-1/2 -translate-x-1/2 bottom-[112px] z-20 h-12 px-5 rounded-full bg-white shadow-[0_6px_18px_rgba(0,0,0,0.18)] border border-gray-100 text-[14px] font-bold text-gray-900 flex items-center gap-2 active:scale-95">
+            <Navigation2 className="w-4 h-4 fill-[#FF5A00] text-[#FF5A00]" /> Re-center
+          </button>
         )}
 
         {/* Search sheet */}
@@ -477,6 +514,13 @@ export default function Navigation() {
                 {q && <button onClick={() => setQ('')} aria-label="Clear" className="text-gray-500"><X className="w-4 h-4" /></button>}
               </div>
             </div>
+            <button
+              onClick={() => { const mode = searchFor === 'start' ? 'start' : dest ? 'stop' : 'dest'; closeSearch(); setPickMode(mode); }}
+              className="mx-3 mb-3 h-12 rounded-xl bg-gray-50 border border-gray-100 flex items-center gap-3 px-4 text-left active:scale-[0.99]"
+            >
+              <MapPin className="w-5 h-5 text-[#FF5A00] shrink-0" />
+              <span className="flex-1 text-[15px] font-semibold text-gray-900">{searchFor === 'start' ? 'Choose start on map' : dest ? 'Choose a stop on map' : 'Choose on map'}</span>
+            </button>
             <div className="flex-1 min-h-0 overflow-y-auto border-t border-gray-100">
               {searching && !results.length ? (
                 <div className="py-8 flex justify-center"><Loader2 className="w-6 h-6 text-[#FF5A00] animate-spin" /></div>

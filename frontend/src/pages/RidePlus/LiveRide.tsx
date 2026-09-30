@@ -2180,7 +2180,8 @@ const LiveRide = () => {
           </div>
 
           {/* Map Controls */}
-          <div className={`absolute right-3 z-20 flex flex-col gap-3 landscape:top-1/2 landscape:-translate-y-1/2 portrait:top-[92px] ${sheetTall ? 'portrait:hidden' : ''}`}>
+          <div className={`absolute portrait:left-3 landscape:right-3 z-20 flex flex-col gap-3 landscape:top-1/2 landscape:-translate-y-1/2 portrait:top-[92px] ${sheetTall ? 'portrait:hidden' : ''}`}>
+            <AccidentDebugPanel inline snap={accident.debugSnap} level={accident.level} availability={accident.availability} />
             <button
               onClick={() => { setSearchOpen(true); setMoreOpen(false); }}
               className="w-12 h-12 rounded-2xl flex items-center justify-center shadow-md border active:scale-95 transition-all bg-white border-gray-100 text-gray-900 hover:bg-gray-50"
@@ -2427,7 +2428,7 @@ const LiveRide = () => {
           )}
 
           {/* Round speed gauge above the drawer (portrait) */}
-          <div className={`hidden ${sheetTall ? '' : 'portrait:flex'} absolute left-3 z-20 w-[92px] h-[92px] rounded-full bg-white shadow-[0_6px_18px_rgba(0,0,0,0.16)] items-center justify-center portrait:bottom-[calc(var(--sheet-h)+12px)] transition-[bottom] duration-300`} aria-label={`${Math.round(currentSpeedKph || 0)} km/h`}>
+          <div className={`hidden ${sheetTall ? '' : 'portrait:flex'} absolute right-3 z-20 w-[92px] h-[92px] rounded-full bg-white shadow-[0_6px_18px_rgba(0,0,0,0.16)] items-center justify-center portrait:bottom-[calc(var(--sheet-h)+12px)] transition-[bottom] duration-300`} aria-label={`${Math.round(currentSpeedKph || 0)} km/h`}>
             <svg viewBox="0 0 100 100" className="absolute inset-0 w-full h-full" aria-hidden="true">
               <circle cx="50" cy="50" r="40" fill="none" stroke="#E5E7EB" strokeWidth="7" strokeLinecap="round" strokeDasharray="188.5 400" transform="rotate(135 50 50)" />
               <circle cx="50" cy="50" r="40" fill="none" stroke={(currentSpeedKph || 0) > 120 ? '#FF5A00' : '#16A34A'} strokeWidth="7" strokeLinecap="round" strokeDasharray={`${(Math.min(currentSpeedKph || 0, 200) / 200) * 188.5} 400`} transform="rotate(135 50 50)" className="transition-all duration-500" />
@@ -2568,7 +2569,6 @@ const LiveRide = () => {
           onLater={() => { setAccidentPref('off'); setAccidentPreference('off'); }}
         />
       )}
-      <AccidentDebugPanel snap={accident.debugSnap} level={accident.level} availability={accident.availability} />
     </div>
   );
 };

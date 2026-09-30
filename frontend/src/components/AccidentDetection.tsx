@@ -68,12 +68,12 @@ export const accidentStatusText = (enabled: boolean, availability: SensorAvailab
 };
 
 // Development builds only; never rendered in production.
-export const AccidentDebugPanel = ({ snap, level, availability }: { snap: EngineDebugSnapshot | null; level: AccidentLevel; availability: SensorAvailability }) => {
+export const AccidentDebugPanel = ({ snap, level, availability, inline }: { snap: EngineDebugSnapshot | null; level: AccidentLevel; availability: SensorAvailability; inline?: boolean }) => {
   const [open, setOpen] = useState(false);
   if (!import.meta.env.DEV) return null;
   if (!open) {
     return (
-      <button onClick={() => setOpen(true)} className="fixed top-24 right-3 z-[90] w-10 h-10 rounded-full bg-black/80 text-lime-300 flex items-center justify-center" aria-label="Accident debug">
+      <button onClick={() => setOpen(true)} className={inline ? 'w-12 h-12 rounded-2xl shadow-md border border-gray-900 bg-gray-900 text-lime-300 flex items-center justify-center active:scale-95' : 'fixed top-24 right-3 z-[90] w-10 h-10 rounded-full bg-black/80 text-lime-300 flex items-center justify-center'} aria-label="Accident debug">
         <Activity className="w-5 h-5" />
       </button>
     );
