@@ -11,9 +11,8 @@ export const getDeterministicUuid = (str?: string | null) => {
 
 export interface AppUser { uid: string; email: string | null; displayName: string | null; photoURL: string | null; }
 
-// Same resolution order as RequireAuth in App.tsx: Firebase user → rie_token
+// The email-code session is the only identity the database accepts, so it wins over any leftover Firebase user
 export const getAppUser = (firebaseUser: AppUser | null): AppUser | null => {
-  if (firebaseUser) return firebaseUser;
   const rieToken = typeof localStorage !== 'undefined' ? localStorage.getItem('rie_token') : null;
   if (rieToken) {
     try {
@@ -21,7 +20,7 @@ export const getAppUser = (firebaseUser: AppUser | null): AppUser | null => {
       return { uid: p.uid || p.sub, email: p.sub, displayName: String(p.sub).split('@')[0], photoURL: null };
     } catch { /* invalid token */ }
   }
-  return null;
+  return firebaseUser;
 };
 
 // Ends both session types (Firebase and the email-code rie_token) so logout is complete for every user

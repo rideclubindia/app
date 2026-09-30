@@ -10,7 +10,7 @@ import { LoadingSpinner } from './components/LoadingSpinner';
 import { getDeterministicUuid, getAppUser } from './lib/user';
 import { auth } from './lib/firebase';
 import { getMyProfile } from './lib/myProfile';
-import { onAuthStateChanged } from 'firebase/auth';
+import { onAuthStateChanged, signOut } from 'firebase/auth';
 import { supabase, getDbToken } from './lib/supabase';
 import BannedScreen from './pages/BannedScreen';
 import { CookieConsent } from './components/CookieConsent';
@@ -162,6 +162,8 @@ const RequireAuth = ({ children }: { children: React.ReactNode }) => {
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
+      // Only email-code sessions exist now; a leftover Firebase session would give the app a different identity than the database token
+      if (currentUser) { await signOut(auth).catch(() => {}); return; }
       const rieToken = localStorage.getItem('rie_token');
       let effectiveUser: any = currentUser;
 
