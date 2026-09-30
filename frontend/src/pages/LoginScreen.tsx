@@ -22,9 +22,12 @@ interface AuthFormProps {
   setStep: (s: 'email' | 'otp') => void;
   onSendOtp: (e: React.FormEvent) => void;
   onVerifyOtp: (e: React.FormEvent) => void;
+  onResend: () => void;
+  resendIn: number;
+  codeFailed: boolean;
 }
 
-const AuthForm = ({ step, email, otpInput, isLoading, setEmail, setOtpInput, setStep, onSendOtp, onVerifyOtp }: AuthFormProps) => (
+const AuthForm = ({ step, email, otpInput, isLoading, setEmail, setOtpInput, setStep, onSendOtp, onVerifyOtp, onResend, resendIn, codeFailed }: AuthFormProps) => (
   <div className="bg-white/15 backdrop-blur-xl rounded-[24px] p-5 flex flex-col gap-4 shadow-[0_2px_4px_rgba(184,88,20,0.08),0_16px_36px_-14px_rgba(184,88,20,0.28)]">
     {step === 'email' ? (
       <form onSubmit={onSendOtp} className="flex flex-col gap-4">
@@ -76,6 +79,11 @@ const AuthForm = ({ step, email, otpInput, isLoading, setEmail, setOtpInput, set
             className="w-full h-[54px] bg-white/85 rounded-xl px-4 text-center text-2xl tracking-widest text-[#3a2416] placeholder-[#a98a72] focus:outline-none focus:ring-2 focus:ring-[var(--rc-primary)] transition-all"
             required
           />
+          {codeFailed && (
+            <p className="mt-2 text-[13px] text-white bg-black/25 rounded-lg px-3 py-2" role="alert">
+              That code didn't work. It may have expired, so send a new one below.
+            </p>
+          )}
         </div>
         <button
           type="submit"
@@ -93,6 +101,14 @@ const AuthForm = ({ step, email, otpInput, isLoading, setEmail, setOtpInput, set
               <span>Verify & Login</span>
             )}
           </div>
+        </button>
+        <button
+          type="button"
+          onClick={onResend}
+          disabled={isLoading || resendIn > 0}
+          className={`h-11 rounded-xl text-[14px] font-semibold transition-colors disabled:cursor-default ${codeFailed && resendIn === 0 ? 'bg-white text-[#EF4523]' : 'text-white/90 disabled:text-white/50'}`}
+        >
+          {resendIn > 0 ? `Send a new code in ${resendIn}s` : 'Send a new code'}
         </button>
         <button
           type="button"
@@ -117,6 +133,14 @@ const LoginScreen = ({ adminOnly = false, redirectTo = '/home' }: { adminOnly?: 
   const [step, setStep] = useState<'email' | 'otp'>('email');
   const [email, setEmail] = useState('');
   const [otpInput, setOtpInput] = useState('');
+  const [resendIn, setResendIn] = useState(0);
+  const [codeFailed, setCodeFailed] = useState(false);
+
+  useEffect(() => {
+    if (resendIn <= 0) return;
+    const t = setTimeout(() => setResendIn((n) => n - 1), 1000);
+    return () => clearTimeout(t);
+  }, [resendIn]);
 
   const [isLandscape, setIsLandscape] = useState(
     () => window.matchMedia('(orientation: landscape)').matches
@@ -145,6 +169,9 @@ const LoginScreen = ({ adminOnly = false, redirectTo = '/home' }: { adminOnly?: 
       // The backend generates and emails the code; the browser never sees it.
       await apiClient.post('/api/v1/auth/request-otp', { email });
       setStep('otp');
+      setOtpInput('');
+      setCodeFailed(false);
+      setResendIn(30);
       showToast(`Verification code sent to ${email}`, 'success');
     } catch (error: any) {
       console.error(error);
@@ -154,6 +181,8 @@ const LoginScreen = ({ adminOnly = false, redirectTo = '/home' }: { adminOnly?: 
       setIsLoading(false);
     }
   };
+
+  const handleResend = () => handleSendOtp({ preventDefault: () => {} } as React.FormEvent);
 
   const handleVerifyOtp = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -184,6 +213,7 @@ const LoginScreen = ({ adminOnly = false, redirectTo = '/home' }: { adminOnly?: 
     } catch (error: any) {
       // Authentication failure must never grant access.
       const detail = error?.response?.data?.detail;
+      if (error?.response?.status === 401) { setCodeFailed(true); setOtpInput(''); }
       showToast(detail || (error?.code === 'ECONNABORTED' || !error?.response ? 'The server is starting up. Please try again in a moment.' : "Invalid verification code."), 'error');
     } finally {
       setIsLoading(false);
@@ -246,7 +276,7 @@ const LoginScreen = ({ adminOnly = false, redirectTo = '/home' }: { adminOnly?: 
           {/* The whole block is centred, so spare height splits evenly above and below instead of pooling in one gap */}
           <div className="flex flex-col gap-4">
           {/* ====== AUTH FORM ====== */}
-          <AuthForm step={step} email={email} otpInput={otpInput} isLoading={isLoading} setEmail={setEmail} setOtpInput={setOtpInput} setStep={setStep} onSendOtp={handleSendOtp} onVerifyOtp={handleVerifyOtp} />
+          <AuthForm step={step} email={email} otpInput={otpInput} isLoading={isLoading} setEmail={setEmail} setOtpInput={setOtpInput} setStep={setStep} onSendOtp={handleSendOtp} onVerifyOtp={handleVerifyOtp} onResend={handleResend} resendIn={resendIn} codeFailed={codeFailed} />
 
           {/* Feature Cards Row */}
           <div className="grid grid-cols-3 gap-3">
@@ -352,7 +382,7 @@ const LoginScreen = ({ adminOnly = false, redirectTo = '/home' }: { adminOnly?: 
             {/* Right Column — Auth Form Only */}
             <div className="flex-1 flex flex-col justify-center min-w-0">
               <div className="w-full max-w-md">
-                <AuthForm step={step} email={email} otpInput={otpInput} isLoading={isLoading} setEmail={setEmail} setOtpInput={setOtpInput} setStep={setStep} onSendOtp={handleSendOtp} onVerifyOtp={handleVerifyOtp} />
+                <AuthForm step={step} email={email} otpInput={otpInput} isLoading={isLoading} setEmail={setEmail} setOtpInput={setOtpInput} setStep={setStep} onSendOtp={handleSendOtp} onVerifyOtp={handleVerifyOtp} onResend={handleResend} resendIn={resendIn} codeFailed={codeFailed} />
               </div>
             </div>
           </div>
