@@ -131,7 +131,7 @@ const AdminErrors = () => {
                             </div>
                           </div>
                         ) : (
-                          <span className="text-gray-500 italic">Guest / System</span>
+                          <span className="text-gray-500 italic">Signed out / System</span>
                         )}
                       </td>
                       <td className="px-6 py-4 text-gray-500">

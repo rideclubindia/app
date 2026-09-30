@@ -1,7 +1,10 @@
 import React from 'react';
 import { Capacitor } from '@capacitor/core';
 import whiteLogo from '../assets/Logos/Logo for White Backgrounds 2.svg';
-import darkLogo from '../assets/Logos/Logo for Dark Backgrounds 2.svg';
+import darkLogoSvg from '../assets/Logos/Logo for Dark Backgrounds 2.svg?raw';
+
+// Inlined so the logo is on screen in the same frame as the boot screen in index.html, with no image download
+const inlineLogo = darkLogoSvg.replace(/<\?xml[^>]*>/, '').replace(/width="2000"/, 'width="100%"').replace(/height="2000"/, 'height="100%"');
 
 interface LoadingSpinnerProps {
   fullScreen?: boolean;
@@ -36,10 +39,10 @@ export const LoadingSpinner: React.FC<LoadingSpinnerProps> = ({
   );
 
   // Native app only: continue the orange launch splash so there is no white flash between splash and first screen
-  if (fullScreen && Capacitor.isNativePlatform()) {
+  if (fullScreen && (Capacitor.isNativePlatform() || document.documentElement.classList.contains('rc-native'))) {
     return (
       <div className="fixed inset-0 z-50 bg-[#EF4523] flex flex-col items-center justify-center" role="status" aria-label="Loading">
-        <img src={darkLogo} alt="Ride Club" className="w-[40vw] max-w-[220px] h-auto animate-pulse" />
+        <div aria-hidden="true" className="w-[40vw] max-w-[220px] aspect-square animate-pulse" dangerouslySetInnerHTML={{ __html: inlineLogo }} />
         <div className="mt-8 h-1 w-24 rounded-full bg-white/25 overflow-hidden">
           <div className="h-full w-1/3 rounded-full bg-white animate-[rc-load_1.1s_ease-in-out_infinite]" />
         </div>

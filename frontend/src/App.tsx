@@ -162,64 +162,33 @@ const RequireAuth = ({ children }: { children: React.ReactNode }) => {
   const { showToast } = useToast();
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
-      // Only email-code sessions exist now; a leftover Firebase session would give the app a different identity than the database token
-      if (currentUser) { await signOut(auth).catch(() => {}); return; }
-      const rieToken = localStorage.getItem('rie_token');
-      let effectiveUser: any = currentUser;
+    // The email-code session is read locally, so the first screen never waits on Firebase or the network
+    const session = getAppUser(null);
+    setUser(session);
+    setLoading(false);
 
-      if (!currentUser && rieToken) {
-        try {
-          const payloadBase64 = rieToken.split('.')[1];
-          const decodedPayload = JSON.parse(atob(payloadBase64));
-          effectiveUser = {
-            uid: decodedPayload.uid || decodedPayload.sub,
-            email: decodedPayload.sub,
-            displayName: decodedPayload.sub.split('@')[0],
-            getIdToken: async () => rieToken,
-            photoURL: null
-          };
-        } catch (e) {
-          console.error("Invalid rie_token", e);
+    // Only email-code sessions exist now; a leftover Firebase session would give the app a different identity than the database token
+    const unsubscribe = onAuthStateChanged(auth, (fb) => { if (fb) signOut(auth).catch(() => {}); });
+    if (!session) return unsubscribe;
+
+    // Account status and policy checks run in the background; a slow or sleeping backend doesn't block the app
+    const userId = getDeterministicUuid(session.uid);
+    let cancelled = false;
+    getDbToken().catch(() => null);
+    getMyProfile(true)
+      .then((profile) => {
+        if (cancelled) return;
+        if (profile) {
+          setBanned(profile.status === 'suspended' || profile.status === 'banned');
+          setWarning(profile.status === 'warning');
         }
-      }
+        const accepted = !!profile?.policy_accepted_at || localStorage.getItem(`policy_accepted_${userId}`) === 'true';
+        if (!accepted && profile) setNeedsPolicyAcceptance(true);
+      })
+      .catch((err) => console.error('[RideClub startup] profile check failed', err));
 
-      if (!effectiveUser) {
-        setUser(null);
-        setLoading(false);
-        return;
-      }
-
-      setUser(effectiveUser);
-      const userId = getDeterministicUuid(effectiveUser.uid);
-      
-      // Per-rider database token; the Supabase client refreshes it on demand
-      await getDbToken();
-
-      try {
-        // The backend creates the profile row at sign-in
-        const profileRes = { data: await getMyProfile(true) };
-
-        if (profileRes.data) {
-          setBanned(profileRes.data.status === 'suspended' || profileRes.data.status === 'banned');
-          setWarning(profileRes.data.status === 'warning');
-        }
-
-        // Check policies from database or local storage
-        const hasAcceptedPolicies = !!profileRes.data?.policy_accepted_at || localStorage.getItem(`policy_accepted_${userId}`) === 'true';
-
-        if (!hasAcceptedPolicies) {
-          setNeedsPolicyAcceptance(true);
-        }
-      } catch (err) {
-        console.error('Failed to verify profile status', err);
-      } finally {
-        setLoading(false);
-      }
-    });
-
-    return unsubscribe;
-  }, [showToast]);
+    return () => { cancelled = true; unsubscribe(); };
+  }, []);
 
   useEffect(() => {
     if (warning) {
@@ -273,11 +242,9 @@ const RequireAuth = ({ children }: { children: React.ReactNode }) => {
 };
 
 // Signed-in users skip the start and login screens, so Back never lands on them
-const GuestOnly = ({ children }: { children: React.ReactNode }) => {
-  const [state, setState] = useState<'checking' | 'guest' | 'user'>(() => (getAppUser(auth.currentUser) ? 'user' : 'checking'));
-  useEffect(() => onAuthStateChanged(auth, (u) => setState(getAppUser(u) ? 'user' : 'guest')), []);
-  if (state === 'user') return <Navigate to="/home" replace />;
-  if (state === 'checking') return <LoadingSpinner fullScreen />;
+const SignedOutOnly = ({ children }: { children: React.ReactNode }) => {
+  // The session is local, so this decides instantly instead of waiting on Firebase
+  if (getAppUser(null)) return <Navigate to="/home" replace />;
   return <>{children}</>;
 };
 
@@ -717,9 +684,9 @@ function App() {
                   </>
                 )}
                 <Route element={<MobileShell />}>
-                {!isWebsiteDomain && <Route path="/" element={<GuestOnly><SplashScreen /></GuestOnly>} />}
+                {!isWebsiteDomain && <Route path="/" element={<SignedOutOnly><SplashScreen /></SignedOutOnly>} />}
                 {/* Auth & Setup */}
-                <Route path="/login" element={<GuestOnly><LoginScreen /></GuestOnly>} />
+                <Route path="/login" element={<SignedOutOnly><LoginScreen /></SignedOutOnly>} />
                 <Route path="/accept-policies" element={<PolicyAcceptance />} />
                 <Route path="/privacy-policy" element={<PrivacyPolicy />} />
                 <Route path="/terms" element={<Terms />} />

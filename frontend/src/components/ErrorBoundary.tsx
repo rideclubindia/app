@@ -3,6 +3,10 @@ import type { ErrorInfo, ReactNode } from 'react';
 import { AlertTriangle, RefreshCw } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { auth } from '../lib/firebase';
+import { getAppUser, getDeterministicUuid } from '../lib/user';
+
+// A new deploy removes old code chunks; a page still running the previous version must reload once to pick up the new one
+const isStaleChunk = (e: Error) => /dynamically imported module|Importing a module script failed|ChunkLoadError|Loading chunk/i.test(String(e?.message || e));
 
 interface Props {
   children: ReactNode;
@@ -24,11 +28,20 @@ class ErrorBoundary extends Component<Props, State> {
   }
 
   public async componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    console.error('Uncaught error:', error, errorInfo);
+    console.error('[RideClub] uncaught render error:', error, errorInfo);
+    if (isStaleChunk(error)) {
+      let last = 0;
+      try { last = Number(sessionStorage.getItem('rc_chunk_reload') || 0); } catch { /* storage blocked */ }
+      if (Date.now() - last > 60000) {
+        try { sessionStorage.setItem('rc_chunk_reload', String(Date.now())); } catch { /* storage blocked */ }
+        window.location.reload();
+        return;
+      }
+    }
     
     try {
-      const user = auth.currentUser;
-      const uid = user?.uid || null;
+      const user = getAppUser(auth.currentUser);
+      const uid = user ? (user.uid.length === 36 ? user.uid : getDeterministicUuid(user.uid)) : null;
       
       await supabase.from('error_logs').insert([{
         user_id: uid,

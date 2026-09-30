@@ -1,14 +1,9 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import darkLogo from '../assets/Logos/Logo for Dark Backgrounds 2.svg';
 
 const SplashScreen = () => {
   const navigate = useNavigate();
-
-  useEffect(() => {
-    // Auto-navigate to login or home if not authenticated
-    // For now we simulate staying here until user clicks
-  }, []);
 
   return (
     <div className="fixed inset-0 bg-black text-white flex flex-col items-center justify-center overflow-hidden pt-[max(20px,env(safe-area-inset-top))] pb-[env(safe-area-inset-bottom)]">
@@ -38,13 +33,6 @@ const SplashScreen = () => {
           className="w-full bg-primary hover:bg-orange-600 text-white font-semibold py-4 rounded-lg shadow-lg shadow-primary/30 transition-all duration-300 transform hover:scale-[1.02] active:scale-95"
         >
           Get Started
-        </button>
-        
-        <button 
-          onClick={() => navigate('/home')}
-          className="w-full mt-4 bg-transparent text-gray-400 hover:text-white font-medium py-4 transition-colors"
-        >
-          Browse as Guest
         </button>
       </div>
 
