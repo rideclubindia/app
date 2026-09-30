@@ -22,6 +22,7 @@ from core.config import settings
 from pydantic import BaseModel, EmailStr
 
 from core.limiter import limiter
+from core.ids import member_uuid
 
 logger = logging.getLogger(__name__)
 
@@ -38,16 +39,7 @@ class VerifyOtpData(BaseModel):
 
 
 def get_deterministic_uuid(string: str) -> str:
-    hash_val = 0
-    for char in string:
-        code = ord(char)
-        hash_val = code + ((hash_val << 5) - hash_val)
-        hash_val = (hash_val & 0xFFFFFFFF)
-        if hash_val > 0x7FFFFFFF:
-            hash_val -= 0x100000000
-
-    hex_val = f"{abs(hash_val):012x}"
-    return f"00000000-0000-0000-0000-{hex_val}"
+    return member_uuid(string)
 
 
 @router.post("/request-otp")
@@ -122,7 +114,8 @@ def supabase_token(request: Request, db: Session = Depends(get_db), token: str =
         raise HTTPException(status_code=403, detail="Account restricted")
     now = int(time.time())
     claims = {
-        "sub": str(user.id), "uid": uid, "email": user.email, "role": "authenticated", "aud": "authenticated",
+        # mid: the id the app derives from uid; older accounts have a profile id that differs from it
+        "sub": str(user.id), "uid": uid, "mid": member_uuid(uid) if uid else "", "email": user.email, "role": "authenticated", "aud": "authenticated",
         "app_role": "admin" if is_admin(user) else "rider", "iat": now, "exp": now + SUPABASE_TOKEN_MINUTES * 60,
     }
     return {"access_token": jwt.encode(claims, settings.SUPABASE_JWT_SECRET, algorithm="HS256"), "expires_in": SUPABASE_TOKEN_MINUTES * 60}

@@ -46,7 +46,7 @@ export function useCrashDetection(rideId: string | undefined, getLocation: () =>
     (async () => {
       const handle = await CrashSensor.addListener('sampleBatch', (event: SampleBatchEvent) => {
         for (const sample of event.samples) {
-          const result = engine.processSample(sample);
+          const result = engine.processSample({ t: sample.t, accel: sample.accelerometer, gyro: sample.gyroscope });
           if (result.event) {
             const location = getLocationRef.current();
             if (location) {

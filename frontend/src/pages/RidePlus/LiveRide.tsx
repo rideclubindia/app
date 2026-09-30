@@ -42,6 +42,9 @@ import { triggerSos, resumePendingSos, resolveSos, resolveSosLocation, reportLoc
 import { getMyProfile } from '../../lib/myProfile';
 import { searchPlaces, resolvePlace } from '../../lib/places';
 
+// Riders are keyed by member id (the id stored in ride_members), so the signed-in rider appears once
+const selfMemberId = () => { const u = getAppUser(auth.currentUser)?.uid; return u ? (u.length === 36 ? u : getDeterministicUuid(u)) : 'me'; };
+
 const BackgroundGeolocation = registerPlugin<BackgroundGeolocationPlugin>('BackgroundGeolocation');
 
 const ORS_API_KEY = 'eyJvcmciOiI1YjNjZTM1OTc4NTExMTAwMDFjZjYyNDgiLCJpZCI6IjZlZTI0N2U2NGIwNjQwYTY5N2E0ZGJkMzVlZmYyMDI5IiwiaCI6Im11cm11cjY0In0=';
@@ -706,7 +709,7 @@ const LiveRide = () => {
 
         // Place / update own marker
         if (map.current) {
-          placeRiderMarker(getAppUser(auth.currentUser)?.uid || 'me', lng, lat);
+          placeRiderMarker(selfMemberId(), lng, lat);
           // GPS heading is null/noisy when slow or stopped — follow the route direction instead
           let arrowBearing: number | null = heading != null && !isNaN(heading) && (speed ?? 0) > 2 ? heading : null;
           if (arrowBearing === null && routeFeatureRef.current) {
@@ -719,7 +722,7 @@ const LiveRide = () => {
             } catch { /* keep last rotation */ }
           }
           if (arrowBearing !== null) {
-            riderMarkersRef.current[getAppUser(auth.currentUser)?.uid || 'me']?.setRotation(arrowBearing);
+            riderMarkersRef.current[selfMemberId()]?.setRotation(arrowBearing);
           }
         }
 
@@ -729,11 +732,11 @@ const LiveRide = () => {
           selfAddedRef.current = true;
           setRiders(prev => ({
             ...prev,
-            [user.uid]: { 
-              ...prev[user.uid], 
-              user_id: user.uid, 
-              display_name: prev[user.uid]?.display_name || user.displayName || user.email?.split('@')[0] || 'Rider',
-              avatar_url: prev[user.uid]?.avatar_url || user.photoURL || `https://ui-avatars.com/api/?name=${user.displayName || user.email?.split('@')[0] || 'Rider'}`,
+            [selfMemberId()]: { 
+              ...prev[selfMemberId()], 
+              user_id: selfMemberId(), 
+              display_name: prev[selfMemberId()]?.display_name || user.displayName || user.email?.split('@')[0] || 'Rider',
+              avatar_url: prev[selfMemberId()]?.avatar_url || user.photoURL || `https://ui-avatars.com/api/?name=${user.displayName || user.email?.split('@')[0] || 'Rider'}`,
               latitude: lat, 
               longitude: lng, 
               speed: speed ?? 0 
@@ -742,11 +745,11 @@ const LiveRide = () => {
         } else if (user) {
           setRiders(prev => ({
             ...prev,
-            [user.uid]: { 
-              ...prev[user.uid], 
-              user_id: user.uid,
-              display_name: prev[user.uid]?.display_name || user.displayName || user.email?.split('@')[0] || 'Rider',
-              avatar_url: prev[user.uid]?.avatar_url || user.photoURL || `https://ui-avatars.com/api/?name=${user.displayName || user.email?.split('@')[0] || 'Rider'}`,
+            [selfMemberId()]: { 
+              ...prev[selfMemberId()], 
+              user_id: selfMemberId(),
+              display_name: prev[selfMemberId()]?.display_name || user.displayName || user.email?.split('@')[0] || 'Rider',
+              avatar_url: prev[selfMemberId()]?.avatar_url || user.photoURL || `https://ui-avatars.com/api/?name=${user.displayName || user.email?.split('@')[0] || 'Rider'}`,
               latitude: lat, 
               longitude: lng, 
               speed: speed ?? 0 
@@ -850,7 +853,7 @@ const LiveRide = () => {
             const lng = startCoord[0];
             setUserLocation({ lat, lng });
              if (map.current) {
-               placeRiderMarker(getAppUser(auth.currentUser)?.uid || 'me', lng, lat);
+               placeRiderMarker(selfMemberId(), lng, lat);
                setIsFollowingUser(false);
                setIs3D(false);
                const bbox = turf.bbox(routeFeatureRef.current);
@@ -862,8 +865,8 @@ const LiveRide = () => {
               selfAddedRef.current = true;
               setRiders(prev => ({
                 ...prev,
-                [user.uid]: {
-                  user_id: user.uid,
+                [selfMemberId()]: {
+                  user_id: selfMemberId(),
                   display_name: user.displayName || user.email?.split('@')[0] || 'Rider',
                   avatar_url: user.photoURL || `https://ui-avatars.com/api/?name=${user.displayName || user.email?.split('@')[0] || 'Rider'}`,
                   latitude: lat,
@@ -2297,7 +2300,7 @@ const LiveRide = () => {
                     const center: [number, number] = [pos.lng, pos.lat];
                     setUserLocation({ lat: pos.lat, lng: pos.lng });
                     map.current?.easeTo({ ...options, center });
-                    placeRiderMarker(getAppUser(auth.currentUser)?.uid || 'me', pos.lng, pos.lat);
+                    placeRiderMarker(selfMemberId(), pos.lng, pos.lat);
                   }).catch(() => {
                     showToast('Live location unavailable. Please enable location permission.', 'error');
                   });

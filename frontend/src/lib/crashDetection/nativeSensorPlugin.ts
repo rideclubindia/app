@@ -1,9 +1,12 @@
 import { registerPlugin } from '@capacitor/core';
 import type { PluginListenerHandle } from '@capacitor/core';
-import type { SensorSample } from './types';
+import type { Vec3 } from './types';
+
+// Shape sent by CrashSensorPlugin.java (differs from the engine's SensorSample; mapped in useAccidentDetection)
+export interface NativeSensorSample { t: number; accelerometer: Vec3; gyroscope: Vec3; samplingRate?: number }
 
 export interface SampleBatchEvent {
-  samples: SensorSample[];
+  samples: NativeSensorSample[];
 }
 
 export interface CrashSensorPlugin {

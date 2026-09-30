@@ -9,7 +9,7 @@ from core.database import engine
 
 MIGRATION = pathlib.Path(__file__).resolve().parents[2] / "supabase" / "migrations" / "20261002_per_user_rls.sql"
 
-A = {"sub": "00000000-0000-0000-0000-00000000a0a0", "uid": "testuid_rider_a", "app_role": "rider"}
+A = {"sub": "00000000-0000-0000-0000-00000000a0a0", "uid": "testuid_rider_a", "mid": "00000000-0000-0000-0000-00000000a1a1", "app_role": "rider"}
 B = {"sub": "00000000-0000-0000-0000-00000000b0b0", "uid": "testuid_rider_b", "app_role": "rider"}
 ADMIN = {"sub": "00000000-0000-0000-0000-00000000adad", "uid": "testuid_admin", "app_role": "admin"}
 

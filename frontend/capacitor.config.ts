@@ -6,6 +6,8 @@ const config: CapacitorConfig = {
   webDir: 'dist',
   // WebView paints brand orange (not white) before the page draws
   backgroundColor: '#EF4523',
+  // Plugin calls carry GPS fixes and sensor data; never echo them to Logcat
+  loggingBehavior: 'none',
   // Load the live web app so every web deploy reaches installed APKs; the bundled copy is the offline fallback
   server: {
     url: 'https://app.rideclub.in',

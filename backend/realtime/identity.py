@@ -19,6 +19,8 @@ import logging
 from dataclasses import dataclass
 from typing import Optional
 
+from core.ids import member_uuid
+
 import jwt as pyjwt
 
 from core.config import settings
@@ -42,15 +44,7 @@ class Identity:
 
 
 def deterministic_uuid(string: str) -> str:
-    """Python port of frontend getDeterministicUuid() / auth.get_deterministic_uuid()."""
-    hash_val = 0
-    for char in string:
-        code = ord(char)
-        hash_val = code + ((hash_val << 5) - hash_val)
-        hash_val &= 0xFFFFFFFF
-        if hash_val > 0x7FFFFFFF:
-            hash_val -= 0x100000000
-    return f"00000000-0000-0000-0000-{abs(hash_val):012x}"
+    return member_uuid(string)
 
 
 def member_id_for_uid(firebase_uid: str) -> str:

@@ -200,7 +200,7 @@ export function useAccidentDetection({ rideId, enabled, speedKph, getLocation, o
     let onMotion: ((e: DeviceMotionEvent) => void) | null = null;
     if (native) {
       (async () => {
-        const h = await CrashSensor.addListener('sampleBatch', (ev: SampleBatchEvent) => { for (const s of ev.samples) feed(s); });
+        const h = await CrashSensor.addListener('sampleBatch', (ev: SampleBatchEvent) => { for (const s of ev.samples) feed({ t: s.t, accel: s.accelerometer, gyro: s.gyroscope }); });
         if (cancelled) { await h.remove(); return; }
         handle = h;
         await CrashSensor.start();

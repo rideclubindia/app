@@ -12,6 +12,7 @@ from api.deps import get_current_user
 from core.database import get_db
 from core.limiter import limiter
 from models.models import User
+from core.ids import member_uuid
 
 router = APIRouter(tags=["riders"])
 
@@ -24,12 +25,7 @@ def _to_int32(x: int) -> int:
 
 
 def deterministic_uuid(value: str) -> str:
-    """Python port of frontend lib/user.ts getDeterministicUuid (JS 32-bit shift semantics)."""
-    h = 0
-    for ch in value:
-        shl = _to_int32(_to_int32(h) * 32)
-        h = ord(ch) + (shl - h)
-    return "00000000-0000-0000-0000-" + format(abs(h), "x").rjust(12, "0")
+    return member_uuid(value)
 
 
 def _km(lat1: float, lng1: float, lat2: float, lng2: float) -> float:
