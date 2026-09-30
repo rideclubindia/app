@@ -375,22 +375,29 @@ const LiveRide = () => {
     
     const stopMarkers: maplibregl.Marker[] = [];
 
-    // Hazard pins
+    // Hazard pins: reports within 25 m of each other show as one marker with a count
+    const clusters: { pin: any; count: number }[] = [];
     incidents.forEach((pin: any) => {
-      if (!pin.latitude || !pin.longitude || pinMarkersRef.current[pin.id]) return;
+      if (!pin.latitude || !pin.longitude) return;
+      const near = clusters.find((c) => turf.distance([c.pin.longitude, c.pin.latitude], [pin.longitude, pin.latitude], { units: 'meters' }) <= 25);
+      if (near) near.count += 1; else clusters.push({ pin, count: 1 });
+    });
+    clusters.forEach(({ pin, count }) => {
       const typeObj = reportTypes.find((t: any) => t.id === pin.category) || reportTypes.find((t: any) => t.id === 'Other')!;
+      const IconComp = typeObj ? incidentIconMap[typeObj.iconName] : AlertTriangle;
+      const icon = (
+        <div className={`relative w-10 h-10 rounded-full flex items-center justify-center shadow-lg border-2 border-white ${typeObj?.bg || 'bg-gray-100'}`}>
+          <IconComp className={`w-6 h-6 ${typeObj?.color || 'text-gray-600'}`} />
+          {count > 1 && <span className="absolute -top-1.5 -right-1.5 min-w-[20px] h-5 px-1 rounded-full bg-gray-950 text-white text-[11px] font-bold flex items-center justify-center border-2 border-white">{count}</span>}
+        </div>
+      );
+      if (pinMarkersRef.current[pin.id]) { rootsRef.current[pin.id]?.render(icon); return; }
       const el   = document.createElement('div');
       const root = createRoot(el);
       rootsRef.current[pin.id] = root;
       el.style.cursor = 'pointer';
       el.addEventListener('click', e => { e.stopPropagation(); setSelectedIncident(pin); });
-      const IconComp = typeObj ? incidentIconMap[typeObj.iconName] : AlertTriangle;
-      
-      root.render(
-        <div className={`w-10 h-10 rounded-full flex items-center justify-center shadow-lg border-2 border-white ${typeObj?.bg || 'bg-gray-100'}`}>
-          <IconComp className={`w-6 h-6 ${typeObj?.color || 'text-gray-600'}`} />
-        </div>
-      );
+      root.render(icon);
       pinMarkersRef.current[pin.id] = new maplibregl.Marker({ element: el })
         .setLngLat([pin.longitude, pin.latitude]).addTo(map.current!);
     });
@@ -2287,7 +2294,8 @@ const LiveRide = () => {
           </div>
 
           {/* Status Banners: telemetry degraded / crash detection paused */}
-          <div className="absolute top-[80px] left-1/2 -translate-x-1/2 z-20 flex flex-col items-center gap-2 pointer-events-none transition-all duration-300">
+          {/* Sits below the route banner when one is showing so the two pills never overlap */}
+          <div className={`absolute ${nextHazard || (incidents.length > 0 && userLocation) ? 'top-14 portrait:top-[136px]' : 'top-[80px]'} left-1/2 -translate-x-1/2 z-20 flex flex-col items-center gap-2 pointer-events-none transition-all duration-300`}>
             {telemetryDegraded && (
               <div className="bg-amber-500/90 backdrop-blur-md border border-amber-300/50 text-white px-4 py-2 rounded-full font-semibold text-[12px] flex items-center gap-2 shadow-[0_8px_24px_rgba(245,158,11,0.4)] whitespace-nowrap">
                 <AlertTriangle className="w-4 h-4" /> Location updates failing
