@@ -28,6 +28,7 @@ import { useIncidentCategories, incidentIconMap } from '../../hooks/useIncidentC
 import LoadingSpinner from '../../components/LoadingSpinner';
 import { getDeterministicUuid, getAppUser } from '../../lib/user';
 import { useConfirm } from '../../components/ConfirmDialog';
+import { useCompassHeading } from '../../hooks/useCompassHeading';
 import img14 from '../../assets/WebsiteImages/img14.jpg';
 const imgSoloRide = img14;
 import { SpeedometerCluster } from '../../hmi/components/Speedometer';
@@ -108,6 +109,13 @@ const LiveRide = () => {
   const [nextHazard, setNextHazard] = useState<any>(null);
   const [nextStop, setNextStop] = useState<any>(null);
   const [userDistKm, setUserDistKm] = useState(0);
+  const [travelledKm, setTravelledKm] = useState(0);
+  const [routeLeftKm, setRouteLeftKm] = useState<number | null>(null);
+  const lastTravelPosRef = useRef<{ lat: number; lng: number } | null>(null);
+  const compass = useCompassHeading();
+  const compassRef = useRef(compass);
+  compassRef.current = compass;
+  const movingRef = useRef(false);
   const [hazardsOnRoute, setHazardsOnRoute] = useState<any[]>([]);
 
   const [showEmergencySetup, setShowEmergencySetup] = useState(false);
@@ -711,7 +719,8 @@ const LiveRide = () => {
         if (map.current) {
           placeRiderMarker(selfMemberId(), lng, lat);
           // GPS heading is null/noisy when slow or stopped — follow the route direction instead
-          let arrowBearing: number | null = heading != null && !isNaN(heading) && (speed ?? 0) > 2 ? heading : null;
+          movingRef.current = (speed ?? 0) > 2;
+          let arrowBearing: number | null = heading != null && !isNaN(heading) && movingRef.current ? heading : compassRef.current;
           if (arrowBearing === null && routeFeatureRef.current) {
             try {
               const line = turf.lineString(routeFeatureRef.current.geometry.coordinates);
@@ -939,26 +948,53 @@ const LiveRide = () => {
     return () => { document.removeEventListener('visibilitychange', onResume); window.removeEventListener('online', onResume); };
   }, []);
 
-  // Off-route by more than 250 m: recalculate from where the rider is now (at most every 30 s)
+  // Distance ridden survives reopening the ride on this phone
+  useEffect(() => {
+    try { const v = parseFloat(localStorage.getItem(`rc-travel-${id}`) || ''); if (v > 0) setTravelledKm(v); } catch { /* storage blocked */ }
+  }, [id]);
+  useEffect(() => {
+    try { if (id && travelledKm > 0) localStorage.setItem(`rc-travel-${id}`, String(travelledKm)); } catch { /* storage blocked */ }
+  }, [travelledKm, id]);
+
+  // Stopped or slow: the arrow turns with the phone like a compass
+  useEffect(() => {
+    if (compass == null || movingRef.current) return;
+    riderMarkersRef.current[selfMemberId()]?.setRotation(compass);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [compass]);
+
+  // Actual distance ridden, summed from GPS fixes (ignores jitter under 5 m and jumps over 1 km)
+  useEffect(() => {
+    if (!userLocation) return;
+    const prev = lastTravelPosRef.current;
+    if (!prev) { lastTravelPosRef.current = userLocation; return; }
+    const d = turf.distance(turf.point([prev.lng, prev.lat]), turf.point([userLocation.lng, userLocation.lat]));
+    if (d < 0.005) return;
+    lastTravelPosRef.current = userLocation;
+    if (d < 1) setTravelledKm((k) => k + d);
+  }, [userLocation]);
+
+  // Off-route by more than 100 m: recalculate from where the rider is now (at most every 15 s)
   useEffect(() => {
     const here = userLocation;
     const line = routeFeatureRef.current?.geometry?.coordinates;
     if (!here || !line || line.length < 2) return;
-    if (Date.now() - lastRouteCalcRef.current < 30000) return;
+    if (Date.now() - lastRouteCalcRef.current < 15000) return;
     try {
       const off = turf.pointToLineDistance(turf.point([here.lng, here.lat]), turf.lineString(line), { units: 'kilometers' });
-      if (off > 0.25) setRouteTick((t) => t + 1);
+      if (off > 0.1) setRouteTick((t) => t + 1);
     } catch { /* ignore malformed line */ }
   }, [userLocation]);
 
   useEffect(() => {
-    if (!hasFix || !rideStops.length) return;
+    if (!hasFix) return;
     const origin = getRouteOrigin(userLocationRef.current || userLocation || globalLocation);
     if (!origin) return;
-    const ordered = [...rideStops]
+    let ordered = [...rideStops]
       .filter((st: any) => typeof st.latitude === 'number' && typeof st.longitude === 'number' && !/start|origin/i.test(st.stop_type || ''))
       .sort((a: any, b: any) => (a.sequence ?? 0) - (b.sequence ?? 0))
       .map((st: any) => ({ ...st, lng: st.longitude, lat: st.latitude }));
+    if (!ordered.length && isFinite(ride?.destination?.lat) && isFinite(ride?.destination?.lng)) ordered = [{ lng: ride.destination.lng, lat: ride.destination.lat }];
     if (!ordered.length) return;
     const ahead = upcomingStops(origin, ordered, (a, b) => turf.distance(turf.point(a), turf.point(b)));
     const coords = [origin, ...ahead.map((st: any) => [st.lng, st.lat])];
@@ -978,7 +1014,7 @@ const LiveRide = () => {
     })();
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [stopsKey, hasFix, routeTick]);
+  }, [stopsKey, hasFix, routeTick, ride?.id]);
 
   // ─── Hazard & Stop proximity (Turf) ────────────────────
   useEffect(() => {
@@ -995,6 +1031,7 @@ const LiveRide = () => {
       const routeEnd = turf.point(routeFeature.geometry.coordinates[routeFeature.geometry.coordinates.length - 1]);
       try {
         const remainingSliced = turf.lineSlice(snap, routeEnd, line);
+        setRouteLeftKm(turf.length(remainingSliced));
         const remainingSource = map.current?.getSource('route-remaining') as maplibregl.GeoJSONSource;
         if (remainingSource) {
           remainingSource.setData(remainingSliced);
@@ -1373,11 +1410,13 @@ const LiveRide = () => {
   };
 
   // Remaining time calculation
-  const progress        = totalDistance > 0 ? Math.min(userDistKm / totalDistance, 1) : 0;
-  const remainingDistKm = Math.max(0, totalDistance - userDistKm);
-  const remainingSecs   = Math.max(0, totalDuration * (1 - progress));
+  // Remaining follows the current (rerouted) line; total = ridden so far + what's left
+  const remainingDistKm = routeLeftKm ?? Math.max(0, totalDistance - userDistKm);
+  const tripTotalKm     = travelledKm + remainingDistKm;
+  const progress        = tripTotalKm > 0 ? Math.min(travelledKm / tripTotalKm, 1) : 0;
+  const remainingSecs   = totalDistance > 0 ? Math.max(0, totalDuration * Math.min(1, remainingDistKm / totalDistance)) : 0;
   const remainingMins   = Math.round(remainingSecs / 60);
-  const isArrived       = totalDistance > 0 && progress >= 0.98;
+  const isArrived       = totalDistance > 0 && remainingDistKm <= 0.05;
 
   let nextStopDistKm = remainingDistKm;
   let nextStopMins = remainingMins;
@@ -1443,7 +1482,7 @@ const LiveRide = () => {
         reference_user_id: referenceRider?.user_id || null,
         distances: localDistances,
         separated_riders: localDistances.filter((d: any) => d.distance_meters > 2000),
-        total_distance_covered_km: typeof userDistKm === 'number' ? userDistKm : 0,
+        total_distance_covered_km: travelledKm,
         message: localDistances.length > 0 ? 'Live fallback from rider GPS' : 'Waiting for rider location data',
         source: 'local'
       };
@@ -1866,14 +1905,14 @@ const LiveRide = () => {
                 <span className="text-[12px] font-bold text-[#FF5A00] bg-orange-50 rounded-full px-2.5 py-0.5 tabular-nums">{Math.round(progress * 100)}%</span>
               </div>
               <p className="mt-1.5 text-[22px] font-bold text-gray-950 tabular-nums leading-none">
-                {userDistKm.toFixed(1)} <span className="text-[15px] font-medium text-gray-500">of {totalDistance.toFixed(1)} km</span>
+                {travelledKm.toFixed(1)} <span className="text-[15px] font-medium text-gray-500">of {tripTotalKm.toFixed(1)} km</span>
               </p>
               <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden mt-3">
                 <div className="h-full bg-[#FF5A00] rounded-full transition-all duration-1000" style={{ width: `${Math.round(progress * 100)}%` }} />
               </div>
               <div className="grid grid-cols-3 divide-x divide-gray-100 mt-4 pt-3 border-t border-gray-100 text-center">
                 {[
-                  { label: 'Remaining', value: `${Math.max(0, totalDistance - userDistKm).toFixed(1)} km` },
+                  { label: 'Remaining', value: `${remainingDistKm.toFixed(1)} km` },
                   { label: 'Avg speed', value: `${avgSpeed} km/h` },
                   { label: 'Max speed', value: `${maxSpeed} km/h` },
                 ].map((st) => (
@@ -1915,7 +1954,7 @@ const LiveRide = () => {
                     />
                   </div>
                   <div className="flex items-center gap-1.5 mt-2.5">
-                    <span className="bg-gray-50 border border-gray-100 text-gray-500 text-[10px] font-semibold px-2 py-1 rounded-lg tabular-nums">{userDistKm.toFixed(1)} / {totalDistance.toFixed(1)} km</span>
+                    <span className="bg-gray-50 border border-gray-100 text-gray-500 text-[10px] font-semibold px-2 py-1 rounded-lg tabular-nums">{travelledKm.toFixed(1)} / {tripTotalKm.toFixed(1)} km</span>
                     <span className="bg-gray-50 border border-gray-100 text-gray-500 text-[10px] font-semibold px-2 py-1 rounded-lg tabular-nums">Avg {avgSpeed}</span>
                     <span className="bg-gray-50 border border-gray-100 text-gray-500 text-[10px] font-semibold px-2 py-1 rounded-lg tabular-nums">Max {maxSpeed}</span>
                   </div>

@@ -54,6 +54,8 @@ export async function searchPlaces(q: string, near?: { lat: number; lng: number 
       const { data } = await apiClient.get('/api/v1/places/autocomplete', {
         params: { q: term, lat: near?.lat, lng: near?.lng, session: sessionToken() },
         signal,
+        // A sleeping backend takes ~25 s to wake; fall back to OpenStreetMap instead of waiting
+        timeout: 5000,
       });
       // Google's location bias is soft, so a literal name match far away can outrank one nearby; nearest first
       const hits = data.places as PlaceHit[];

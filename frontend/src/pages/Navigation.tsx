@@ -7,6 +7,7 @@ import { ArrowLeft, ArrowUp, CornerUpLeft, CornerUpRight, Crosshair, Flag, Loade
 import { fetchTomTomRoutes, TOMTOM_API_KEY } from '../lib/routing';
 import { useLocationStore } from '../store/useLocationStore';
 import { useOrientationLock } from '../hooks/useOrientationLock';
+import { useCompassHeading } from '../hooks/useCompassHeading';
 import { getRouteOrigin } from '../lib/routeOrigin';
 import { requestLocation, openLocationSettings, canOpenSettings } from '../lib/locationPermission';
 import { notify } from '../lib/notify';
@@ -41,6 +42,7 @@ export default function Navigation() {
   const [mapReady, setMapReady] = useState(false);
 
   const [me, setMe] = useState<{ lng: number; lat: number; heading: number | null } | null>(storeCoords ? { ...storeCoords, heading: null } : null);
+  const compass = useCompassHeading();
   const [following, setFollowing] = useState(false);
   const [traffic, setTraffic] = useState(false);
 
@@ -103,7 +105,7 @@ export default function Navigation() {
   useEffect(() => {
     if (!navigator.geolocation) return;
     const id = navigator.geolocation.watchPosition(
-      (p) => setMe({ lng: p.coords.longitude, lat: p.coords.latitude, heading: p.coords.heading ?? null }),
+      (p) => setMe({ lng: p.coords.longitude, lat: p.coords.latitude, heading: (p.coords.speed ?? 0) > 2 ? p.coords.heading ?? null : null }),
       (e) => { if (e.code === e.PERMISSION_DENIED) setLocIssue('denied'); },
       { enableHighAccuracy: true, maximumAge: 2000, timeout: 10000 },
     );
@@ -119,9 +121,11 @@ export default function Navigation() {
       meMarker.current = new maplibregl.Marker({ element: el, rotationAlignment: 'map' }).setLngLat([me.lng, me.lat]).addTo(map.current);
     }
     meMarker.current.setLngLat([me.lng, me.lat]);
-    if (me.heading != null) meMarker.current.setRotation(me.heading);
+    // GPS heading while moving, the phone compass when stopped or slow
+    const h = me.heading ?? compass;
+    if (h != null) meMarker.current.setRotation(h);
     if (following) map.current.easeTo({ center: [me.lng, me.lat], bearing: navigating && me.heading != null ? me.heading : map.current.getBearing(), duration: 800 });
-  }, [me, mapReady, following, navigating]);
+  }, [me, mapReady, following, navigating, compass]);
 
   // Traffic
   useEffect(() => {
@@ -198,12 +202,12 @@ export default function Navigation() {
     return () => { document.removeEventListener('visibilitychange', bump); window.removeEventListener('online', bump); };
   }, []);
 
-  // Off the selected route by more than 150 m while navigating: reroute from the current position (at most every 20 s)
+  // Off the selected route by more than 100 m while navigating: reroute from the current position (at most every 15 s)
   useEffect(() => {
     const line = routes[selected]?.geometry?.coordinates;
-    if (!navigating || !me || !line || line.length < 2 || Date.now() - lastCalcRef.current < 20000) return;
+    if (!navigating || !me || !line || line.length < 2 || Date.now() - lastCalcRef.current < 15000) return;
     try {
-      if (turf.pointToLineDistance([me.lng, me.lat], turf.lineString(line), { units: 'kilometers' }) > 0.15) setRouteTick((t) => t + 1);
+      if (turf.pointToLineDistance([me.lng, me.lat], turf.lineString(line), { units: 'kilometers' }) > 0.1) setRouteTick((t) => t + 1);
     } catch { /* ignore */ }
   }, [me, navigating, routes, selected]);
 
@@ -329,6 +333,16 @@ export default function Navigation() {
   const active = routes[selected];
   const summary = active?.properties.summary as { distance: number; duration: number; trafficDelay?: number } | undefined;
   const steps: any[] = active?.properties.segments?.[0]?.steps || [];
+  // Left to go from the rider's spot on the route, so the numbers count down while riding
+  const left = (() => {
+    if (!summary || !active || !navigating || !me) return summary ? { distance: summary.distance, duration: summary.duration } : null;
+    try {
+      const line = turf.lineString(active.geometry.coordinates);
+      const coords = active.geometry.coordinates;
+      const m = turf.length(turf.lineSlice([me.lng, me.lat], coords[coords.length - 1], line)) * 1000;
+      return { distance: m, duration: summary.duration * Math.min(1, m / Math.max(1, summary.distance)) };
+    } catch { return { distance: summary.distance, duration: summary.duration }; }
+  })();
   const nextStep = (() => {
     // Live GPS, or the manual start point when location isn't available
     const pos: LngLat | null = me ? [me.lng, me.lat] : manualStart ? [manualStart.lng, manualStart.lat] : null;
@@ -423,7 +437,7 @@ export default function Navigation() {
             <div className="flex-1 min-w-0 rounded-2xl bg-[#0F5132] text-white shadow-lg px-4 py-3 flex items-center gap-3">
               <ArrowUp className="w-10 h-10 shrink-0" />
               <div className="min-w-0">
-                <p className="text-[22px] font-bold leading-none tabular-nums">{summary ? fmtKm(summary.distance) : '--'}</p>
+                <p className="text-[22px] font-bold leading-none tabular-nums">{left ? fmtKm(left.distance) : '--'}</p>
                 <p className="text-[14px] text-white/85 mt-1 truncate">Head to {dest.name}</p>
               </div>
             </div>
@@ -454,8 +468,8 @@ export default function Navigation() {
             {navigating ? (
               <div className="p-4 flex items-center gap-3">
                 <div className="flex-1 min-w-0">
-                  <p className="text-[22px] font-bold text-gray-950 tabular-nums leading-none">{summary ? fmtMin(summary.duration) : '--'}</p>
-                  <p className="text-[13px] text-gray-500 mt-1 truncate">{summary ? fmtKm(summary.distance) : ''} · to {dest.name}</p>
+                  <p className="text-[22px] font-bold text-gray-950 tabular-nums leading-none">{left ? fmtMin(left.duration) : '--'}</p>
+                  <p className="text-[13px] text-gray-500 mt-1 truncate">{left ? fmtKm(left.distance) : ''} · to {dest.name}</p>
                 </div>
                 <button onClick={() => setSearchOpen(true)} className="h-12 px-4 rounded-2xl border border-gray-200 text-[14px] font-semibold text-gray-900 flex items-center gap-1.5"><Plus className="w-4 h-4" /> Stop</button>
                 <button onClick={stop} className="h-12 px-5 rounded-2xl bg-red-600 text-white text-[14px] font-bold">End</button>
